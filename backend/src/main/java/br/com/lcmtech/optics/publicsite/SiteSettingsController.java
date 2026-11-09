@@ -31,7 +31,7 @@ public class SiteSettingsController {
         context.require(auth,session,"SITE_MANAGE");
         UUID optic=activeSite(auth,session);
         return jdbc.queryForMap("SELECT o.slug,o.site_enabled,s.primary_color,s.secondary_color,s.font,"
-                +"s.template,s.campaign_title,s.campaign_description "
+                +"s.template,s.campaign_title,s.campaign_description,(s.logo IS NOT NULL) AS has_logo "
                 +"FROM site_settings s JOIN optics o ON o.id=s.optic_id WHERE s.optic_id=?",optic);
     }
     public record Settings(String primaryColor,String secondaryColor,String font,String template,
