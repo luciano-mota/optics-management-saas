@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api, date, currency } from '../api';
+import { api, date } from '../api';
 import type { ScreenProps } from './common';
 import { FormField, getField, perform, useRemote } from './common';
 
