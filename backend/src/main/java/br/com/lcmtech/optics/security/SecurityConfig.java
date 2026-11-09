@@ -7,37 +7,43 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
-/**
- * Política fail-closed para a fase bootstrap: nenhuma API privada tem login habilitado.
- * O fluxo de identidade real será implementado antes de expor recursos de negócio.
- */
+/** Sessão no servidor e CSRF obrigatório; APIs privadas autenticadas sem basic auth. */
 @Configuration
 public class SecurityConfig {
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
-    }
+    @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
 
     @Bean
-    UserDetailsService noBootstrapAccounts() {
-        return new InMemoryUserDetailsManager();
-    }
-
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, UserDetailsService users) throws Exception {
         return http
-                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .userDetailsService(users)
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/api/v1/public/status").permitAll()
-                        .requestMatchers("/api/**", "/actuator/**").authenticated()
+                        .requestMatchers("/actuator/health",
+                                "/api/v1/public/**", "/api/v1/auth/csrf", "/api/v1/auth/login").permitAll()
+                        .requestMatchers("/api/**").authenticated()
+                        .requestMatchers("/actuator/**").denyAll()
                         .anyRequest().permitAll())
                 .httpBasic(basic -> basic.disable())
-                .formLogin(form -> form.disable())
+                .formLogin(form -> form.loginProcessingUrl("/api/v1/auth/login")
+                        .usernameParameter("email")
+                        .passwordParameter("password")
+                        .successHandler((req, resp, authentication) -> {
+                            resp.setStatus(200);
+                            resp.setContentType("application/json;charset=UTF-8");
+                            resp.getWriter().write("{\"authenticated\":true}");
+                        })
+                        .failureHandler((req, resp, error) -> resp.sendError(401)))
+                .logout(logout -> logout.logoutUrl("/api/v1/auth/logout")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID", "SESSION", "XSRF-TOKEN")
+                        .logoutSuccessHandler((req, resp, auth) -> resp.setStatus(204)))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .build();
     }
