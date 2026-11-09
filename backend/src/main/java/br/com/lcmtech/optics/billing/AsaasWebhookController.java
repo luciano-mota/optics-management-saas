@@ -64,7 +64,7 @@ public class AsaasWebhookController {
                 jdbc.update("UPDATE optic_subscriptions SET billing_mode='PAID',payment_active=true,"
                     +"paid_through_at=GREATEST(COALESCE(paid_through_at,now()),now())+interval '1 month',"
                     +"asaas_subscription_id=COALESCE(NULLIF(?,''),asaas_subscription_id),"
-                    +"payment_updated_at=now() WHERE optic_id=?",subId,optic);
+                    +"payment_updated_at=now() WHERE optic_id=? AND billing_mode<>'COMPLIMENTARY'",subId,optic);
             }
         }else if(kind.equals("PAYMENT_REFUNDED")||kind.equals("PAYMENT_DELETED")){
             jdbc.update("UPDATE optic_subscriptions SET payment_active=false,payment_updated_at=now() "
