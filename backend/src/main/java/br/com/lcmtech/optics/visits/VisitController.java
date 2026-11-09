@@ -106,11 +106,20 @@ public class VisitController {
         String cpf=req.cpf().replaceAll("\\D","");
         if(cpf!=null&&!cpf.isEmpty()&&!cpf.matches("\\d{11}"))
             throw new IllegalArgumentException("CPF inválido.");
-        UUID customer=UUID.randomUUID();
         String name=req.fullName()==null||req.fullName().isBlank()?
                 (String)visit.get("lead_name"):req.fullName().trim();
-        jdbc.update("INSERT INTO customers(optic_id,id,full_name,cpf,birth_date,phone,address) VALUES(?,?,?,?,?,?,?)",
-                optic,customer,name,cpf,req.birthDate(),visit.get("lead_phone"),visit.get("lead_address"));
+        List<UUID> known=jdbc.query("SELECT id FROM customers WHERE optic_id=? AND cpf=?",
+                (rs,n)->(UUID)rs.getObject(1),optic,cpf);
+        UUID customer;
+        if(known.isEmpty()){
+            customer=UUID.randomUUID();
+            jdbc.update("INSERT INTO customers(optic_id,id,full_name,cpf,birth_date,phone,address) VALUES(?,?,?,?,?,?,?)",
+                    optic,customer,name,cpf,req.birthDate(),visit.get("lead_phone"),visit.get("lead_address"));
+        } else {
+            customer=known.get(0);
+            // Se o CPF já pertence a um cliente desta ótica, reaproveitamos o cadastro
+            // e evitamos um segundo cliente com o mesmo documento.
+        }
         Map<String,Object> result=sales.create(
                 new SalesController.NewSale(customer,req.lensId(),req.frameId(),req.amount(),req.paymentMethod(),
                     req.cardMachineId(),req.installments(),req.passFee(),req.settlementDays(),
