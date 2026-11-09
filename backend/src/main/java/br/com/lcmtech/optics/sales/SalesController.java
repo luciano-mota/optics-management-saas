@@ -86,6 +86,72 @@ public class SalesController {
     public record NewSaleWithCustomer(
             CustomerController.Customer customer, NewSale sale) {}
 
+    public record NewSaleWithPatient(
+            UUID patientId, CustomerController.Customer customer, NewSale sale) {}
+
+    /**
+     * Uma consulta não cria cliente. Apenas uma venda confirmada cria ou
+     * reaproveita customer, vinculando o paciente com rastreabilidade.
+     */
+    @PostMapping("/with-patient")
+    @Transactional
+    public Map<String,Object> createWithPatient(
+            @RequestBody NewSaleWithPatient request,
+            Authentication auth, HttpSession session) {
+        context.require(auth, session, "PATIENTS_READ");
+        context.require(auth, session, "CUSTOMERS_WRITE");
+        context.require(auth, session, "SALES_CREATE");
+        if(request==null||request.patientId()==null||
+                request.customer()==null||request.sale()==null)
+            throw new IllegalArgumentException("Selecione o paciente e complete a venda.");
+        UUID optic=context.optic(auth,session);
+        CustomerController.Customer data=request.customer();
+        NewSale sale=request.sale();
+        List<Map<String,Object>> patients=jdbc.queryForList(
+                "SELECT cpf FROM optometry_patients WHERE optic_id=? AND id=? FOR UPDATE",
+                optic,request.patientId());
+        if(patients.isEmpty()) throw new IllegalArgumentException("Paciente não encontrado.");
+        String knownCpf=(String)patients.get(0).get("cpf");
+        String cpf=data.cpf()==null?"":data.cpf().replaceAll("\\D","");
+        if(!cpf.matches("\\d{11}")||
+                (knownCpf!=null&&!knownCpf.equals(cpf)))
+            throw new IllegalArgumentException("Verifique o CPF: deve corresponder ao paciente.");
+        if(sale.idempotencyKey()!=null&&!sale.idempotencyKey().isBlank()) {
+            List<UUID> prior=jdbc.query("SELECT id FROM sales WHERE optic_id=? AND idempotency_key=?",
+                    (rs,n)->(UUID)rs.getObject(1),optic,sale.idempotencyKey());
+            if(!prior.isEmpty())return Map.of("id",prior.get(0),"alreadyCreated",true);
+        }
+        List<Map<String,Object>> existing=jdbc.queryForList(
+                "SELECT id,source_patient_id FROM customers "
+                +"WHERE optic_id=? AND (source_patient_id=? OR cpf=?) FOR UPDATE",
+                optic,request.patientId(),cpf);
+        UUID customer;
+        if(existing.isEmpty()) {
+            customer=(UUID)customers.create(data,auth,session).get("id");
+            jdbc.update("UPDATE customers SET source_patient_id=? WHERE optic_id=? AND id=?",
+                    request.patientId(),optic,customer);
+        }else {
+            if(existing.size()>1)throw new IllegalArgumentException(
+                    "Existem clientes divergentes com esse CPF. Solicite revisão do cadastro.");
+            UUID previous=(UUID)existing.get(0).get("source_patient_id");
+            if(previous!=null&&!previous.equals(request.patientId()))
+                throw new IllegalArgumentException("Este CPF já está vinculado a outro paciente.");
+            customer=(UUID)existing.get(0).get("id");
+            jdbc.update("UPDATE customers SET source_patient_id=COALESCE(source_patient_id,?),"
+                    +"updated_at=now() WHERE optic_id=? AND id=?",request.patientId(),optic,customer);
+        }
+        Map<String,Object> result=create(new NewSale(customer,sale.lensId(),sale.frameId(),
+                sale.amount(),sale.paymentMethod(),sale.cardMachineId(),sale.installments(),
+                sale.passFee(),sale.settlementDays(),sale.replacementMonths(),
+                sale.soldOn(),sale.expectedDelivery(),sale.notes(),sale.idempotencyKey()),
+                auth,session);
+        jdbc.update("INSERT INTO audit_events(id,optic_id,actor_account_id,"
+                +"event_type,entity_type,entity_id) "
+                +"VALUES(?,?,?,'PATIENT_CONVERTED_ON_SALE','CUSTOMER',?)",
+                UUID.randomUUID(),optic,context.accountId(auth),customer);
+        return Map.of("customerId",customer,"sale",result);
+    }
+
     @PostMapping("/with-customer")
     @Transactional
     public Map<String,Object> createWithCustomer(
