@@ -28,6 +28,11 @@ public class TeamController {
     private final PasswordEncoder passwordEncoder;
     private final EmailDelivery mail;
     private final SecureRandom random=new SecureRandom();
+    private static final List<String> ALL_PERMISSIONS = List.of(
+            "FINANCE_READ", "FINANCE_WRITE", "CUSTOMERS_READ", "CUSTOMERS_WRITE",
+            "SALES_READ", "SALES_CREATE", "SALES_DELIVER", "VISITS_READ",
+            "VISITS_MANAGE", "CATALOG_READ", "CATALOG_WRITE", "REPORTS_READ",
+            "USERS_MANAGE", "SITE_MANAGE");
     @Value("${optics.public-base-url:http://localhost:5173}") private String baseUrl;
     public TeamController(JdbcTemplate jdbc, OpticContext context,PasswordEncoder passwordEncoder,EmailDelivery mail) {
         this.jdbc=jdbc;this.context=context;this.passwordEncoder=passwordEncoder;this.mail=mail;
@@ -50,17 +55,22 @@ public class TeamController {
             throw new IllegalArgumentException("E-mail inválido.");
         if(!List.of("MASTER","MANAGER","SECRETARY","SELLER").contains(data.role()))
             throw new IllegalArgumentException("Escolha um perfil válido.");
+        if(data.permissions()!=null && !ALL_PERMISSIONS.containsAll(data.permissions()))
+            throw new IllegalArgumentException("O convite contém permissões inválidas.");
         UUID optic=context.optic(auth,session),account=context.accountId(auth),id=UUID.randomUUID();
         byte[] bytes=new byte[32];random.nextBytes(bytes);
         String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         String hash=digest(token);
-        jdbc.update("INSERT INTO member_invitations(id,optic_id,invited_email,requested_role,token_hash,invited_by,expires_at) "
-                + "VALUES(?,?,?,?,?,?,now()+interval '72 hours')",id,optic,
-                data.email().trim().toLowerCase(Locale.ROOT),data.role(),hash,account);
+        jdbc.update("INSERT INTO member_invitations(id,optic_id,invited_email,requested_role,"
+                + "token_hash,invited_by,expires_at,permissions_csv,permissions_selected) "
+                + "VALUES(?,?,?,?,?,?,now()+interval '72 hours',?,?)",id,optic,
+                data.email().trim().toLowerCase(Locale.ROOT),data.role(),hash,account,
+                data.permissions()==null?"":String.join(",",data.permissions()),
+                data.permissions()!=null);
         if(mail.available()) mail.send(data.email().trim(),"Convite Optics Management",
                 "Olá! Você recebeu acesso à equipe da ótica. Para completar seu cadastro, "
                 +"use o link em até 72 horas:\\n\\n"+baseUrl+"/?invite="+token);
-        // Permissões extras serão ativadas após o aceite; não deixar lista de privilégios sem auditoria.
+        // Permissões selecionadas são aplicadas somente após aceite válido de convite.
         return Map.of("inviteUrl",baseUrl.replaceAll("/+$","")+"/?invite="+token,
                 "message","Convite criado. Copie o link e compartilhe com o funcionário. Validade: 72 horas.");
     }
@@ -87,6 +97,7 @@ public class TeamController {
                 passwordEncoder.encode(data.password()),data.fullName().trim(),
                 data.cpf().replaceAll("\\D",""),data.phone(),data.address(),data.birthDate());
         jdbc.update("INSERT INTO optic_memberships(optic_id,account_id,role) VALUES(?,?,?)",optic,account,invite.get("requested_role"));
+        applyPermissions(invite,optic,account);
         jdbc.update("UPDATE member_invitations SET accepted_at=now() WHERE id=? AND accepted_at IS NULL",invite.get("id"));
         return Map.of("created",true);
     }
@@ -101,6 +112,7 @@ public class TeamController {
         UUID account=context.accountId(auth),optic=(UUID)invite.get("optic_id");
         jdbc.update("INSERT INTO optic_memberships(optic_id,account_id,role) VALUES(?,?,?) "
                 + "ON CONFLICT (optic_id,account_id) DO NOTHING",optic,account,invite.get("requested_role"));
+        applyPermissions(invite,optic,account);
         jdbc.update("UPDATE member_invitations SET accepted_at=now() WHERE id=? AND accepted_at IS NULL",invite.get("id"));
         return Map.of("accepted",true);
     }
@@ -133,9 +145,7 @@ public class TeamController {
     public Map<String,Boolean> permission(@PathVariable UUID userId,@RequestBody PermissionChange data,
                                           Authentication auth,HttpSession session) {
         context.requireMaster(auth,session);
-        if(!List.of("FINANCE_READ","FINANCE_WRITE","CUSTOMERS_READ","CUSTOMERS_WRITE","SALES_READ",
-                "SALES_CREATE","SALES_DELIVER","VISITS_READ","VISITS_MANAGE","CATALOG_READ",
-                "CATALOG_WRITE","REPORTS_READ","USERS_MANAGE","SITE_MANAGE").contains(data.permission()))
+        if(!ALL_PERMISSIONS.contains(data.permission()))
             throw new IllegalArgumentException("Permissão desconhecida.");
         if(!List.of("ALLOW","DENY","DEFAULT").contains(data.effect()))
             throw new IllegalArgumentException("Efeito inválido.");
@@ -154,9 +164,24 @@ public class TeamController {
         return Map.of("updated",true);
     }
 
+    private void applyPermissions(Map<String,Object> invitation,UUID optic,UUID account) {
+        if(!Boolean.TRUE.equals(invitation.get("permissions_selected")))return;
+        if("MASTER".equals(invitation.get("requested_role")))return;
+        String saved=(String)invitation.get("permissions_csv");
+        List<String> allowed=saved==null||saved.isBlank()?List.of():
+                java.util.Arrays.asList(saved.split(","));
+        for(String permission:ALL_PERMISSIONS){
+            String effect=allowed.contains(permission)?"ALLOW":"DENY";
+            jdbc.update("INSERT INTO member_permission_overrides("
+                    + "optic_id,account_id,permission,effect) VALUES(?,?,?,?) "
+                    + "ON CONFLICT (optic_id,account_id,permission) DO UPDATE SET effect=excluded.effect",
+                    optic,account,permission,effect);
+        }
+    }
+
     private Map<String,Object> readInvite(String token) {
         if(token==null||token.length()<30) throw new IllegalArgumentException("Convite inválido.");
-        return jdbc.queryForList("SELECT id,optic_id,invited_email,requested_role FROM member_invitations "
+        return jdbc.queryForList("SELECT id,optic_id,invited_email,requested_role,permissions_csv,permissions_selected FROM member_invitations "
                 + "WHERE token_hash=? AND expires_at>now() AND accepted_at IS NULL AND revoked_at IS NULL",
                 digest(token)).stream().findFirst()
                 .orElseThrow(()->new IllegalArgumentException("Convite expirado, usado ou inválido."));
