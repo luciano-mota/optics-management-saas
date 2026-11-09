@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: optics-management
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/optics_management}
+    username: ${DB_USERNAME:optics}
+    password: ${DB_PASSWORD:}
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+  jackson:
+    time-zone: America/Sao_Paulo
+server:
+  port: ${PORT:8080}
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${COOKIE_SECURE:false}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
