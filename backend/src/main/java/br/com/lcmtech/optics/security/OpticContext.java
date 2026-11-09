@@ -62,10 +62,12 @@ public class OpticContext {
         return switch (role) {
             case "MANAGER" -> !permission.equals("USERS_MANAGE") && !permission.equals("SITE_MANAGE");
             case "SECRETARY" -> List.of("CUSTOMERS_READ","CUSTOMERS_WRITE","SALES_READ",
-                        "SALES_DELIVER","VISITS_READ","VISITS_MANAGE","CATALOG_READ","REPORTS_READ").contains(permission);
+                        "SALES_DELIVER","VISITS_READ","VISITS_MANAGE","CATALOG_READ","REPORTS_READ",
+                        "PATIENTS_READ","PATIENTS_WRITE","APPOINTMENTS_READ","APPOINTMENTS_MANAGE",
+                        "PARTNER_CLINICS_MANAGE").contains(permission);
             case "SELLER" -> List.of("CUSTOMERS_READ","CUSTOMERS_WRITE","SALES_READ",
                         "SALES_CREATE","SALES_DELIVER","VISITS_READ","VISITS_MANAGE",
-                        "CATALOG_READ","REPORTS_READ").contains(permission);
+                        "CATALOG_READ","REPORTS_READ","PATIENTS_READ").contains(permission);
             default -> false;
         };
     }
