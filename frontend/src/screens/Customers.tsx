@@ -42,10 +42,10 @@ export function Customers({ notify }: ScreenProps) {
         } }), notify, () => { form.reset(); refresh(); });
       }}>
         <FormField name="fullName" title="Nome completo" required />
-        <FormField name="cpf" title="CPF" />
+        <FormField name="cpf" title="CPF" required />
         <FormField name="birthDate" title="Data de nascimento" type="date" required />
         <FormField name="phone" title="WhatsApp ou telefone" type="tel" />
-        <FormField name="address" title="Endereço" />
+        <FormField name="address" title="Endereço" required />
         <button className="primary-action form-action" type="submit">Salvar cliente</button>
       </form>
     </div>
