@@ -28,7 +28,7 @@ export function FormField({ name, title, type = 'text', required = false, defaul
   defaultValue?: string; placeholder?: string;
 }) {
   return <label className="field">{title}
-    <input name={name} type={type} required={required}
+    <input name={name} type={type} required={required} step={type === "number" ? "any" : undefined}
       defaultValue={defaultValue} placeholder={placeholder || title} />
   </label>;
 }
