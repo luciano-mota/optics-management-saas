@@ -9,6 +9,7 @@ import { api, csrf, date, fileAsBase64, currency } from './api';
 import { Catalog } from './screens/Catalog';
 import { Customers } from './screens/Customers';
 import { Retention } from './screens/Retention';
+import { BusinessCalendar, MonthlyReview } from './screens/BusinessCalendar';
 import { Sales } from './screens/Sales';
 import { Finance } from './screens/Finance';
 import { Machines } from './screens/Machines';
@@ -29,6 +30,7 @@ const tiles:Tile[]=[
   {key:'catalog',title:'Lentes e armações',description:'Cadastre marcas e modelos com facilidade.',permission:'CATALOG_READ',icon:Glasses,accent:'pink'},
   {key:'machines',title:'Maquininhas',description:'Configure taxas de débito e crédito.',permission:'FINANCE_READ',icon:CreditCard,accent:'orange'},
   {key:'reports',title:'Relatórios',description:'Resultados por funcionário, vendas e visitas.',permission:'REPORTS_READ',icon:ChartColumnIncreasing,accent:'purple'},
+  {key:'calendar',title:'Calendário e feriados',description:'Confira os dias em que a ótica abre e planeje suas metas.',permission:'REPORTS_READ',icon:CalendarDays,accent:'orange'},
   {key:'team',title:'Minha equipe',description:'Envie convites e gerencie permissões.',permission:'USERS_MANAGE',icon:ShieldCheck,accent:'blue'},
   {key:'site',title:'Meu site e campanhas',description:'Personalize sua página de visitas.',permission:'SITE_MANAGE',icon:Palette,accent:'mint'},
 ];
@@ -45,6 +47,7 @@ export function App(){
   const [view,setView]=useState('dashboard');
   const [toast,setToast]=useState<Toast>(null);
   const [menuOpen,setMenuOpen]=useState(false);
+  const [monthlyReviewDismissed,setMonthlyReviewDismissed]=useState(false);
   const [alerts,setAlerts]=useState<{newVisits:number;retentionDue:number;unreadNotices:number}|null>(null);
   const seenAlertCount=useRef<number|null>(null);
   const notify=(message:string,error=false)=>{setToast({message,error});};
@@ -53,6 +56,7 @@ export function App(){
     finally {setReady(true);}
   };
   useEffect(()=>{if(!site&&!invite&&!reset&&!verify)void load();},[site,invite,reset,verify]);
+  useEffect(()=>{setMonthlyReviewDismissed(false);},[me?.activeOpticId]);
   useEffect(()=>{
     if(!me?.activeOpticId)return;
     let mounted=true;
@@ -81,7 +85,10 @@ export function App(){
   if(invite)return <InviteAccept token={invite} notify={notify} toast={toast}/>;
   if(reset)return <AccountLinkAction kind="reset" token={reset} notify={notify} toast={toast}/>;
   if(verify)return <AccountLinkAction kind="verify" token={verify} notify={notify} toast={toast}/>;
-  if(!ready)return <div className="center-message">Abrindo o Optics Management...</div>;
+  if(!ready)return <div className="center-message app-splash">
+    <div className="brand-mark"><Glasses size={44}/></div>
+    <h2>Optics Management</h2><p>Organizando sua ótica...</p>
+  </div>;
   if(!me)return <AccessScreen onSignedIn={()=>void load()} notify={notify} toast={toast}/>;
   const activeShop=me.shops?.find((shop:any)=>shop.id===me.activeOpticId);
   const can=(permission:string)=>me.permissions?.includes(permission);
@@ -128,6 +135,7 @@ export function App(){
           {selected?.key==='finance'&&<Finance notify={notify} can={can}/>}
           {selected?.key==='machines'&&<Machines notify={notify} can={can}/>}
           {selected?.key==='reports'&&<Reports notify={notify} can={can}/>}
+          {selected?.key==='calendar'&&<BusinessCalendar notify={notify} isMaster={activeShop?.role==='MASTER'}/>}
           {selected?.key==='team'&&<Team notify={notify} can={can}/>}
           {selected?.key==='site'&&<Site notify={notify} can={can}/>}
           {isPlatform&&<Platform notify={notify}/>}
@@ -139,6 +147,11 @@ export function App(){
     </main>
     <footer className="footer"><span>Optics Management · LCM Dev Tech</span>
       <span>Gestão simples para quem cuida do seu olhar</span></footer>
+    {activeShop?.role==='MASTER'&&!monthlyReviewDismissed&&
+      <MonthlyReview shopId={String(activeShop.id)} notify={notify}
+        onDone={()=>setMonthlyReviewDismissed(true)}
+        onCalendar={()=>setView('calendar')}/>}
+
   </div>;
 }
 
