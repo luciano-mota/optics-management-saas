@@ -36,6 +36,9 @@ server:
         same-site: lax
         secure: ${COOKIE_SECURE:false}
 management:
+  health:
+    mail:
+      enabled: false # O SMTP é opcional na HML; enviar convite verifica SMTP separadamente.
   endpoints:
     web:
       exposure:
