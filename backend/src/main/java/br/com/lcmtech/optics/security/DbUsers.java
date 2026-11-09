@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 public class DbUsers implements UserDetailsService {
     private final JdbcTemplate jdbc;
     private final boolean verificationRequired;
-    public DbUsers(JdbcTemplate jdbc,org.springframework.beans.factory.annotation.Value("${optics.email-verification-required:false}") boolean verificationRequired) {
+    public DbUsers(JdbcTemplate jdbc,@org.springframework.beans.factory.annotation.Value("${optics.email-verification-required:false}") boolean verificationRequired) {
         this.jdbc = jdbc;this.verificationRequired=verificationRequired;
     }
     @Override public UserDetails loadUserByUsername(String username) {
