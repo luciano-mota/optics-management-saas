@@ -337,7 +337,12 @@ function PublicSite({slug,notify,toast}:{
   const safeFont=['Manrope','DM Sans','Arial','Georgia'].includes(data.font)?data.font:'Manrope';
   return <div className="public-shell" style={{'--site-primary':primary,fontFamily:safeFont} as CSSProperties}>
     <header className="public-header"><div className="public-container">
-      <span className="site-logo"><Glasses size={27}/>{data.trade_name}</span>
+      <span className="site-logo">
+        {data.has_logo?<img src={'/api/v1/public/site/'+encodeURIComponent(slug)+'/logo'}
+          alt="Logo da ótica" style={{maxWidth:120,maxHeight:50,objectFit:'contain'}}/>:
+          <Glasses size={27}/>}
+        {data.trade_name}
+      </span>
       <span>Atendimento personalizado</span></div></header>
     <main className="public-container public-main">
       <section className="public-hero"><span className="eyebrow">Cuidar do seu olhar é nossa prioridade</span>
