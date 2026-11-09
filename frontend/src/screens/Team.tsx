@@ -12,8 +12,64 @@ const perms = [
   ['CATALOG_WRITE','Editar catálogo'], ['REPORTS_READ','Emitir relatórios'],
   ['USERS_MANAGE','Gerenciar equipe'], ['SITE_MANAGE','Personalizar site'],
 ] as const;
+const roleDefaults: Record<string,string[]> = {
+  "SELLER": [
+    "CUSTOMERS_READ",
+    "CUSTOMERS_WRITE",
+    "SALES_READ",
+    "SALES_CREATE",
+    "SALES_DELIVER",
+    "VISITS_READ",
+    "VISITS_MANAGE",
+    "CATALOG_READ",
+    "REPORTS_READ"
+  ],
+  "SECRETARY": [
+    "CUSTOMERS_READ",
+    "CUSTOMERS_WRITE",
+    "SALES_READ",
+    "SALES_DELIVER",
+    "VISITS_READ",
+    "VISITS_MANAGE",
+    "CATALOG_READ",
+    "REPORTS_READ"
+  ],
+  "MANAGER": [
+    "CUSTOMERS_READ",
+    "CUSTOMERS_WRITE",
+    "SALES_READ",
+    "SALES_CREATE",
+    "SALES_DELIVER",
+    "VISITS_READ",
+    "VISITS_MANAGE",
+    "FINANCE_READ",
+    "FINANCE_WRITE",
+    "CATALOG_READ",
+    "CATALOG_WRITE",
+    "REPORTS_READ"
+  ],
+  "MASTER": [
+    "CUSTOMERS_READ",
+    "CUSTOMERS_WRITE",
+    "SALES_READ",
+    "SALES_CREATE",
+    "SALES_DELIVER",
+    "VISITS_READ",
+    "VISITS_MANAGE",
+    "FINANCE_READ",
+    "FINANCE_WRITE",
+    "CATALOG_READ",
+    "CATALOG_WRITE",
+    "REPORTS_READ",
+    "USERS_MANAGE",
+    "SITE_MANAGE"
+  ]
+};
+
 export function Team({notify}:ScreenProps){
   const [inviteLink,setInviteLink]=useState('');
+  const [inviteRole,setInviteRole]=useState('SELLER');
+  const [invitePermissions,setInvitePermissions]=useState<string[]>(roleDefaults.SELLER);
   const [selected,setSelected]=useState<any|null>(null);
   const {data,refresh}=useRemote<any[]>('/team');
   return <div className="screen-stack">
@@ -24,16 +80,30 @@ export function Team({notify}:ScreenProps){
         event.preventDefault();const form=event.currentTarget;
         void perform(async()=>{
           const result=await api<{inviteUrl:string}>('/team/invites',{method:'POST',body:{
-            email:getField(form,'email'),role:getField(form,'role'),
+            email:getField(form,'email'),role:inviteRole,
+            permissions:inviteRole==='MASTER'?null:invitePermissions,
           }});
           setInviteLink(result.inviteUrl);
-        },notify,()=>form.reset());
+        },notify,()=>{form.reset();setInviteRole('SELLER');setInvitePermissions(roleDefaults.SELLER);});
       }}>
         <FormField name="email" title="E-mail corporativo ou pessoal" type="email" required />
-        <label className="field">Perfil<select name="role" defaultValue="SELLER">
+        <label className="field">Perfil<select name="role" value={inviteRole} onChange={event=>{
+          const role=event.target.value;setInviteRole(role);setInvitePermissions(roleDefaults[role]||[]);
+        }}>
           <option value="SELLER">Vendedor(a)</option><option value="SECRETARY">Secretário(a)</option>
           <option value="MANAGER">Gerente</option><option value="MASTER">Administrador master</option>
         </select></label>
+        <fieldset className="invite-permissions"><legend>Acessos ao enviar convite</legend>
+          <p className="helper">Selecione quais áreas o funcionário poderá usar. O perfil Master tem acesso completo.</p>
+          <div className="permission-selection">{perms.map(([id,label])=>
+            <label key={id} className="checkline">
+              <input type="checkbox" disabled={inviteRole==='MASTER'}
+                checked={inviteRole==='MASTER'||invitePermissions.includes(id)}
+                onChange={event=>setInvitePermissions(current=>event.target.checked?
+                  [...current,id]:current.filter(permission=>permission!==id))}/>
+              {label}
+            </label>)}</div>
+        </fieldset>
         <button className="primary-action form-action" type="submit">Gerar convite</button>
       </form>
       {inviteLink&&<div className="inline-panel">
