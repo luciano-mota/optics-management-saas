@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import {
   ArrowLeft, ArrowRight, Bell, CalendarDays, ChartColumnIncreasing,
   CircleHelp, ClipboardCheck, CreditCard, Glasses, House, LogOut,
-  MapPinned, Menu, PackageCheck, Palette, Settings, ShieldCheck,
-  ShoppingBag, Store, UsersRound, Wallet, X,
+  MapPinned, Menu, Palette, ShieldCheck,
+  ShoppingBag, UsersRound, Wallet, X,
 } from 'lucide-react';
-import { api, csrf, date, fileAsBase64, currency } from './api';
+import { api, csrf, date, fileAsBase64 } from './api';
 import { Catalog } from './screens/Catalog';
 import { Customers } from './screens/Customers';
 import { Sales } from './screens/Sales';
@@ -264,7 +264,7 @@ function PublicSite({slug,notify,toast}:{
     <a href="/">Voltar ao Optics Management</a></div>;
   const primary=data.primary_color||'#116b6d';
   const safeFont=['Manrope','DM Sans','Arial','Georgia'].includes(data.font)?data.font:'Manrope';
-  return <div className="public-shell" style={{'--site-primary':primary,fontFamily:safeFont} as React.CSSProperties}>
+  return <div className="public-shell" style={{'--site-primary':primary,fontFamily:safeFont} as CSSProperties}>
     <header className="public-header"><div className="public-container">
       <span className="site-logo"><Glasses size={27}/>{data.trade_name}</span>
       <span>Atendimento personalizado</span></div></header>
