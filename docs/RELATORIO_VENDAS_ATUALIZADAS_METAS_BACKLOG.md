@@ -23,9 +23,9 @@ Permitir visualizar o resumo, imprimir e baixar PDF em A4 (uma página sempre qu
 | Meta/Dia | R$ 5.000,00 | Meta mensal / total de dias úteis planejados |
 | Meta - Faltando/Mês | R$ 100.685,00 | Máx(0; meta mensal - total bruto das vendas) |
 | Vendas/Real | R$ 3.863,00 | Média bruta efetiva por dia trabalhado até o corte |
-| Dias TOTAL - Trabalhado/Mês | 24 | Dias úteis previstos no mês, segundo calendário da ótica |
-| Dias - Trabalhado | 5 | Dias úteis já transcorridos até a data de corte |
-| Dias - Faltando | 19 | Máx(0; dias úteis previstos - dias transcorridos) |
+| Dias TOTAL - Trabalhado/Mês | 24 | **Dias planejados para a ótica abrir** no mês, considerando feriados e exceções confirmados pelo Master |
+| Dias - Trabalhado | 5 | **Dias em que a loja funcionou** até o corte; não depende de vendas nem de presença dos funcionários |
+| Dias - Faltando | 19 | **Dias de funcionamento restantes** após a data de corte, conforme calendário da loja |
 | Quantidade Vendas/Mensal | 29 | Número de vendas válidas do mês até o corte |
 | Meta - Faltando/Dia | R$ 5.299,21 | Saldo da meta / dias úteis restantes; evitar divisão por zero |
 | Venda Bruta - Óculos/Lentes | R$ 19.315,00 | Soma de vendas da categoria óculos/lentes, conforme tipificação |
@@ -58,9 +58,9 @@ Permitir visualizar o resumo, imprimir e baixar PDF em A4 (uma página sempre qu
 
 ### Metas e calendário
 
-1. Criar configurações **por ótica e mês**: `monthly_goal` (BRL, decimal positivo ou zero), dias da semana de atendimento (ex.: segunda a sábado), feriados, folgas, dias excepcionais abertos/fechados e timezone.
-2. Contar dias úteis planejados no mês, dias úteis transcorridos (inclusive data de corte quando for útil, conforme política da ótica) e dias restantes. Permitir ajuste manual justificado do número de dias úteis para compatibilizar com a planilha; documentar qualquer override com usuário/data.
-3. `meta_dia = meta_mes / dias_uteis_total` quando denominador > 0; sem dias úteis, mostrar “—”.
+1. Criar configurações **por ótica e mês**: `monthly_goal` (BRL, decimal positivo ou zero), dias da semana/horários de atendimento (inclusive fins de semana abertos), feriados nacionais/estaduais/municipais verificados, pontos facultativos indicativos, exceções de abertura/fechamento e timezone; veja [especificação do calendário e demais módulos](EXPANSAO_CALENDARIO_CONSULTAS_ANIVERSARIOS_RECIBOS.md).
+2. Contar **datas de funcionamento da loja**, não simplesmente dias úteis nacionais: dias programados para abrir no mês, dias em que abriu até o corte (mesmo sem vendas) e dias programados de abertura depois do corte. Data de corte e abertura no próprio dia seguem regra explícita e auditável. Permitir exceção manual por **data** (fechamento/abertura, inclusive feriado local), com fonte, motivo, usuário/data; totais derivados do calendário efetivo, evitando divergência entre quantidade de dias e datas. O Master revisa na primeira entrada do mês.
+3. `meta_dia = meta_mes / dias_uteis_total` quando denominador > 0; sem dias de funcionamento, mostrar “—”.
 4. `media_vendas_dia = total_vendas / dias_trabalhados` quando > 0; caso contrário “—”.
 5. `falta_meta_mes = MAX(0,meta_mes-total_vendas)`, com um indicador separado para a **superação** se ultrapassar a meta.
 6. `meta_restante_dia = falta_meta_mes / dias_restantes` quando > 0. Com dias restantes = 0 e saldo > 0, mostrar “Meta não atingida”; com saldo = 0, mostrar R$ 0,00.
@@ -94,7 +94,7 @@ Permitir visualizar o resumo, imprimir e baixar PDF em A4 (uma página sempre qu
 
 ## 6. Backlog técnico — ordem recomendada
 
-**P0-1** Meta mensal e calendário por ótica (persistência, feriados, exceções, dias trabalhados).  
+**P0-1** Meta mensal e calendário por ótica (persistência, feriados nacionais/estaduais/municipais verificados, exceções, dias efetivos de funcionamento e confirmação Master na primeira entrada do mês).  
 **P0-2** Motor de cálculo mensal com corte histórico, coorte de vendas, taxas e pendências; validações de cancelamento/parcelamento e fechamento.  
 **P0-3** Tela de consulta e configuração de metas, incluindo compatibilidade mobile.  
 **P0-4** PDF A4 fiel ao impresso, XLSX editável com memória de cálculo e ações de download.  
@@ -119,7 +119,14 @@ Permitir visualizar o resumo, imprimir e baixar PDF em A4 (uma página sempre qu
 1. **“Vendas a receber”** é bruto ou líquido das taxas? Inclui cartões parcelados ainda não creditados?
 2. **“Vendas líquidas”** é valor realmente recebido no banco ou total da venda subtraído de taxas e pendências?
 3. A **meta** é medida sobre venda bruta contratada ou sobre recebimento? Pagamento de taxa repassada ao cliente compõe a venda?
-4. Os 24 dias úteis foram definidos manualmente? Sábados contam? Em um dia com loja aberta e sem venda, ele é considerado “trabalhado”?
+4. Os 24 dias de funcionamento foram definidos manualmente? Quais dias da semana a ótica abre? A loja abriu todos os dias marcados, inclusive dias sem venda? Existe meio expediente?
 5. Há **cancelamentos, descontos, vendas mistas, sinais, recebimentos parciais** ou serviços fora de óculos/lentes que devem compor o relatório?
 
 **Decisão provisória:** usar vendas brutas como base da meta, recebíveis **líquidos**, média de vendas brutas por dia útil transcorrido e calendário configurado. Não afirmar equivalência definitiva ao Excel até o aceite do cliente.
+
+
+## 9. Expansão validada — dias da loja e novos módulos
+
+O usuário esclareceu que **“Dias Trabalhado” significa dias em que a loja funciona**, não dias úteis de escritório, nem presença individual de funcionários. A agenda e a meta devem seguir o calendário da própria ótica, com feriados nacionais, estaduais e municipais, revisão mensal pelo Master e alterações manuais. Os 14 valores do relatório da fotografia continuam obrigatórios no resumo geral e relatórios detalhados permanecem disponíveis.
+
+Documentação relacionada: [Calendário inteligente, agendamentos de pacientes, aniversariantes e recibos personalizados](EXPANSAO_CALENDARIO_CONSULTAS_ANIVERSARIOS_RECIBOS.md).
