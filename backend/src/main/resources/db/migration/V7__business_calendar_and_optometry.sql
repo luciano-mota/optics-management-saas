@@ -26,6 +26,17 @@ CREATE TABLE regional_holidays (
     UNIQUE(calendar_year,holiday_date,name,scope,state_uf,municipality_ibge)
 );
 CREATE INDEX idx_holidays_year_scope ON regional_holidays(calendar_year,scope,holiday_date);
+CREATE UNIQUE INDEX uq_regional_holiday_natural_key ON regional_holidays(
+    calendar_year,holiday_date,scope,
+    coalesce(state_uf,''),coalesce(municipality_ibge,''),lower(name));
+CREATE TABLE regional_holiday_sync (
+    region_key VARCHAR(32) NOT NULL,
+    calendar_year INT NOT NULL,
+    attempted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    success BOOLEAN NOT NULL DEFAULT FALSE,
+    message VARCHAR(200),
+    PRIMARY KEY(region_key,calendar_year)
+);
 CREATE TABLE optic_day_overrides (
     optic_id UUID NOT NULL REFERENCES optics(id) ON DELETE CASCADE,
     day DATE NOT NULL,
