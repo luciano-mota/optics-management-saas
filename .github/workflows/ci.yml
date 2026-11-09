@@ -1,0 +1,53 @@
+name: CI
+on:
+  push:
+    branches: [main, hml]
+  pull_request:
+    branches: [main, hml]
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: optics
+          POSTGRES_PASSWORD: local-dev-only
+          POSTGRES_DB: optics_management
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U optics -d optics_management"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/optics_management
+      DB_USERNAME: optics
+      DB_PASSWORD: local-dev-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Testar backend e migrations
+        working-directory: backend
+        run: mvn -B verify
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar dependências
+        working-directory: frontend
+        run: npm install --no-audit --no-fund
+      - name: Verificar TypeScript e gerar build
+        working-directory: frontend
+        run: npm run build
