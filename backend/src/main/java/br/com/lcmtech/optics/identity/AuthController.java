@@ -1,6 +1,7 @@
 package br.com.lcmtech.optics.identity;
 
 import br.com.lcmtech.optics.security.OpticContext;
+import br.com.lcmtech.optics.customers.RetentionController;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +17,9 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final OpticContext context;
     private final JdbcTemplate jdbc;
-    public AuthController(OpticContext context, JdbcTemplate jdbc) {
-        this.context = context; this.jdbc = jdbc;
+    private final RetentionController retention;
+    public AuthController(OpticContext context, JdbcTemplate jdbc,RetentionController retention) {
+        this.context = context; this.jdbc = jdbc; this.retention = retention;
     }
     @GetMapping("/csrf")
     public Map<String,String> csrf(CsrfToken token) { return Map.of("token",token.getToken()); }
@@ -47,6 +49,36 @@ public class AuthController {
             throw new AccessDeniedException("Você não pertence a esta ótica.");
         session.setAttribute("activeOpticId",request.opticId().toString());
         return Map.of("selected",true);
+    }
+
+    /** Contadores sem dados pessoais, adequados a badge e notificação do navegador. */
+    @GetMapping("/alerts")
+    public Map<String, Integer> alerts(Authentication auth,HttpSession session) {
+        UUID account=context.accountId(auth);
+        UUID optic=context.optic(auth,session);
+        Integer unread=jdbc.queryForObject("""
+                SELECT count(*) FROM platform_notices n
+                WHERE (n.optic_id IS NULL OR n.optic_id=?)
+                AND NOT EXISTS (SELECT 1 FROM notice_reads r
+                    WHERE r.notice_id=n.id AND r.account_id=?)
+                """,Integer.class,optic,account);
+        Integer visits=0;
+        if(context.can(account,optic,"VISITS_READ")) {
+            visits=jdbc.queryForObject("""
+                    SELECT count(*) FROM home_visits
+                    WHERE optic_id=? AND status='REQUESTED'
+                    """,Integer.class,optic);
+        }
+        int retentionDue=0;
+        if(context.can(account,optic,"CUSTOMERS_READ")) {
+            try {
+                retentionDue=((Number)retention.summary(auth,session).get("awaitingContact")).intValue();
+            } catch(org.springframework.security.access.AccessDeniedException ignored) {
+                // Plano expirado: não mostrar dados de clientes até a reativação.
+            }
+        }
+        return Map.of("newVisits",visits==null?0:visits,
+                "retentionDue",retentionDue,"unreadNotices",unread==null?0:unread);
     }
 
     @GetMapping("/notifications")
