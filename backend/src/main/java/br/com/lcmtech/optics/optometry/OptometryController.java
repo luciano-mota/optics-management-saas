@@ -73,6 +73,18 @@ public class OptometryController {
         return only.length()>4?"••••"+only.substring(only.length()-4):"";
     }
 
+    @GetMapping("/patients/{id}/sales-prefill")
+    public Map<String,Object> salesPrefill(@PathVariable UUID id,
+             Authentication auth,HttpSession session) {
+        context.require(auth,session,"PATIENTS_READ");
+        UUID optic=context.optic(auth,session);
+        return jdbc.queryForList("""
+            SELECT p.id,p.full_name,p.cpf,p.birth_date,p.phone,p.email,p.address
+            FROM optometry_patients p WHERE p.optic_id=? AND p.id=?
+            """,optic,id).stream().findFirst()
+            .orElseThrow(()->new IllegalArgumentException("Paciente não encontrado."));
+    }
+
     @PostMapping("/patients")
     @Transactional
     public Map<String,Object> createPatient(@RequestBody Patient req,
