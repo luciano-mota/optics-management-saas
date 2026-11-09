@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: optics-management-hml
+    runtime: docker
+    repo: https://github.com/luciano-mota/optics-management-saas
+    branch: hml
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: optics-management-hml-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: optics-management-hml-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: optics-management-hml-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: optics-management-hml-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: optics-management-hml-db
+          property: password
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: OPTICS_PUBLIC_BASE_URL
+        value: https://optics-management-hml.onrender.com
+      - key: OPTICS_SIGNUP_ENABLED
+        value: "true"
+databases:
+  - name: optics-management-hml-db
+    databaseName: optics_management_hml_db
+    plan: free
+    region: oregon
