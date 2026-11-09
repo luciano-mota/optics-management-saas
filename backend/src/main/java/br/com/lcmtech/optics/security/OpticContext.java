@@ -74,6 +74,20 @@ public class OpticContext {
         UUID account = accountId(auth);
         UUID optic = optic(auth,session);
         if (!can(account,optic,permission)) throw new AccessDeniedException("Você não tem permissão para esta operação.");
+        var status = jdbc.queryForMap("SELECT s.billing_mode,s.trial_ends_at,s.payment_active,s.paid_through_at "
+                + "FROM optic_subscriptions s WHERE s.optic_id=?", optic);
+        String mode = (String) status.get("billing_mode");
+        boolean active = switch (mode) {
+            case "COMPLIMENTARY" -> true;
+            case "TRIAL" -> ((java.sql.Timestamp) status.get("trial_ends_at")).toInstant()
+                    .isAfter(java.time.Instant.now());
+            case "PAID" -> (Boolean) status.get("payment_active")
+                    && status.get("paid_through_at") != null
+                    && ((java.sql.Timestamp) status.get("paid_through_at")).toInstant()
+                            .isAfter(java.time.Instant.now());
+            default -> false;
+        };
+        if (!active) throw new AccessDeniedException("Assinatura inativa ou teste expirado. Fale com o administrador.");
     }
 
     public void requireMaster(Authentication auth, HttpSession session) {
