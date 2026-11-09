@@ -98,3 +98,6 @@ td small,.mini-row small{font-size:11px;line-height:1.55;color:#8a9b9e;margin-to
 .invite-permissions legend{padding:0 5px;font-size:14px;font-weight:800;color:#335c60}
 .permission-selection{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
 @media(max-width:600px){.permission-selection{grid-template-columns:1fr}}
+
+.header-actions .icon-button{position:relative}
+.notification-dot{position:absolute;right:4px;top:3px;width:9px;height:9px;border-radius:50%;background:#e37453;box-shadow:0 0 0 2px white}
