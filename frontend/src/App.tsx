@@ -36,6 +36,8 @@ export function App(){
   const params=new URLSearchParams(window.location.search);
   const site=params.get('site');
   const invite=params.get('invite');
+  const reset=params.get('reset');
+  const verify=params.get('verify');
   const [me,setMe]=useState<any|null>(null);
   const [ready,setReady]=useState(false);
   const [view,setView]=useState('dashboard');
@@ -46,9 +48,11 @@ export function App(){
     try {setMe(await api('/auth/me'));} catch {setMe(null);}
     finally {setReady(true);}
   };
-  useEffect(()=>{if(!site&&!invite)void load();},[site,invite]);
+  useEffect(()=>{if(!site&&!invite&&!reset&&!verify)void load();},[site,invite,reset,verify]);
   if(site)return <PublicSite slug={site} notify={notify} toast={toast}/>;
   if(invite)return <InviteAccept token={invite} notify={notify} toast={toast}/>;
+  if(reset)return <AccountLinkAction kind="reset" token={reset} notify={notify} toast={toast}/>;
+  if(verify)return <AccountLinkAction kind="verify" token={verify} notify={notify} toast={toast}/>;
   if(!ready)return <div className="center-message">Abrindo o Optics Management...</div>;
   if(!me)return <AccessScreen onSignedIn={()=>void load()} notify={notify} toast={toast}/>;
   const activeShop=me.shops?.find((shop:any)=>shop.id===me.activeOpticId);
@@ -176,6 +180,22 @@ function AccessScreen({onSignedIn,notify,toast}:{
   onSignedIn:()=>void;notify:(msg:string,error?:boolean)=>void;toast:Toast;
 }){
   const [mode,setMode]=useState<'login'|'signup'>('login');
+  const [forgot,setForgot]=useState(false);
+  if(forgot)return <div className="auth-layout"><div className="auth-box">
+    <h1>Redefinir senha</h1>
+    <p>Informe seu e-mail. Se houver uma conta e o serviço de e-mail estiver configurado,
+      enviaremos um link para criar uma nova senha.</p>
+    <form className="auth-form" onSubmit={event=>{
+      event.preventDefault();const form=event.currentTarget;
+      void perform(()=>api('/public/password/forgot',{method:'POST',
+        body:{email:getField(form,'email')}}),notify);
+    }}>
+      <label className="field">E-mail<input name="email" type="email" required /></label>
+      <button className="primary-action wide">Solicitar link</button>
+    </form>
+    {toast&&<div className={toast.error?'toast error':'toast'}>{toast.message}</div>}
+    <button className="text-action" onClick={()=>setForgot(false)}>Voltar ao login</button>
+  </div></div>;
   return <div className="auth-layout">
     <div className="auth-box">
       <div className="brand login-brand"><span className="brand-mark"><Glasses size={26}/></span>
@@ -193,11 +213,16 @@ function AccessScreen({onSignedIn,notify,toast}:{
         }else{
           void perform(async()=>{
             const email=getField(form,'email'),password=getField(form,'password');
-            await api('/public/signup',{method:'POST',body:{
+            const created=await api<{verificationSent:boolean}>('/public/signup',{method:'POST',body:{
               opticName:getField(form,'opticName'),fullName:getField(form,'fullName'),
               email,password,whatsapp:getField(form,'whatsapp'),
               acceptedTerms:new FormData(form).get('acceptedTerms')==='on',
             }});
+            if(created.verificationSent){
+              notify('Enviamos um link para confirmar seu e-mail. Confira sua caixa de entrada.');
+              setMode('login');
+              return;
+            }
             await api('/auth/login',{method:'POST',isForm:true,body:{email,password}});
             await csrf();onSignedIn();
           },notify);
@@ -211,6 +236,8 @@ function AccessScreen({onSignedIn,notify,toast}:{
           autoComplete={mode==='login'?'current-password':'new-password'} required /></label>
         {mode==='signup'&&<label className="checkline">
           <input type="checkbox" name="acceptedTerms" required/> Concordo com os termos e com a política de privacidade</label>}
+        {mode==='login'&&<button className="text-action" type="button"
+          onClick={()=>setForgot(true)}>Esqueci minha senha</button>}
         <button type="submit" className="primary-action wide">
           {mode==='login'?'Entrar no sistema':'Criar minha conta grátis'}</button>
       </form>
@@ -330,4 +357,33 @@ function SubscriptionView({notify,shop}:{notify:(message:string,error?:boolean)=
         A conexão com o Asaas ainda está pendente de configuração no ambiente.</p>}
     </div>
   </div>;
+}
+
+function AccountLinkAction({kind,token,notify,toast}:{
+  kind:'reset'|'verify';token:string;
+  notify:(message:string,error?:boolean)=>void;toast:Toast;
+}) {
+  const [done,setDone]=useState(false);
+  if(kind==='verify')return <div className="auth-layout"><div className="auth-box">
+    <h1>Confirme seu e-mail</h1><p>Este link confirma que você tem acesso ao e-mail de cadastro.</p>
+    {toast&&<div className={toast.error?'toast error':'toast'}>{toast.message}</div>}
+    <button className="primary-action wide" onClick={()=>void perform(
+      ()=>api('/public/email/verify',{method:'POST',body:{token}}),notify,
+      ()=>setDone(true))} disabled={done}>{done?'E-mail confirmado':'Confirmar meu e-mail'}</button>
+    {done&&<p><a href="/">Agora você pode entrar.</a></p>}
+  </div></div>;
+  return <div className="auth-layout"><div className="auth-box">
+    <h1>Crie uma nova senha</h1>
+    {toast&&<div className={toast.error?'toast error':'toast'}>{toast.message}</div>}
+    {done?<p>Senha alterada. <a href="/">Acesse sua conta.</a></p>:
+      <form className="auth-form" onSubmit={event=>{
+        event.preventDefault();const form=event.currentTarget;
+        void perform(()=>api('/public/password/reset',{method:'POST',
+          body:{token,password:getField(form,'password')}}),notify,()=>setDone(true));
+      }}>
+        <label className="field">Nova senha<input name="password" type="password"
+          autoComplete="new-password" minLength={10} required /></label>
+        <button className="primary-action wide">Alterar senha</button>
+      </form>}
+  </div></div>;
 }
