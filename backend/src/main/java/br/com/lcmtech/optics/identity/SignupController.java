@@ -15,12 +15,14 @@ import org.springframework.web.bind.annotation.*;
 public class SignupController {
     private final JdbcTemplate jdbc;
     private final PasswordEncoder encoder;
+    private final AccountActions actions;
     @Value("${optics.signup.enabled:true}") private boolean signupEnabled;
+    @Value("${optics.email-verification-required:false}") private boolean emailVerificationRequired;
     @Value("${optics.operator.email:}") private String operatorEmail;
     @Value("${optics.operator.bootstrap-code:}") private String bootstrapCode;
 
-    public SignupController(JdbcTemplate jdbc,PasswordEncoder encoder) {
-        this.jdbc=jdbc;this.encoder=encoder;
+    public SignupController(JdbcTemplate jdbc,PasswordEncoder encoder,AccountActions actions) {
+        this.jdbc=jdbc;this.encoder=encoder;this.actions=actions;
     }
 
     public record Signup(String opticName,String fullName,String email,String password,String whatsapp,boolean acceptedTerms){}
@@ -40,14 +42,16 @@ public class SignupController {
         if(slug.isEmpty()) slug="otica";
         slug=slug.substring(0,Math.min(50,slug.length()))+"-"+UUID.randomUUID().toString().substring(0,8);
         UUID account=UUID.randomUUID(),optic=UUID.randomUUID();
-        jdbc.update("INSERT INTO accounts(id,email,password_hash,full_name,email_verified_at) VALUES(?,?,?,?,now())",
-                account,email,encoder.encode(data.password()),data.fullName().trim());
+        jdbc.update("INSERT INTO accounts(id,email,password_hash,full_name,email_verified_at) VALUES(?,?,?,?,?)",
+                account,email,encoder.encode(data.password()),data.fullName().trim(),
+                emailVerificationRequired?null:java.sql.Timestamp.from(java.time.Instant.now()));
         jdbc.update("INSERT INTO optics(id,slug,trade_name,contact_email,whatsapp) VALUES(?,?,?,?,?)",
                 optic,slug,data.opticName().trim(),email,data.whatsapp());
         jdbc.update("INSERT INTO optic_memberships(optic_id,account_id,role) VALUES(?,?,'MASTER')",optic,account);
         jdbc.update("INSERT INTO optic_subscriptions(optic_id) VALUES(?)",optic);
         jdbc.update("INSERT INTO site_settings(optic_id) VALUES(?)",optic);
-        return Map.of("created",true,"opticId",optic.toString(),"slug",slug,"trialDays",7);
+        if(emailVerificationRequired)actions.sendVerification(account,email);
+        return Map.of("created",true,"opticId",optic.toString(),"slug",slug,"trialDays",7,"verificationSent",emailVerificationRequired);
     }
 
     public record OperatorClaim(String email,String bootstrapCode){}
