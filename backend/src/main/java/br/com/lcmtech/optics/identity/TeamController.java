@@ -58,6 +58,8 @@ public class TeamController {
             throw new IllegalArgumentException("Escolha um perfil válido.");
         if(data.permissions()!=null && !ALL_PERMISSIONS.containsAll(data.permissions()))
             throw new IllegalArgumentException("O convite contém permissões inválidas.");
+        if(!mail.available())
+            throw new IllegalStateException("O envio de convites por e-mail ainda não foi configurado.");
         UUID optic=context.optic(auth,session),account=context.accountId(auth),id=UUID.randomUUID();
         byte[] bytes=new byte[32];random.nextBytes(bytes);
         String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -68,12 +70,12 @@ public class TeamController {
                 data.email().trim().toLowerCase(Locale.ROOT),data.role(),hash,account,
                 data.permissions()==null?"":String.join(",",data.permissions()),
                 data.permissions()!=null);
-        if(mail.available()) mail.send(data.email().trim(),"Convite Optics Management",
+        mail.send(data.email().trim(),"Convite Optics Management",
                 "Olá! Você recebeu acesso à equipe da ótica. Para completar seu cadastro, "
-                +"use o link em até 72 horas:\\n\\n"+baseUrl+"/?invite="+token);
+                +"use o link em até 72 horas:\n\n"+baseUrl+"/?invite="+token);
         // Permissões selecionadas são aplicadas somente após aceite válido de convite.
         return Map.of("inviteUrl",baseUrl.replaceAll("/+$","")+"/?invite="+token,
-                "message","Convite criado. Copie o link e compartilhe com o funcionário. Validade: 72 horas.");
+                "message","Convite enviado por e-mail. Validade: 72 horas.");
     }
 
     public record Accept(String token,String fullName,String password,String cpf,String phone,String address,String birthDate){}

@@ -18,8 +18,6 @@ public class SignupController {
     private final AccountActions actions;
     @Value("${optics.signup.enabled:true}") private boolean signupEnabled;
     @Value("${optics.email-verification-required:false}") private boolean emailVerificationRequired;
-    @Value("${optics.operator.email:}") private String operatorEmail;
-    @Value("${optics.operator.bootstrap-code:}") private String bootstrapCode;
 
     public SignupController(JdbcTemplate jdbc,PasswordEncoder encoder,AccountActions actions) {
         this.jdbc=jdbc;this.encoder=encoder;this.actions=actions;
@@ -52,26 +50,6 @@ public class SignupController {
         jdbc.update("INSERT INTO site_settings(optic_id) VALUES(?)",optic);
         if(emailVerificationRequired)actions.sendVerification(account,email);
         return Map.of("created",true,"opticId",optic.toString(),"slug",slug,"trialDays",7,"verificationSent",emailVerificationRequired);
-    }
-
-    public record OperatorClaim(String email,String bootstrapCode){}
-    @PostMapping("/operator-claim")
-    @Transactional
-    public Map<String,Boolean> operatorClaim(@RequestBody OperatorClaim request) {
-        // Fluxo opcional de bootstrap: nunca pode criar senha nem conta.
-        // Exige código configurado no ambiente E conta previamente cadastrada no sistema.
-        if(blank(bootstrapCode)||bootstrapCode.length()<24 || blank(operatorEmail) ||
-                !operatorEmail.equalsIgnoreCase(request.email()) ||
-                !java.security.MessageDigest.isEqual(
-                        bootstrapCode.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                        (request.bootstrapCode()==null?"":request.bootstrapCode())
-                                .getBytes(java.nio.charset.StandardCharsets.UTF_8)))
-            throw new IllegalArgumentException("Credenciais de operação inválidas.");
-        UUID account=jdbc.query("SELECT id FROM accounts WHERE lower(email)=lower(?)",
-                (rs,n)->(UUID)rs.getObject(1),operatorEmail).stream().findFirst()
-                .orElseThrow(()->new IllegalArgumentException("Cadastre primeiro a conta indicada."));
-        jdbc.update("INSERT INTO platform_operators(account_id) VALUES(?) ON CONFLICT DO NOTHING",account);
-        return Map.of("enabled",true);
     }
 
     public static void validatePassword(String password) {

@@ -14,12 +14,18 @@ import org.springframework.stereotype.Service;
 public class EmailDelivery {
     private final ObjectProvider<JavaMailSender> providers;
     @Value("${optics.mail.from:nao-responda@lcmtech.com.br}") private String from;
+    @Value("${spring.mail.host:}") private String host;
+    @Value("${spring.mail.username:}") private String username;
+    @Value("${spring.mail.password:}") private String password;
     public EmailDelivery(ObjectProvider<JavaMailSender> providers) {this.providers=providers;}
-    public boolean available(){return providers.getIfAvailable()!=null;}
+    public boolean available(){
+        return providers.getIfAvailable()!=null && !host.isBlank()
+                && !username.isBlank() && !password.isBlank();
+    }
     public void send(String to,String subject,String body) {
-        JavaMailSender sender=providers.getIfAvailable();
-        if(sender==null)throw new IllegalStateException(
-                "SMTP não configurado. Solicite um convite manual ao administrador.");
+        if(!available())throw new IllegalStateException(
+                "O envio de e-mails ainda não foi configurado no ambiente.");
+        JavaMailSender sender=providers.getObject();
         SimpleMailMessage message=new SimpleMailMessage();
         message.setFrom(from);message.setTo(to);
         message.setSubject(subject);message.setText(body);

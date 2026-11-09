@@ -18,6 +18,7 @@ import { Reports } from './screens/Reports';
 import { Team } from './screens/Team';
 import { Site } from './screens/Site';
 import { Platform } from './screens/Platform';
+import { OwnerInviteRequest, OwnerInviteComplete } from './screens/OwnerAccess';
 import { getField, perform, useRemote } from './screens/common';
 
 type Tile = {key:string;title:string;description:string;permission:string;icon:typeof Glasses;accent:string};
@@ -42,6 +43,7 @@ export function App(){
   const invite=params.get('invite');
   const reset=params.get('reset');
   const verify=params.get('verify');
+  const ownerInvite=params.get('ownerInvite');
   const [me,setMe]=useState<any|null>(null);
   const [ready,setReady]=useState(false);
   const [view,setView]=useState('dashboard');
@@ -55,7 +57,10 @@ export function App(){
     try {setMe(await api('/auth/me'));} catch {setMe(null);}
     finally {setReady(true);}
   };
-  useEffect(()=>{if(!site&&!invite&&!reset&&!verify)void load();},[site,invite,reset,verify]);
+  useEffect(()=>{if(!site&&!invite&&!reset&&!verify&&!ownerInvite)void load();},[site,invite,reset,verify,ownerInvite]);
+  useEffect(()=>{
+    if(me?.platformOperator && !(me.shops||[]).length)setView('platform');
+  },[me?.platformOperator]);
   useEffect(()=>{setMonthlyReviewDismissed(false);},[me?.activeOpticId]);
   useEffect(()=>{
     if(!me?.activeOpticId)return;
@@ -85,6 +90,7 @@ export function App(){
   if(invite)return <InviteAccept token={invite} notify={notify} toast={toast}/>;
   if(reset)return <AccountLinkAction kind="reset" token={reset} notify={notify} toast={toast}/>;
   if(verify)return <AccountLinkAction kind="verify" token={verify} notify={notify} toast={toast}/>;
+  if(ownerInvite)return <OwnerInviteComplete token={ownerInvite} notify={notify} toast={toast}/>;
   if(!ready)return <div className="center-message app-splash">
     <div className="brand-mark"><Glasses size={44}/></div>
     <h2>Optics Management</h2><p>Organizando sua ótica...</p>
@@ -241,6 +247,9 @@ function AccessScreen({onSignedIn,notify,toast}:{
   onSignedIn:()=>void;notify:(msg:string,error?:boolean)=>void;toast:Toast;
 }){
   const [mode,setMode]=useState<'login'|'signup'>('login');
+  const [ownerMode,setOwnerMode]=useState(false);
+  if(ownerMode)return <OwnerInviteRequest notify={notify} toast={toast}
+    onBack={()=>setOwnerMode(false)}/>;
   const [forgot,setForgot]=useState(false);
   if(forgot)return <div className="auth-layout"><div className="auth-box">
     <h1>Redefinir senha</h1>
@@ -304,6 +313,8 @@ function AccessScreen({onSignedIn,notify,toast}:{
       </form>
       <button className="text-action auth-switch" onClick={()=>setMode(mode==='login'?'signup':'login')}>
         {mode==='login'?'Ainda não tem conta? Experimente grátis.':'Já tem conta? Entrar.'}</button>
+      <div className="owner-access-action"><button className="outline-action" type="button"
+        onClick={()=>setOwnerMode(true)}>Sou responsável pela LCM Dev Tech</button></div>
       <p className="helper">Ambiente de homologação · Não utilize dados reais nesta etapa.</p>
     </div>
     <aside className="auth-aside"><House size={44}/><h2>Mais tempo para atender, menos tempo com planilhas.</h2>
