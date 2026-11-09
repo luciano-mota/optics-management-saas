@@ -12,6 +12,7 @@ export function Sales({ notify }: ScreenProps) {
   const [lensBrand, setLensBrand] = useState('');
   const [frameBrand, setFrameBrand] = useState('');
   const [method, setMethod] = useState('PIX');
+  const [newCustomer, setNewCustomer] = useState(false);
   const customers = useRemote<any[]>('/customers');
   const catalog = useRemote<any[]>('/catalog');
   const machines = useRemote<any[]>('/machines');
@@ -27,12 +28,15 @@ export function Sales({ notify }: ScreenProps) {
         ([title,count]) => <div className="metric" key={String(title)}><span>{title}</span><strong>{count ?? '—'}</strong></div>)}
     </div>
     <div className="surface"><h3>Registrar uma venda</h3>
-      <p className="helper">Cadastre o cliente em “Meus clientes” antes de concluir a venda. O pedido ficará associado ao cadastro.</p>
+      <p className="helper">Selecione um cliente existente ou cadastre um novo sem sair da venda.</p>
+      <label className="checkline"><input type="checkbox" checked={newCustomer}
+        onChange={event=>setNewCustomer(event.target.checked)}/> Novo cliente nesta venda</label>
       <form className="form-grid" onSubmit={event => {
         event.preventDefault();
         const form=event.currentTarget;
-        void perform(() => api('/sales', { method: 'POST', body: {
-          customerId: getField(form,'customerId'),lensId:getField(form,'lensId'),
+        const sale = {
+          customerId: newCustomer ? null : getField(form,'customerId'),
+          lensId:getField(form,'lensId'),
           frameId:getField(form,'frameId'),amount:getField(form,'amount'),
           paymentMethod:method,cardMachineId:getField(form,'cardMachineId') || null,
           installments:Number(getField(form,'installments') || 1),
@@ -40,12 +44,28 @@ export function Sales({ notify }: ScreenProps) {
           replacementMonths:Number(getField(form,'replacementMonths') || 12),
           expectedDelivery:getField(form,'expectedDelivery') || null,
           notes:getField(form,'notes'),idempotencyKey:crypto.randomUUID(),
-        } }), notify, () => { form.reset(); refresh(); });
+        };
+        const customer = {
+          fullName:getField(form,'fullName'),cpf:getField(form,'cpf'),
+          birthDate:getField(form,'birthDate'),phone:getField(form,'phone'),
+          address:getField(form,'address'),
+        };
+        void perform(() => newCustomer ?
+          api('/sales/with-customer', {method:'POST',body:{sale,customer}}) :
+          api('/sales', {method:'POST',body:sale}), notify, () => {
+            form.reset();setNewCustomer(false);refresh();
+          });
       }}>
-        <label className="field">Cliente<select name="customerId" required defaultValue="">
+        {newCustomer ? <>
+          <FormField name="fullName" title="Nome completo" required />
+          <FormField name="cpf" title="CPF" required />
+          <FormField name="birthDate" title="Data de nascimento" type="date" required />
+          <FormField name="phone" title="WhatsApp ou telefone" type="tel" />
+          <FormField name="address" title="Endereço" required />
+        </> : <label className="field">Cliente<select name="customerId" required defaultValue="">
           <option value="" disabled>Selecione o cliente</option>{customers.data?.map(c =>
             <option key={c.id} value={c.id}>{c.full_name}</option>)}
-        </select></label>
+        </select></label>}
         <label className="field">Marca/tipo de lente<select name="lensId" required defaultValue="">
           <option value="" disabled>Selecione a lente</option>{catalog.data?.filter(c => c.kind==='LENS'&&c.active).map(c =>
             <option key={c.id} value={c.id}>{c.brand} {c.model || ''}</option>)}
