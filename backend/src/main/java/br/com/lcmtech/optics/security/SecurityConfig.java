@@ -26,7 +26,7 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health",
-                                "/api/v1/public/**", "/api/v1/auth/csrf", "/api/v1/auth/login").permitAll()
+                                "/api/v1/public/**", "/api/v1/webhooks/asaas", "/api/v1/auth/csrf", "/api/v1/auth/login").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .requestMatchers("/actuator/**").denyAll()
                         .anyRequest().permitAll())
