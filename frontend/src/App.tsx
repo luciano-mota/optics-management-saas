@@ -5,7 +5,7 @@ import {
   MapPinned, Menu, Palette, ShieldCheck,
   ShoppingBag, UsersRound, Wallet, X,
 } from 'lucide-react';
-import { api, csrf, date, fileAsBase64 } from './api';
+import { api, csrf, date, fileAsBase64, currency } from './api';
 import { Catalog } from './screens/Catalog';
 import { Customers } from './screens/Customers';
 import { Sales } from './screens/Sales';
@@ -98,12 +98,8 @@ export function App(){
           {isPlatform&&<Platform notify={notify}/>}
           {view==='notices'&&<Notices notify={notify}/>}
           {view==='subscription'&&activeShop?.billing_mode!=='COMPLIMENTARY'&&
-            <div className="screen-stack"><h2>Minha assinatura</h2>
-              <div className="surface"><h3>{activeShop?.billing_mode==='TRIAL'?'Seu período de teste':'Assinatura'}</h3>
-                <p>Plano: {activeShop?.billing_mode==='TRIAL'?'Teste grátis por 7 dias':'Assinatura paga'}</p>
-                {activeShop?.billing_mode==='TRIAL'&&<p>Teste até: {date(activeShop?.trial_ends_at)}</p>}
-                <p className="helper">A integração de cobrança Asaas ainda está em homologação. Não informe dados de cartão nesta etapa.</p>
-              </div></div>}
+            <SubscriptionView notify={notify} shop={activeShop}/>}
+
         </div>}
     </main>
     <footer className="footer"><span>Optics Management · LCM Dev Tech</span>
@@ -309,5 +305,29 @@ function PublicSite({slug,notify,toast}:{
         </form>}
       </section>
     </main><footer className="public-footer">Página de {data.trade_name} · Tecnologia Optics Management / LCM Dev Tech</footer>
+  </div>;
+}
+
+function SubscriptionView({notify,shop}:{notify:(message:string,error?:boolean)=>void;shop:any}) {
+  const {data,refresh}=useRemote<any>('/subscription');
+  return <div className="screen-stack"><h2>Minha assinatura</h2>
+    <div className="surface">
+      <h3>{shop?.billing_mode==='TRIAL'?'Seu período de teste':'Sua assinatura'}</h3>
+      <p>Modalidade: {shop?.billing_mode==='TRIAL'?'Teste grátis por 7 dias':'Plano mensal'}</p>
+      {shop?.billing_mode==='TRIAL'&&<p>Teste até: {date(shop?.trial_ends_at)}</p>}
+      <p>Valor mensal definido: <strong>{currency(data?.monthly_price)}</strong></p>
+      {data?.payment_active&&<p>Pagamento confirmado · acesso até {date(data?.paid_through_at)}</p>}
+      <p className="helper">A cobrança acontece na página segura do Asaas. O Optics Management não recebe os dados do seu cartão.</p>
+      {data?.payment_link_url&&<a className="primary-action" href={data.payment_link_url}
+        rel="noopener noreferrer" target="_blank">Abrir página de pagamento</a>}
+      {!data?.payment_link_url&&<button className="primary-action" disabled={!data?.providerConfigured}
+        onClick={()=>void perform(async()=>{
+          const res=await api<{url:string}>('/subscription/checkout',{method:'POST'});
+          if(res.url)window.open(res.url,'_blank','noopener,noreferrer');
+        },notify,refresh)}>
+        Iniciar assinatura mensal</button>}
+      {!data?.providerConfigured&&<p className="helper">
+        A conexão com o Asaas ainda está pendente de configuração no ambiente.</p>}
+    </div>
   </div>;
 }
