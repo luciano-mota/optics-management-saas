@@ -27,7 +27,8 @@ public class SecurityConfig {
                 .userDetailsService(users)
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                        .ignoringRequestMatchers("/api/v1/webhooks/asaas"))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health",
                                 "/api/v1/public/**", "/api/v1/webhooks/asaas", "/api/v1/auth/csrf", "/api/v1/auth/login").permitAll()
