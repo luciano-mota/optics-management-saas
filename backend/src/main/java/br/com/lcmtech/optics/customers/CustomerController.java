@@ -74,8 +74,8 @@ public class CustomerController {
     }
 
     private static void validate(Customer req) {
-        if(req==null||req.fullName()==null||req.fullName().isBlank()||req.birthDate()==null)
-            throw new IllegalArgumentException("Informe nome e nascimento do cliente.");
+        if(req==null||req.fullName()==null||req.fullName().isBlank()||req.birthDate()==null || req.address()==null || req.address().isBlank() || req.cpf()==null || req.cpf().isBlank())
+            throw new IllegalArgumentException("Informe nome, CPF, nascimento e endereço do cliente.");
         if(req.cpf()!=null&&!req.cpf().isBlank()&&!normalize(req.cpf()).matches("\\d{11}"))
             throw new IllegalArgumentException("CPF inválido.");
     }
