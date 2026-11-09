@@ -94,8 +94,8 @@ export function Visits({notify}:ScreenProps) {
           }}),notify,refreshAll);
         }}>
           <FormField name="fullName" title="Nome completo" required defaultValue={selected.lead_name}/>
-          <FormField name="cpf" title="CPF" />
-          <FormField name="birthDate" title="Nascimento" type="date" />
+          <FormField name="cpf" title="CPF" required />
+          <FormField name="birthDate" title="Nascimento" type="date" required />
           <label className="field">Lente<select name="lensId" required defaultValue="">
             <option value="" disabled>Selecione</option>{catalog.data?.filter(x=>x.kind==='LENS'&&x.active).map(x=>
               <option key={x.id} value={x.id}>{x.brand}</option>)}</select></label>
