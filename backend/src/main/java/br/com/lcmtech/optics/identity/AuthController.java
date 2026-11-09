@@ -35,7 +35,9 @@ public class AuthController {
         List<String> rights=activeOptic==null?List.of():
                 List.of("CUSTOMERS_READ","CUSTOMERS_WRITE","SALES_READ","SALES_CREATE","SALES_DELIVER",
                         "VISITS_READ","VISITS_MANAGE","FINANCE_READ","FINANCE_WRITE",
-                        "CATALOG_READ","CATALOG_WRITE","REPORTS_READ","USERS_MANAGE","SITE_MANAGE").stream()
+                        "CATALOG_READ","CATALOG_WRITE","REPORTS_READ","USERS_MANAGE","SITE_MANAGE",
+                        "PATIENTS_READ","PATIENTS_WRITE","APPOINTMENTS_READ",
+                        "APPOINTMENTS_MANAGE","PARTNER_CLINICS_MANAGE").stream()
                         .filter(p->context.can(account,activeOptic,p)).toList();
         Integer op=jdbc.queryForObject("SELECT COUNT(*) FROM platform_operators WHERE account_id=? AND active",Integer.class,account);
         return Map.of("account",person,"shops",shops,"activeOpticId",activeOptic==null?"":activeOptic.toString(),
