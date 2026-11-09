@@ -5,6 +5,18 @@ spring:
     url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:optics_management}}
     username: ${DB_USERNAME:optics}
     password: ${DB_PASSWORD:}
+  mail:
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 15000
+          timeout: 15000
+          writetimeout: 15000
   session:
     store-type: jdbc
     jdbc:
