@@ -1,0 +1,193 @@
+package br.com.lcmtech.optics.sales;
+
+import br.com.lcmtech.optics.finance.domain.CardFees;
+import br.com.lcmtech.optics.finance.domain.CardFees.Calculation;
+import br.com.lcmtech.optics.finance.domain.CardFees.Machine;
+import br.com.lcmtech.optics.sales.domain.SaleStatus;
+import br.com.lcmtech.optics.security.OpticContext;
+import jakarta.servlet.http.HttpSession;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * Venda é operação atômica: cliente existente, itens da mesma ótica, financeiro
+ * e trilha de alteração. Recebíveis no cartão não viram dinheiro no caixa até liquidação.
+ */
+@RestController
+@RequestMapping("/api/v1/sales")
+public class SalesController {
+    private final JdbcTemplate jdbc;
+    private final OpticContext context;
+    public SalesController(JdbcTemplate jdbc,OpticContext context) {
+        this.jdbc=jdbc;this.context=context;
+    }
+
+    @GetMapping
+    public List<Map<String,Object>> list(@RequestParam(defaultValue="") String status,
+                                          @RequestParam(defaultValue="") String lensBrand,
+                                          @RequestParam(defaultValue="") String frameBrand,
+                                          Authentication auth,HttpSession session) {
+        context.require(auth,session,"SALES_READ");
+        return jdbc.queryForList("SELECT s.id,s.customer_id,c.full_name AS customer_name,s.sold_on,"
+                +"s.expected_delivery,s.status,s.replacement_months,s.gross_amount,s.charged_amount,"
+                +"s.fee_amount,s.net_amount,s.payment_method,s.installments,"
+                +"l.brand AS lens_brand, f.brand AS frame_brand,a.full_name AS seller_name,"
+                +"s.created_at,s.delivered_at "
+                +"FROM sales s JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id "
+                +"JOIN catalog_items l ON l.optic_id=s.optic_id AND l.id=s.lens_id "
+                +"JOIN catalog_items f ON f.optic_id=s.optic_id AND f.id=s.frame_id "
+                +"JOIN accounts a ON a.id=s.seller_id "
+                +"WHERE s.optic_id=? AND (?='' OR s.status=?) "
+                +"AND (?='' OR lower(l.brand) LIKE lower(?)) "
+                +"AND (?='' OR lower(f.brand) LIKE lower(?)) "
+                +"ORDER BY s.created_at DESC LIMIT 500",
+                context.optic(auth,session),status,status,lensBrand,"%"+lensBrand+"%",
+                frameBrand,"%"+frameBrand+"%");
+    }
+
+    @GetMapping("/dashboard")
+    public Map<String,Object> dashboard(Authentication auth,HttpSession session) {
+        context.require(auth,session,"SALES_READ");
+        UUID optic=context.optic(auth,session);
+        Map<String,Object> counts=jdbc.queryForMap("SELECT "
+            +"count(*) FILTER (WHERE sold_on=current_date AND status<>'CANCELLED') AS today,"
+            +"count(*) FILTER (WHERE sold_on>=date_trunc('week',current_date)::date AND status<>'CANCELLED') AS week,"
+            +"count(*) FILTER (WHERE sold_on>=date_trunc('month',current_date)::date AND status<>'CANCELLED') AS month,"
+            +"count(*) FILTER (WHERE status IN ('AWAITING_PRODUCTION','READY_FOR_DELIVERY')) AS pending_delivery,"
+            +"coalesce(sum(charged_amount) FILTER (WHERE sold_on>=date_trunc('month',current_date)::date "
+            +"AND status<>'CANCELLED'),0) AS month_gross FROM sales WHERE optic_id=?",optic);
+        Integer pendingVisits=jdbc.queryForObject("SELECT count(*) FROM home_visits WHERE optic_id=? "
+                +"AND status IN ('REQUESTED','CLAIMED','CONFIRMED')",Integer.class,optic);
+        Map<String,Object> answer=new HashMap<>(counts);
+        answer.put("pendingVisits",pendingVisits);
+        return answer;
+    }
+
+    public record NewSale(UUID customerId,UUID lensId,UUID frameId,
+           BigDecimal amount,String paymentMethod,UUID cardMachineId,
+           int installments,boolean passFee,Integer settlementDays,
+           int replacementMonths,LocalDate soldOn,LocalDate expectedDelivery,
+           String notes,String idempotencyKey){}
+
+    @PostMapping
+    @Transactional
+    public Map<String,Object> create(@RequestBody NewSale request,Authentication auth,HttpSession session) {
+        context.require(auth,session,"SALES_CREATE");
+        UUID optic=context.optic(auth,session),seller=context.accountId(auth);
+        if(request==null||request.customerId()==null||request.lensId()==null||request.frameId()==null)
+            throw new IllegalArgumentException("Selecione o cliente, a lente e a armação.");
+        if(request.amount()==null||request.amount().signum()<=0)
+            throw new IllegalArgumentException("O valor da venda deve ser positivo.");
+        if(request.replacementMonths()!=6&&request.replacementMonths()!=12)
+            throw new IllegalArgumentException("Escolha 6 ou 12 meses para troca dos óculos.");
+        if(request.idempotencyKey()!=null&&!request.idempotencyKey().isBlank()) {
+            List<UUID> prior=jdbc.query("SELECT id FROM sales WHERE optic_id=? AND idempotency_key=?",
+                    (rs,n)->(UUID)rs.getObject(1),optic,request.idempotencyKey());
+            if(!prior.isEmpty())return Map.of("id",prior.get(0),"alreadyCreated",true);
+        }
+        requireRelated(optic,"customers",request.customerId(),null);
+        requireRelated(optic,"catalog_items",request.lensId(),"LENS");
+        requireRelated(optic,"catalog_items",request.frameId(),"FRAME");
+        CardFees.Method method;
+        try {method=CardFees.Method.valueOf(request.paymentMethod());}
+        catch(Exception e) {throw new IllegalArgumentException("Escolha uma forma de pagamento.");}
+        int installments=request.installments()==0?1:request.installments();
+        LocalDate soldOn=request.soldOn()==null?LocalDate.now():request.soldOn();
+        Machine machine=loadMachine(optic,method,request.cardMachineId());
+        Calculation total=CardFees.calculate(request.amount(),method,installments,machine,
+                request.passFee(),soldOn,request.settlementDays());
+        UUID id=UUID.randomUUID();
+        jdbc.update("INSERT INTO sales(optic_id,id,customer_id,seller_id,lens_id,frame_id,sold_on,"
+                +"expected_delivery,replacement_months,gross_amount,fee_amount,charged_amount,net_amount,"
+                +"payment_method,installments,card_machine_id,notes,idempotency_key) "
+                +"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                optic,id,request.customerId(),seller,request.lensId(),request.frameId(),soldOn,
+                request.expectedDelivery(),request.replacementMonths(),request.amount(),
+                total.feeAmount(),total.chargedAmount(),total.netAmount(),method.name(),
+                installments,request.cardMachineId(),request.notes(),request.idempotencyKey());
+        if(total.receivables().isEmpty()) {
+            insertFinance(optic,id,seller,soldOn,soldOn,soldOn,
+                    total.chargedAmount(),total.feeAmount(),total.netAmount());
+        } else {
+            for(var receivable:total.receivables()) {
+                BigDecimal gross=receivable.amount().add(receivable.fee());
+                insertFinance(optic,id,seller,soldOn,receivable.dueOn(),null,
+                        gross,receivable.fee(),receivable.amount());
+            }
+        }
+        jdbc.update("INSERT INTO sale_events(id,optic_id,sale_id,actor_id,next_status) "
+                +"VALUES(?,?,?,?,'AWAITING_PRODUCTION')",UUID.randomUUID(),optic,id,seller);
+        return Map.of("id",id,"chargedAmount",total.chargedAmount(),
+                "feeAmount",total.feeAmount(),"netAmount",total.netAmount());
+    }
+
+    private void insertFinance(UUID optic,UUID sale,UUID actor,LocalDate soldOn,
+              LocalDate dueOn,LocalDate settledOn,BigDecimal gross,BigDecimal fee,BigDecimal net) {
+        jdbc.update("INSERT INTO finance_entries(optic_id,id,direction,category,description,"
+            +"gross_amount,fee_amount,net_amount,occurred_on,due_on,settled_on,origin,sale_id,created_by) "
+            +"VALUES(?,?,'INCOME','Venda de óculos','Venda de óculos',?,?,?,?,?,?,'SALE',?,?)",
+            optic,UUID.randomUUID(),gross,fee,net,soldOn,dueOn,settledOn,sale,actor);
+    }
+
+    private Machine loadMachine(UUID optic,CardFees.Method method,UUID machineId) {
+        if(method==CardFees.Method.DINHEIRO || method==CardFees.Method.PIX) {
+            if(machineId!=null)throw new IllegalArgumentException("Não indique maquininha para Pix ou dinheiro.");
+            return null;
+        }
+        if(machineId==null)throw new IllegalArgumentException("Escolha a maquininha.");
+        Map<String,Object> row=jdbc.queryForList("SELECT debit_fee,credit_fee,fixed_fee,"
+                +"debit_days,credit_days,anticipated FROM card_machines "
+                +"WHERE optic_id=? AND id=? AND active",optic,machineId).stream().findFirst()
+                .orElseThrow(()->new IllegalArgumentException("Maquininha não encontrada."));
+        Map<Integer,BigDecimal> rates=new HashMap<>();
+        jdbc.query("SELECT installments,fee FROM card_machine_rates WHERE optic_id=? AND machine_id=?",
+                rs->{rates.put(rs.getInt(1),rs.getBigDecimal(2));},optic,machineId);
+        int creditDays=((Number)row.get("credit_days")).intValue();
+        BigDecimal creditFee=(BigDecimal)row.get("credit_fee");
+        return new Machine((BigDecimal)row.get("debit_fee"),creditFee,rates,
+                (BigDecimal)row.get("fixed_fee"),((Number)row.get("debit_days")).intValue(),
+                creditDays,(Boolean)row.get("anticipated"),Map.of(creditDays,creditFee));
+    }
+
+    private void requireRelated(UUID optic,String table,UUID id,String kind) {
+        String sql="SELECT count(*) FROM "+table+" WHERE optic_id=? AND id=?"
+                +(kind!=null?" AND kind=? AND active":"");
+        Integer count=kind==null?jdbc.queryForObject(sql,Integer.class,optic,id):
+                jdbc.queryForObject(sql,Integer.class,optic,id,kind);
+        if(count==null||count!=1)throw new IllegalArgumentException("Cliente ou produto não encontrado nesta ótica.");
+    }
+
+    public record ChangeStatus(String status){}
+    @PatchMapping("/{id}/status")
+    @Transactional
+    public Map<String,Object> status(@PathVariable UUID id,@RequestBody ChangeStatus request,
+                                  Authentication auth,HttpSession session) {
+        context.require(auth,session,"SALES_DELIVER");
+        UUID optic=context.optic(auth,session),actor=context.accountId(auth);
+        String existing=jdbc.query("SELECT status FROM sales WHERE optic_id=? AND id=? FOR UPDATE",
+                (rs,n)->rs.getString(1),optic,id).stream().findFirst()
+                .orElseThrow(()->new IllegalArgumentException("Venda não encontrada."));
+        SaleStatus target;
+        try {target=SaleStatus.valueOf(request.status());}
+        catch(Exception e){throw new IllegalArgumentException("Situação inválida.");}
+        SaleStatus.valueOf(existing).transitionTo(target);
+        jdbc.update("UPDATE sales SET status=?,delivered_at=CASE WHEN ?='DELIVERED' THEN now() "
+                +"ELSE delivered_at END, delivered_by=CASE WHEN ?='DELIVERED' THEN ? "
+                +"ELSE delivered_by END WHERE optic_id=? AND id=?",
+                target.name(),target.name(),target.name(),actor,optic,id);
+        jdbc.update("INSERT INTO sale_events(id,optic_id,sale_id,actor_id,previous_status,next_status) "
+                +"VALUES(?,?,?,?,?,?)",UUID.randomUUID(),optic,id,actor,existing,target.name());
+        if(target==SaleStatus.CANCELLED)
+            jdbc.update("UPDATE finance_entries SET reversed_at=now() WHERE optic_id=? "
+                    +"AND sale_id=? AND reversed_at IS NULL",optic,id);
+        return Map.of("updated",true,"status",target.name());
+    }
+}
