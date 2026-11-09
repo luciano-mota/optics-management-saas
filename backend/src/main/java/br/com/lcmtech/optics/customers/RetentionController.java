@@ -65,6 +65,14 @@ public class RetentionController {
                 LIMIT 3000
                 """, optic, oldest);
 
+        java.util.Map<UUID, java.util.Set<Integer>> clicked=new java.util.HashMap<>();
+        jdbc.query("""
+                SELECT sale_id,months FROM reminder_events
+                WHERE optic_id=? AND channel='WHATSAPP_CLICK'
+                """, rs -> {
+            UUID sale=(UUID)rs.getObject(1);
+            clicked.computeIfAbsent(sale,ignored->new java.util.HashSet<>()).add(rs.getInt(2));
+        }, optic);
         List<Reminder> due = new ArrayList<>();
         for (var row : recent) {
             UUID sale = (UUID) row.get("sale_id");
@@ -75,14 +83,12 @@ public class RetentionController {
                 if (month != 0 && month != milestone.month()) continue;
                 long remaining = ChronoUnit.DAYS.between(today, milestone.date());
                 if (remaining < -15 || remaining > days) continue;
-                Integer recorded = jdbc.queryForObject("""
-                        SELECT count(*) FROM reminder_events
-                        WHERE optic_id=? AND sale_id=? AND months=? AND channel='WHATSAPP_CLICK'
-                        """, Integer.class, optic, sale, milestone.month());
+                boolean opened=clicked.getOrDefault(sale,java.util.Set.of())
+                        .contains(milestone.month());
                 due.add(new Reminder(sale, customer,
                         (String) row.get("full_name"), (String) row.get("phone"),
                         milestone.month(), replacement, sold, milestone.date(),
-                        remaining, recorded != null && recorded > 0));
+                        remaining, opened));
             }
         }
         due.sort(java.util.Comparator.comparing(Reminder::reminderDate)
