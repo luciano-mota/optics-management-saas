@@ -21,7 +21,7 @@ public class PublicSiteController {
     public Map<String,Object> site(@PathVariable String slug) {
         return jdbc.queryForList("SELECT o.id,o.trade_name,o.whatsapp,o.contact_phone,"
             +"o.contact_email,s.primary_color,s.secondary_color,s.font,s.template,"
-            +"s.campaign_title,s.campaign_description FROM optics o JOIN site_settings s "
+            +"s.campaign_title,s.campaign_description,(s.logo IS NOT NULL) AS has_logo FROM optics o JOIN site_settings s "
             +"ON s.optic_id=o.id WHERE o.slug=? AND o.active AND o.site_enabled",slug)
             .stream().findFirst().orElseThrow(()->new IllegalArgumentException("Esta página não está disponível."));
     }
