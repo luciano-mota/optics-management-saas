@@ -26,10 +26,11 @@ public class TeamController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
     private final PasswordEncoder passwordEncoder;
+    private final EmailDelivery mail;
     private final SecureRandom random=new SecureRandom();
     @Value("${optics.public-base-url:http://localhost:5173}") private String baseUrl;
-    public TeamController(JdbcTemplate jdbc, OpticContext context,PasswordEncoder passwordEncoder) {
-        this.jdbc=jdbc;this.context=context;this.passwordEncoder=passwordEncoder;
+    public TeamController(JdbcTemplate jdbc, OpticContext context,PasswordEncoder passwordEncoder,EmailDelivery mail) {
+        this.jdbc=jdbc;this.context=context;this.passwordEncoder=passwordEncoder;this.mail=mail;
     }
 
     @GetMapping("/team")
@@ -56,6 +57,9 @@ public class TeamController {
         jdbc.update("INSERT INTO member_invitations(id,optic_id,invited_email,requested_role,token_hash,invited_by,expires_at) "
                 + "VALUES(?,?,?,?,?,?,now()+interval '72 hours')",id,optic,
                 data.email().trim().toLowerCase(Locale.ROOT),data.role(),hash,account);
+        if(mail.available()) mail.send(data.email().trim(),"Convite Optics Management",
+                "Olá! Você recebeu acesso à equipe da ótica. Para completar seu cadastro, "
+                +"use o link em até 72 horas:\\n\\n"+baseUrl+"/?invite="+token);
         // Permissões extras serão ativadas após o aceite; não deixar lista de privilégios sem auditoria.
         return Map.of("inviteUrl",baseUrl.replaceAll("/+$","")+"/?invite="+token,
                 "message","Convite criado. Copie o link e compartilhe com o funcionário. Validade: 72 horas.");
