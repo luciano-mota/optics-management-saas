@@ -93,3 +93,8 @@ td small,.mini-row small{font-size:11px;line-height:1.55;color:#8a9b9e;margin-to
   .public-form-card .form-grid .wide{grid-column:span 1}
   .public-form-card{padding:21px}.public-hero{padding:35px 25px}
   .auth-box{padding:35px 20px}.header-actions .outline-action{display:none}}
+
+.invite-permissions{grid-column:1/-1;border:1px solid #e0eaea;padding:16px;border-radius:12px;margin:0;min-width:0}
+.invite-permissions legend{padding:0 5px;font-size:14px;font-weight:800;color:#335c60}
+.permission-selection{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
+@media(max-width:600px){.permission-selection{grid-template-columns:1fr}}
