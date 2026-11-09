@@ -101,7 +101,9 @@ public class VisitController {
         UUID assignee=(UUID)visit.get("assigned_to");
         if(!actor.equals(assignee)&&!"MASTER".equals(context.role(actor,optic)))
             throw new org.springframework.security.access.AccessDeniedException("Esta visita pertence a outro funcionário.");
-        String cpf=req.cpf()==null?null:req.cpf().replaceAll("\\D","");
+        if(req.birthDate()==null||req.cpf()==null||req.cpf().isBlank())
+            throw new IllegalArgumentException("Informe CPF e data de nascimento para concluir a venda.");
+        String cpf=req.cpf().replaceAll("\\D","");
         if(cpf!=null&&!cpf.isEmpty()&&!cpf.matches("\\d{11}"))
             throw new IllegalArgumentException("CPF inválido.");
         UUID customer=UUID.randomUUID();
