@@ -8,7 +8,7 @@
 
 ## 1. Objetivo e experiência desejada
 
-Adicionar em **Relatórios → Vendas Atualizadas / Metas** um quadro compacto legível em celular, tablet e desktop, com filtros por ótica ativa (definida na sessão), mês/ano e **data de corte**. Mostrar o nome da ótica, o período, a data/hora de geração e os 15 indicadores do modelo, com números formatados em `pt-BR`, dinheiro `R$` e dias/vendas sem casas decimais.
+Adicionar em **Relatórios → Vendas Atualizadas / Metas** um quadro compacto legível em celular, tablet e desktop, com filtros por ótica ativa (definida na sessão), mês/ano e **data de corte**. Mostrar o nome da ótica, o período, a data/hora de geração e os 14 indicadores do modelo, com números formatados em `pt-BR`, dinheiro `R$` e dias/vendas sem casas decimais.
 
 Permitir visualizar o resumo, imprimir e baixar PDF em A4 (uma página sempre que possível) e XLSX (células numéricas editáveis e aba "Memória de cálculo"/"Lançamentos" para conferência). CSV opcional apenas para a tabela de indicadores. Usar a identidade visual Optics/ótica sem prejudicar a legibilidade; não anexar dados de outros tenants.
 
@@ -87,7 +87,7 @@ Permitir visualizar o resumo, imprimir e baixar PDF em A4 (uma página sempre qu
 
 ## 5. Contrato de API sugerido
 
-- `GET /api/v1/reports/monthly-sales-summary?year=2026&month=11&asOf=2026-11-09` → JSON tipado com `opticId` obtido **somente da sessão**, contexto, 15 indicadores, alertas de conciliação e dados sobre a meta.
+- `GET /api/v1/reports/monthly-sales-summary?year=2026&month=11&asOf=2026-11-09` → JSON tipado com `opticId` obtido **somente da sessão**, contexto, 14 indicadores, alertas de conciliação e dados sobre a meta.
 - `GET /api/v1/reports/monthly-sales-summary.pdf?... ` → PDF; `...xlsx?... ` → XLSX; ambos usam exatamente o **mesmo serviço de cálculo**, nunca queries divergentes por formato.
 - `GET /api/v1/sales-goals?year=2026&month=11` e `PUT /api/v1/sales-goals/{year}/{month}` → configuração mensal com validação, autorização e histórico de alterações.
 - Permissões: leitura `REPORTS_READ` **e** `FINANCE_READ` para os valores financeiros sensíveis; edição de metas e dias úteis apenas `MASTER` ou permissão administrativa específica; isolamento multitenant obrigatório.
@@ -98,14 +98,14 @@ Permitir visualizar o resumo, imprimir e baixar PDF em A4 (uma página sempre qu
 **P0-2** Motor de cálculo mensal com corte histórico, coorte de vendas, taxas e pendências; validações de cancelamento/parcelamento e fechamento.  
 **P0-3** Tela de consulta e configuração de metas, incluindo compatibilidade mobile.  
 **P0-4** PDF A4 fiel ao impresso, XLSX editável com memória de cálculo e ações de download.  
-**P0-5** Testes de contrato/isolamento e regressão dos 15 indicadores com fixture do Excel, além de teste E2E.  
+**P0-5** Testes de contrato/isolamento e regressão dos 14 indicadores com fixture do Excel, além de teste E2E.  
 **P1-6** Baixas parciais e conciliação de parcelas/estornos para casos reais; se necessário, elevar a P0 antes de liberar relatório financeiro ao cliente.  
 **P1-7** Evoluções: comparativo histórico, gráficos, indicadores por vendedor e exportação agendada (fora do escopo mínimo do impresso).
 
 ## 7. Critérios de aceite
 
 - [ ] Uma ótica consegue configurar meta e calendário sem afetar outra.
-- [ ] Todos os **15 indicadores** estão presentes com explicação do cálculo; valores monetários em `pt-BR`.
+- [ ] Todos os **14 indicadores** estão presentes com explicação do cálculo; valores monetários em `pt-BR`.
 - [ ] O **fixture 09/11** reproduz exatamente os 15 números acima quando alimentado com os dados e regras correspondentes.
 - [ ] O cálculo de meta ignora lançamento de despesas e entradas manuais sem vínculo a venda.
 - [ ] Cancelamentos, estornos, crédito parcelado e data de corte não duplicam receitas ou taxas.
