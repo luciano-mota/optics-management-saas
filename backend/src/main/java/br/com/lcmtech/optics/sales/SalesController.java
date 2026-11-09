@@ -1,5 +1,6 @@
 package br.com.lcmtech.optics.sales;
 
+import br.com.lcmtech.optics.customers.CustomerController;
 import br.com.lcmtech.optics.finance.domain.CardFees;
 import br.com.lcmtech.optics.finance.domain.CardFees.Calculation;
 import br.com.lcmtech.optics.finance.domain.CardFees.Machine;
@@ -26,8 +27,9 @@ import org.springframework.web.bind.annotation.*;
 public class SalesController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
-    public SalesController(JdbcTemplate jdbc,OpticContext context) {
-        this.jdbc=jdbc;this.context=context;
+    private final CustomerController customers;
+    public SalesController(JdbcTemplate jdbc,OpticContext context,CustomerController customers) {
+        this.jdbc=jdbc;this.context=context;this.customers=customers;
     }
 
     @GetMapping
@@ -76,6 +78,39 @@ public class SalesController {
            int installments,boolean passFee,Integer settlementDays,
            int replacementMonths,LocalDate soldOn,LocalDate expectedDelivery,
            String notes,String idempotencyKey){}
+
+    /**
+     * Cliente e venda na mesma transação: um erro na venda desfaz também o
+     * cadastro iniciado neste formulário. Evita cadastro órfão no caixa.
+     */
+    public record NewSaleWithCustomer(
+            CustomerController.Customer customer, NewSale sale) {}
+
+    @PostMapping("/with-customer")
+    @Transactional
+    public Map<String,Object> createWithCustomer(
+            @RequestBody NewSaleWithCustomer request,
+            Authentication auth, HttpSession session) {
+        context.require(auth, session, "CUSTOMERS_WRITE");
+        context.require(auth, session, "SALES_CREATE");
+        if (request == null || request.customer() == null || request.sale() == null) {
+            throw new IllegalArgumentException("Informe o cliente e os dados da venda.");
+        }
+        NewSale sale = request.sale();
+        if (sale.idempotencyKey() != null && !sale.idempotencyKey().isBlank()) {
+            UUID optic = context.optic(auth, session);
+            List<UUID> prior = jdbc.query(
+                    "SELECT id FROM sales WHERE optic_id=? AND idempotency_key=?",
+                    (rs, n) -> (UUID) rs.getObject(1), optic, sale.idempotencyKey());
+            if (!prior.isEmpty()) return Map.of("id", prior.get(0), "alreadyCreated", true);
+        }
+        UUID customer = (UUID) customers.create(request.customer(), auth, session).get("id");
+        return create(new NewSale(customer, sale.lensId(), sale.frameId(),
+                sale.amount(), sale.paymentMethod(), sale.cardMachineId(),
+                sale.installments(), sale.passFee(), sale.settlementDays(),
+                sale.replacementMonths(), sale.soldOn(), sale.expectedDelivery(),
+                sale.notes(), sale.idempotencyKey()), auth, session);
+    }
 
     @PostMapping
     @Transactional
