@@ -1,0 +1,18 @@
+{
+  "name": "Optics Management",
+  "short_name": "Optics",
+  "id": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7fafa",
+  "theme_color": "#0d6063",
+  "description": "Gestão de óticas simplificada",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
