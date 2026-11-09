@@ -41,6 +41,8 @@ public class PublicSiteController {
             throw new IllegalArgumentException("Escolha uma data futura para a visita.");
         if(request.appointmentAt().isAfter(Instant.now().plusSeconds(90L*86400)))
             throw new IllegalArgumentException("Agendamentos podem ser feitos até 90 dias antes.");
+        if(empty(request.prescriptionBase64()))
+            throw new IllegalArgumentException("Anexe a receita (PDF ou foto) para agendar.");
         UUID optic=(UUID)shop.get("id"),id=UUID.randomUUID();
         jdbc.update("INSERT INTO home_visits(optic_id,id,lead_name,lead_phone,lead_email,"
             +"lead_address,appointment_at,notes,consent_at) VALUES(?,?,?,?,?,?,?, ?, now())",
