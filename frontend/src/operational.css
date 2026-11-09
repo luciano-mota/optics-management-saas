@@ -101,3 +101,34 @@ td small,.mini-row small{font-size:11px;line-height:1.55;color:#8a9b9e;margin-to
 
 .header-actions .icon-button{position:relative}
 .notification-dot{position:absolute;right:4px;top:3px;width:9px;height:9px;border-radius:50%;background:#e37453;box-shadow:0 0 0 2px white}
+
+/* Calendário operacional — visualização e revisão mensal */
+.app-splash .brand-mark{width:84px;height:84px;display:grid;place-items:center;border-radius:25px}
+.app-splash h2{font:800 28px Manrope,system-ui;color:#125b5d;margin:16px 0 3px}
+.app-splash p{color:#6a8585}
+.calendar-modal-backdrop{position:fixed;inset:0;background:#173a3dbb;z-index:60;
+ display:grid;place-items:center;padding:16px}
+.calendar-modal{width:min(760px,100%);max-height:92vh;overflow-y:auto;
+ background:white;border-radius:21px;padding:28px;box-shadow:0 22px 70px #12383c45}
+.calendar-modal-heading h2{font:800 clamp(22px,3vw,30px) Manrope,system-ui;margin:9px 0}
+.calendar-modal-heading p{color:#5a7577;font-size:14px;line-height:1.5}
+.calendar-modal .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.calendar-modal-list{display:flex;flex-direction:column;gap:10px;margin:15px 0}
+.calendar-holiday-row{border:1px solid #dbe8e6;border-radius:12px;padding:13px 16px;
+ display:flex;justify-content:space-between;align-items:center;gap:14px;cursor:pointer}
+.calendar-holiday-row strong,.calendar-holiday-row small{display:block}
+.calendar-holiday-row small{font-size:12px;color:#5e7d7d;margin-top:5px}
+.calendar-toggle{display:flex;gap:8px;align-items:center;white-space:nowrap;
+ font-size:13px;color:#1c5b5b;font-weight:700}
+.calendar-toggle input{height:18px;width:18px;accent-color:#116d70}
+.calendar-warning{background:#fff6e5;border-left:4px solid #de8b23;
+ border-radius:7px;padding:11px;font-size:13px;color:#724b21}
+.calendar-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-top:18px}
+.calendar-day-list{max-height:480px;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+.calendar-day-list .mini-row .filter-bar{margin-bottom:0}
+@media(max-width:600px){
+ .calendar-modal{padding:20px}
+ .calendar-holiday-row{align-items:flex-start;flex-direction:column}
+ .calendar-actions>button{flex:1 1 100%}
+ .calendar-day-list .mini-row{align-items:flex-start;flex-direction:column}
+}
