@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   ArrowLeft, ArrowRight, Bell, CalendarDays, ChartColumnIncreasing,
   CircleHelp, ClipboardCheck, CreditCard, Glasses, House, LogOut,
@@ -45,12 +45,38 @@ export function App(){
   const [view,setView]=useState('dashboard');
   const [toast,setToast]=useState<Toast>(null);
   const [menuOpen,setMenuOpen]=useState(false);
+  const [alerts,setAlerts]=useState<{newVisits:number;retentionDue:number;unreadNotices:number}|null>(null);
+  const seenAlertCount=useRef<number|null>(null);
   const notify=(message:string,error=false)=>{setToast({message,error});};
   const load=async()=>{
     try {setMe(await api('/auth/me'));} catch {setMe(null);}
     finally {setReady(true);}
   };
   useEffect(()=>{if(!site&&!invite&&!reset&&!verify)void load();},[site,invite,reset,verify]);
+  useEffect(()=>{
+    if(!me?.activeOpticId)return;
+    let mounted=true;
+    seenAlertCount.current=null;
+    const check=async()=>{
+      try {
+        const next=await api<{newVisits:number;retentionDue:number;unreadNotices:number}>('/auth/alerts');
+        if(!mounted)return;
+        setAlerts(next);
+        const count=next.newVisits+next.retentionDue+next.unreadNotices;
+        if(seenAlertCount.current!==null&&count>seenAlertCount.current&&
+            'Notification' in window&&Notification.permission==='granted'){
+          new Notification('Optics Management', {
+            body:'Sua ótica tem novos avisos para consultar no painel.',
+            icon:'/icon.svg',tag:'optics-pending-alerts',
+          });
+        }
+        seenAlertCount.current=count;
+      } catch { /* Conta sem ótica, sessão expirada ou painel em atualização. */ }
+    };
+    void check();
+    const timer=window.setInterval(()=>void check(),60000);
+    return ()=>{mounted=false;window.clearInterval(timer);};
+  },[me?.activeOpticId]);
   if(site)return <PublicSite slug={site} notify={notify} toast={toast}/>;
   if(invite)return <InviteAccept token={invite} notify={notify} toast={toast}/>;
   if(reset)return <AccountLinkAction kind="reset" token={reset} notify={notify} toast={toast}/>;
@@ -78,7 +104,9 @@ export function App(){
       <div className="header-actions">
         {me.platformOperator&&<button className="outline-action" onClick={()=>setView('platform')}>Painel LCM</button>}
         <button className="icon-button" title="Notificações" aria-label="Notificações"
-          onClick={()=>setView('notices')}><Bell size={19}/></button>
+          onClick={()=>setView('notices')}><Bell size={19}/>
+          {alerts&&(alerts.newVisits+alerts.retentionDue+alerts.unreadNotices)>0&&
+            <span className="notification-dot" aria-label="Avisos pendentes"/>}</button>
         <button className="icon-button" title="Sair" aria-label="Sair" onClick={()=>void perform(
           async()=>{await api('/auth/logout',{method:'POST'});await csrf();setMe(null);},
           notify)}><LogOut size={19}/></button>
@@ -103,7 +131,7 @@ export function App(){
           {selected?.key==='team'&&<Team notify={notify} can={can}/>}
           {selected?.key==='site'&&<Site notify={notify} can={can}/>}
           {isPlatform&&<Platform notify={notify}/>}
-          {view==='notices'&&<Notices notify={notify}/>}
+          {view==='notices'&&<Notices notify={notify} onOpen={setView} alerts={alerts}/>}
           {view==='subscription'&&activeShop?.billing_mode!=='COMPLIMENTARY'&&
             <SubscriptionView notify={notify} shop={activeShop}/>}
 
@@ -167,9 +195,26 @@ async function requestNotification(notify:(message:string,error?:boolean)=>void)
   catch(error){notify(String(error),true);}
 }
 
-function Notices({notify}: {notify:(msg:string,error?:boolean)=>void}) {
+function Notices({notify,onOpen,alerts}: {notify:(msg:string,error?:boolean)=>void;
+  onOpen:(view:string)=>void; alerts:{newVisits:number;retentionDue:number;unreadNotices:number}|null}) {
   const {data,refresh}=useRemote<any[]>('/auth/notifications');
-  return <div className="screen-stack"><div className="section-title"><h2>Mensagens da LCM Dev Tech</h2></div>
+  return <div className="screen-stack">
+    <div className="section-title"><h2>Notificações da ótica</h2></div>
+    <div className="surface">
+      <h3>O que precisa de atenção?</h3>
+      <div className="metric-grid">
+        <div className="metric"><span>Novas visitas</span><strong>{alerts?.newVisits??'—'}</strong></div>
+        <div className="metric"><span>Clientes para lembrar</span><strong>{alerts?.retentionDue??'—'}</strong></div>
+        <div className="metric"><span>Mensagens não lidas</span><strong>{alerts?.unreadNotices??'—'}</strong></div>
+      </div>
+      <div className="filter-bar">
+        <button className="outline-action" onClick={()=>onOpen('visits')}>Ver visitas</button>
+        <button className="outline-action" onClick={()=>onOpen('retention')}>Ver lembretes</button>
+      </div>
+      <p className="helper">Os contadores são atualizados enquanto o painel está aberto.
+        Para avisos do navegador, autorize as notificações na tela inicial.</p>
+    </div>
+    <div className="section-title"><h2>Mensagens da LCM Dev Tech</h2></div>
     <div className="surface">{!data?.length?<p className="empty">Não há mensagens por enquanto.</p>:
       <div className="list-cards">{data.map(n=><div className="mini-row" key={n.id}>
         <div><strong>{n.subject}</strong><small>{n.message}</small><small>{date(n.created_at)}</small></div>
