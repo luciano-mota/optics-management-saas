@@ -80,14 +80,14 @@ export function MonthlyReview({shopId,onDone,onCalendar,notify}:{
   </div>;
 }
 
-export function BusinessCalendar({notify,can}:ScreenProps){
+export function BusinessCalendar({notify,isMaster}:ScreenProps&{isMaster:boolean}){
   const now=new Date();
   const [year,setYear]=useState(now.getFullYear());
   const [month,setMonth]=useState(now.getMonth()+1);
   const [editing,setEditing]=useState<string|null>(null);
   const plan=useRemote<MonthPlan>('/business-calendar/month?year='+year+'&month='+month);
   const settings=useRemote<any>('/business-calendar/settings');
-  const canMaster=!!can?.('USERS_MANAGE');
+  const canMaster=isMaster;
   const [weekday,setWeekday]=useState<number[]>([1,2,3,4,5,6]);
   useEffect(()=>{
     if(settings.data?.open_weekdays){
