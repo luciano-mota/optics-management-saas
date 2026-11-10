@@ -298,20 +298,22 @@ public class ReceiptController {
     }
 
     private static String digits(String value) {
-        return value==null?"":value.replaceAll("[^0-9]","");
+        return value==null?"":value.toUpperCase(java.util.Locale.ROOT)
+                .replaceAll("[^A-Z0-9]","");
     }
 
     /** CNPJ brasileiro tradicional, 14 dígitos e verificadores mod 11. */
     static boolean validCnpj(String cnpj) {
-        if(cnpj==null||!cnpj.matches("[0-9]{14}")||cnpj.chars().distinct().count()==1)
+        if(cnpj==null||!cnpj.matches("[A-Z0-9]{12}[0-9]{2}")||
+                cnpj.chars().distinct().count()==1)
             return false;
         int[] weight1={5,4,3,2,9,8,7,6,5,4,3,2};
         int[] weight2={6,5,4,3,2,9,8,7,6,5,4,3,2};
         int sum=0;
-        for(int i=0;i<12;i++)sum+=(cnpj.charAt(i)-'0')*weight1[i];
+        for(int i=0;i<12;i++)sum+=(cnpj.charAt(i)-48)*weight1[i];
         int digit=sum%11<2?0:11-sum%11;
         if(digit!=cnpj.charAt(12)-'0')return false;
-        sum=0;for(int i=0;i<13;i++)sum+=(cnpj.charAt(i)-'0')*weight2[i];
+        sum=0;for(int i=0;i<13;i++)sum+=(cnpj.charAt(i)-48)*weight2[i];
         return (sum%11<2?0:11-sum%11)==cnpj.charAt(13)-'0';
     }
 

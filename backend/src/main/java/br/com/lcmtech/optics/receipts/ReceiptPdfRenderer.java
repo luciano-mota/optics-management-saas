@@ -130,7 +130,7 @@ public final class ReceiptPdfRenderer {
     }
 
     private static String formatCnpj(String cnpj) {
-        if(cnpj==null||!cnpj.matches("[0-9]{14}"))return "Nao informado";
+        if(cnpj==null||!cnpj.matches("[A-Z0-9]{12}[0-9]{2}"))return "Nao informado";
         return cnpj.substring(0,2)+"."+cnpj.substring(2,5)+"."+cnpj.substring(5,8)+"/"
                 +cnpj.substring(8,12)+"-"+cnpj.substring(12);
     }
