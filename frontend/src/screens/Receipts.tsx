@@ -1,6 +1,7 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import { api, currency, date, fileAsBase64 } from '../api';
 import { getField, perform, useRemote } from './common';
+import { AddressFields } from './AddressFields';
 import type { ScreenProps } from './common';
 
 type Receipt={id:string;receipt_number:number;sale_id:string;finance_entry_id:string;
@@ -68,14 +69,14 @@ function SignaturePad({notify,onSaved}:{
     const area=board.getBoundingClientRect();
     const x=(event.clientX-area.left)*board.width/area.width;
     const y=(event.clientY-area.top)*board.height/area.height;
-    ctx.lineWidth=3;ctx.lineJoin='round';ctx.lineCap='round';ctx.strokeStyle='#1b3939';
+    ctx.lineWidth=3;ctx.lineJoin='round';ctx.lineCap='round';ctx.strokeStyle='#17153a';
     if(start){ctx.beginPath();ctx.moveTo(x,y);}else{ctx.lineTo(x,y);ctx.stroke();}
   };
   return <div className="inline-panel">
     <h4>Desenhar assinatura</h4>
     <p className="helper">Assine usando mouse, toque ou caneta. A assinatura será salva como imagem para os próximos recibos.</p>
     <canvas ref={canvas} width={580} height={145} role="img" aria-label="Área para desenhar assinatura"
-      style={{maxWidth:'100%',height:145,border:'1px dashed #9ab5b5',
+      style={{maxWidth:'100%',height:145,border:'1px dashed var(--border-strong)',
         borderRadius:10,background:'white',touchAction:'none'}}
       onPointerDown={event=>{isDrawing.current=true;
         event.currentTarget.setPointerCapture(event.pointerId);draw(event,true);}}
@@ -142,14 +143,14 @@ export function Receipts({notify,isMaster}:ScreenProps&{isMaster:boolean}) {
         {[
           ['legalName','Razão social',config.data?.legal_name||''],
           ['taxDocument','CNPJ',config.data?.tax_document||''],
-          ['address','Endereço completo',config.data?.address||''],
           ['contactPhone','Telefone da ótica',config.data?.contact_phone||''],
           ['signerName','Nome do responsável pela assinatura',config.data?.signer_name||''],
           ['signerRole','Cargo do responsável',config.data?.signer_role||''],
         ].map(([name,title,value])=><label className="field" key={name}>{title}
           <input name={name} defaultValue={value}
-            required={['legalName','taxDocument','address','contactPhone'].includes(name)}/>
+            required={['legalName','taxDocument','contactPhone'].includes(name)}/>
         </label>)}
+        <AddressFields legend="Endereço que aparece no recibo" required defaultValue={config.data?.address||''}/>
         <button className="primary-action form-action">Salvar identificação</button>
       </form>
       <div className="filter-bar">

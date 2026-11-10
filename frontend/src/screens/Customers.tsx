@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, date, fileAsBase64 } from '../api';
 import type { ScreenProps } from './common';
 import { FormField, getField, perform, useRemote } from './common';
+import { AddressFields } from './AddressFields';
 
 export function Customers({ notify }: ScreenProps) {
   const [query, setQuery] = useState('');
@@ -45,7 +46,7 @@ export function Customers({ notify }: ScreenProps) {
         <FormField name="cpf" title="CPF" required />
         <FormField name="birthDate" title="Data de nascimento" type="date" required />
         <FormField name="phone" title="WhatsApp ou telefone" type="tel" />
-        <FormField name="address" title="Endereço" required />
+        <AddressFields required />
         <button className="primary-action form-action" type="submit">Salvar cliente</button>
       </form>
     </div>

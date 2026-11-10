@@ -5,8 +5,8 @@ import { getField, perform, useRemote } from './common';
 
 export function Site({notify}:ScreenProps){
   const {data,refresh}=useRemote<any>('/site-settings');
-  const [primary,setPrimary]=useState('#116b6d');
-  const [secondary,setSecondary]=useState('#f3faf8');
+  const [primary,setPrimary]=useState('#5b4cf0');
+  const [secondary,setSecondary]=useState('#f6f6fa');
   useEffect(()=>{
     if(data?.primary_color)setPrimary(data.primary_color);
     if(data?.secondary_color)setSecondary(data.secondary_color);

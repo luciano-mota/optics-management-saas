@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, currency, date } from '../api';
 import type { ScreenProps } from './common';
+import { AddressFields } from './AddressFields';
 import { FormField, getField, perform, useRemote } from './common';
 
 const statusLabel: Record<string,string> = {
@@ -123,7 +124,7 @@ export function Sales({ notify, can }: ScreenProps) {
           <FormField name="cpf" title="CPF" required defaultValue={patient?.cpf||''}/>
           <FormField name="birthDate" title="Data de nascimento" type="date" required defaultValue={patient?.birth_date||''}/>
           <FormField name="phone" title="WhatsApp ou telefone" type="tel" defaultValue={patient?.phone||''}/>
-          <FormField name="address" title="Endereço" required defaultValue={patient?.address||''}/>
+          <AddressFields required defaultValue={patient?.address||''}/>
         </> : <label className="field">Cliente<select name="customerId" required defaultValue="">
           <option value="" disabled>Selecione o cliente</option>{customers.data?.map(c =>
             <option key={c.id} value={c.id}>{c.full_name}</option>)}

@@ -105,7 +105,7 @@ public class MonthlySalesReportController {
             var sheet=workbook.createSheet("Vendas atualizadas");
             var bold=workbook.createFont();bold.setBold(true);bold.setFontHeightInPoints((short)12);
             var header=workbook.createCellStyle();header.setFont(bold);
-            header.setFillForegroundColor(IndexedColors.DARK_TEAL.getIndex());
+            header.setFillForegroundColor(new org.apache.poi.xssf.usermodel.XSSFColor(new byte[]{(byte)23,(byte)21,(byte)58},null));
             header.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             var light=workbook.createFont();light.setColor(IndexedColors.WHITE.getIndex());
             light.setBold(true);header.setFont(light);
@@ -175,7 +175,7 @@ public class MonthlySalesReportController {
             var regular=new PDType1Font(Standard14Fonts.FontName.HELVETICA);
             var bold=new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
             try(var canvas=new PDPageContentStream(pdf,page)) {
-                canvas.setNonStrokingColor(new Color(15,91,96));
+                canvas.setNonStrokingColor(new Color(23,21,58));
                 canvas.addRect(0,706,PDRectangle.A4.getWidth(),136);canvas.fill();
                 canvas.setNonStrokingColor(Color.WHITE);
                 line(canvas,bold,19,46,790,"VENDAS ATUALIZADAS");
@@ -196,32 +196,32 @@ public class MonthlySalesReportController {
                 } catch(Exception ignored) {
                     // Falha da imagem não impede emissão do relatório.
                 }
-                canvas.setNonStrokingColor(new Color(33,55,63));
+                canvas.setNonStrokingColor(new Color(36,35,61));
                 line(canvas,bold,11,46,673,"INDICADORES DO MES");
                 float y=652;
                 int i=0;
                 for(var item:engine.metrics(s)) {
                     if(i%2==0) {
-                        canvas.setNonStrokingColor(new Color(243,249,248));
+                        canvas.setNonStrokingColor(new Color(246,246,250));
                         canvas.addRect(44,y-9,506,23);canvas.fill();
                     }
-                    canvas.setNonStrokingColor(new Color(33,55,63));
+                    canvas.setNonStrokingColor(new Color(36,35,61));
                     line(canvas,regular,10,53,y,ascii(item.name()));
                     line(canvas,bold,10,390,y,ascii(display(item.value(),item.money())));
                     y-=27;i++;
                 }
                 y-=17;
-                canvas.setNonStrokingColor(new Color(15,91,96));
+                canvas.setNonStrokingColor(new Color(23,21,58));
                 line(canvas,bold,10,46,y,"CONFERENCIA DOS VALORES");
                 y-=17;
-                canvas.setNonStrokingColor(new Color(33,55,63));
+                canvas.setNonStrokingColor(new Color(36,35,61));
                 line(canvas,regular,9,46,y,"Diferenca cobrado - recebido - pendente - taxas: "
                         +ascii(display(s.reconciliationDifference(),true)));
                 y-=16;
                 if(!s.warnings().isEmpty()) {
                     line(canvas,regular,8,46,y,"ATENCAO: "+fit(ascii(s.warnings().get(0)),85));
                 }
-                canvas.setNonStrokingColor(new Color(106,129,134));
+                canvas.setNonStrokingColor(new Color(107,106,133));
                 line(canvas,regular,8,46,36,"Documento gerencial - nao substitui comprovante de pagamento nem documento fiscal.");
             }
             pdf.save(output);

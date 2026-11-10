@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { api, date } from '../api';
 import type { ScreenProps } from './common';
 import { perform, useRemote } from './common';
+import { MapPin } from 'lucide-react';
+import { parseAddress, type CepAddress } from '../cep';
+import { AddressFields } from './AddressFields';
 
 type Holiday = {
   name:string; scope:string; source:string;sourceUrl:string|null; verified:boolean;
@@ -89,11 +92,20 @@ export function BusinessCalendar({notify,isMaster}:ScreenProps&{isMaster:boolean
   const settings=useRemote<any>('/business-calendar/settings');
   const canMaster=isMaster;
   const [weekday,setWeekday]=useState<number[]>([1,2,3,4,5,6]);
+  const [editingAddress,setEditingAddress]=useState(false);
+  const [address,setAddress]=useState('');
+  const [place,setPlace]=useState<CepAddress|null>(null);
   useEffect(()=>{
-    if(settings.data?.open_weekdays){
-      setWeekday(String(settings.data.open_weekdays).split(',').map(Number).filter(n=>n>=1&&n<=7));
-    }
-  },[settings.data?.open_weekdays]);
+    if(Array.isArray(settings.data?.openWeekdays))setWeekday(settings.data.openWeekdays);
+  },[settings.data?.openWeekdays]);
+  const location=settings.data?.state_uf?
+    settings.data.municipality_name+'/'+settings.data.state_uf:null;
+  const saveAddress=()=>{
+    const parsed=parseAddress(address);
+    void perform(()=>api('/optic-profile/address',{method:'PUT',body:{
+      address,city:place?.city||parsed.city,uf:place?.uf||parsed.uf,ibge:place?.ibge||null,
+    }}),notify,()=>{setEditingAddress(false);settings.refresh();plan.refresh();});
+  };
   const changeDay=(day:CalendarDay,willOpen:boolean)=>{
     void perform(()=>api('/business-calendar/days/'+day.date,{method:'PUT',
       body:{willOpen,title:editing || 'Expediente informado pela ótica',sourceUrl:null}}),
@@ -104,36 +116,38 @@ export function BusinessCalendar({notify,isMaster}:ScreenProps&{isMaster:boolean
     <div className="section-title"><div><h2>Calendário e feriados</h2>
       <p>Os dias da meta são os dias em que sua ótica abre, mesmo que não realize nenhuma venda.</p></div></div>
     <div className="surface">
-      <h3>Local e expediente habitual</h3>
-      <p className="helper">Os feriados estaduais e municipais dependem da localização da sua ótica. É necessário confirmar a cobertura da fonte local.</p>
-      <form className="form-grid" key={settings.data?.municipality_ibge||'new'} onSubmit={event=>{
-        event.preventDefault();const values=new FormData(event.currentTarget);
-        void perform(()=>api('/business-calendar/settings',{method:'PUT',body:{
-          stateUf:String(values.get('stateUf')||'').toUpperCase(),
-          municipalityIbge:String(values.get('municipalityIbge')||''),
-          municipalityName:String(values.get('municipalityName')||''),
-          timeZone:String(values.get('timeZone')||'America/Fortaleza'),
-          openWeekdays:weekday,
-        }}),notify,()=>{settings.refresh();plan.refresh();});
-      }}>
-        <label className="field">UF<input name="stateUf" maxLength={2} required
-          defaultValue={settings.data?.state_uf||''} disabled={!canMaster} placeholder="MA"/></label>
-        <label className="field">Município<input name="municipalityName" required
-          defaultValue={settings.data?.municipality_name||''} disabled={!canMaster}/></label>
-        <label className="field">Código IBGE da cidade<input name="municipalityIbge" required
-          pattern="[0-9]{7}" maxLength={7} disabled={!canMaster}
-          defaultValue={settings.data?.municipality_ibge||''}/></label>
-        <label className="field">Fuso da ótica<input name="timeZone" required
-          disabled={!canMaster} defaultValue={settings.data?.time_zone||'America/Fortaleza'}/></label>
-        <fieldset className="invite-permissions"><legend>Quando a loja costuma abrir?</legend>
-          <div className="permission-selection">{weekDays.map((name,index)=><label
-            className="checkline" key={name}><input type="checkbox"
-            checked={weekday.includes(index+1)} disabled={!canMaster}
-            onChange={e=>setWeekday(prev=>e.target.checked?[...prev,index+1]:
-              prev.filter(d=>d!==index+1))}/>{name}</label>)}</div>
-        </fieldset>
-        {canMaster&&<button className="primary-action form-action" type="submit">Salvar expediente</button>}
-      </form>
+      <h3>Onde fica a ótica</h3>
+      {!editingAddress?<div className="location-card">
+        <div><span className="tile-icon accent-red"><MapPin size={18}/></span>
+          <div><strong>{location||'Endereço da ótica não cadastrado'}</strong>
+            <small>{settings.data?.address||'Cadastre o endereço para mostrarmos os feriados da sua cidade.'}</small></div></div>
+        {canMaster&&<button className="outline-action" type="button" onClick={()=>{
+          setAddress(settings.data?.address||'');setPlace(null);setEditingAddress(true);
+        }}>{location?'Alterar endereço':'Cadastrar endereço'}</button>}
+      </div>:<form className="form-grid" onSubmit={event=>{event.preventDefault();saveAddress();}}>
+        <AddressFields name="opticAddress" legend="Endereço da ótica" required
+          defaultValue={settings.data?.address||''} onChange={setAddress} onLocation={setPlace}/>
+        <div className="calendar-actions span-all">
+          <button className="outline-action" type="button" onClick={()=>setEditingAddress(false)}>Cancelar</button>
+          <button className="primary-action" type="submit">Salvar endereço</button>
+        </div>
+      </form>}
+      <p className="helper">Os feriados nacionais já aparecem no calendário. Feriados do estado e da cidade
+        podem ser marcados por você abaixo, em cada dia.</p>
+    </div>
+    <div className="surface">
+      <h3>Dias em que a loja abre</h3>
+      <div className="day-chips" role="group" aria-label="Dias de abertura">
+        {weekDays.map((name,index)=>{
+          const active=weekday.includes(index+1);
+          return <button key={name} type="button" className={active?'day-chip active':'day-chip'}
+            aria-pressed={active} disabled={!canMaster}
+            onClick={()=>setWeekday(prev=>active?prev.filter(d=>d!==index+1):[...prev,index+1].sort())}>
+            {name}</button>;})}
+      </div>
+      {canMaster&&<button className="primary-action day-chips-save" type="button" onClick={()=>void perform(
+        ()=>api('/business-calendar/settings',{method:'PUT',body:{openWeekdays:weekday}}),
+        notify,()=>{settings.refresh();plan.refresh();})}>Salvar dias de abertura</button>}
     </div>
     <div className="surface">
       <div className="section-title"><h3>Calendário mensal</h3><div className="filter-bar">

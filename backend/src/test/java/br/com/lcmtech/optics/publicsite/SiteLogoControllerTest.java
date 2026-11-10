@@ -14,13 +14,13 @@ class SiteLogoControllerTest {
         graphics.fillRect(0,0,24,24);
         graphics.dispose();
         String accent=SiteLogoController.primaryColor(logo);
-        assertThat(accent).matches("#[0-9A-F]{6}").isNotEqualTo("#0D6063");
+        assertThat(accent).matches("#[0-9A-F]{6}").isNotEqualTo("#5B4CF0");
     }
 
     @Test
     void logoSomenteBrancaTemFallbackLegivel() {
         BufferedImage logo=new BufferedImage(10,10,BufferedImage.TYPE_INT_RGB);
         for(int y=0;y<10;y++)for(int x=0;x<10;x++)logo.setRGB(x,y,Color.WHITE.getRGB());
-        assertThat(SiteLogoController.primaryColor(logo)).isEqualTo("#0D6063");
+        assertThat(SiteLogoController.primaryColor(logo)).isEqualTo("#5B4CF0");
     }
 }

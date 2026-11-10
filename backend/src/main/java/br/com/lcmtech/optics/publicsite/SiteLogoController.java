@@ -108,7 +108,7 @@ public class SiteLogoController {
                 total+=weight;
             }
         }
-        if(total==0)return "#0D6063";
+        if(total==0)return "#5B4CF0";
         int r=(int)(red/total),g=(int)(green/total),b=(int)(blue/total);
         // A página usa texto branco no fundo primário: escurecer se necessário.
         for(int i=0;i<10 && contrastWithWhite(r,g,b)<4.6;i++) {

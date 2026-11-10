@@ -2,7 +2,7 @@
 
 SaaS de gestão intuitiva para óticas, da LCM Dev Tech.
 
-**Status:** fundação em desenvolvimento, sem autenticação ou módulos comerciais disponíveis. Não usar com dados reais.
+**Status:** em homologação na branch `hml` (Render). Módulos principais implementados; ainda não usar com dados reais de clientes.
 
 ## Branches
 - `main` — reservada à produção; não fazer merge sem homologação.
@@ -20,7 +20,7 @@ Health: GET /actuator/health. Status público: GET /api/v1/public/status. Todas 
 
 Testes: `cd backend && mvn test` e `cd frontend && npm run build`.
 
-Documentação: [arquitetura](docs/ARQUITETURA.md) e [reuso/roadmap](docs/REUSO_E_ROADMAP.md).
+Documentação: [arquitetura](docs/ARQUITETURA.md), [reuso/roadmap](docs/REUSO_E_ROADMAP.md) e [identidade visual, CEP e localização](docs/IDENTIDADE_VISUAL_E_ENDERECO.md).
 Backlog: https://trello.com/b/GxJ8VWIM/optics-management-saas-de-gest%C3%A3o-para-%C3%B3ticas.
 
-**Segurança:** nunca enviar dados reais de clientes ou receitas ao bootstrap; ainda não há login, auditoria por caso de uso nem armazenamento privado implementados.
+**Segurança:** nunca enviar dados reais de clientes ou receitas ao ambiente de homologação. MFA, Web Push e antivírus de anexos ainda não implementados.

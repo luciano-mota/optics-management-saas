@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
-  ArrowLeft, ArrowRight, Bell, CalendarDays, ChartColumnIncreasing,
-  CircleHelp, ClipboardCheck, CreditCard, Glasses, House, LogOut,
-  MapPinned, Menu, Palette, ShieldCheck,
-  ShoppingBag, UsersRound, Wallet, X,
+  ArrowLeft, Bell, BellRing, Cake, CalendarDays, ChartColumnIncreasing,
+  CircleUserRound, CreditCard, Eye, Glasses, Globe, LogOut, MapPinned,
+  ReceiptText, ShieldCheck, ShoppingBag, UserCog, UsersRound, Wallet, X,
 } from 'lucide-react';
+import { BrandLogo, BrandMark } from './brand';
+import { AddressFields } from './screens/AddressFields';
 import { api, csrf, date, fileAsBase64, currency } from './api';
 import { Catalog } from './screens/Catalog';
 import { Customers } from './screens/Customers';
@@ -24,22 +25,23 @@ import { Receipts } from './screens/Receipts';
 import { MyProfile } from './screens/MyProfile';
 import { getField, perform, useRemote } from './screens/common';
 
-type Tile = {key:string;title:string;description:string;permission:string;icon:typeof Glasses;accent:string};
+type Tile={key:string;title:string;description:string;permission:string;icon:typeof Glasses;accent:string};
+/** Cada bloco tem ícone e cor próprios, sem repetição, para ser reconhecido de relance. */
 const tiles:Tile[]=[
-  {key:'sales',title:'Vendas e entregas',description:'Registre novas vendas e confirme as entregas.',permission:'SALES_READ',icon:ShoppingBag,accent:'mint'},
-  {key:'customers',title:'Meus clientes',description:'Cadastros, receitas e retorno para novos óculos.',permission:'CUSTOMERS_READ',icon:UsersRound,accent:'blue'},
-  {key:'birthdays',title:'Aniversariantes',description:'Saudações de aniversário com WhatsApp autorizado.',permission:'CUSTOMERS_READ',icon:CalendarDays,accent:'pink'},
-  {key:'retention',title:'Clientes para lembrar',description:'Listas de 3, 6, 9 meses e 1 ano, com WhatsApp preparado.',permission:'CUSTOMERS_READ',icon:CalendarDays,accent:'purple'},
-  {key:'optometry',title:'Consultas de vista',description:'Pacientes, clínicas parceiras e agendamento.',permission:'APPOINTMENTS_READ',icon:CalendarDays,accent:'blue'},
-  {key:'visits',title:'Visitas agendadas',description:'Acompanhe as solicitações de atendimento externo.',permission:'VISITS_READ',icon:MapPinned,accent:'orange'},
-  {key:'receipts',title:'Recibos de vendas',description:'Comprovantes com logo e assinatura da ótica.',permission:'RECEIPTS_READ',icon:ClipboardCheck,accent:'green'},
-  {key:'finance',title:'Meu financeiro',description:'Entradas, despesas, caixa e contas a receber.',permission:'FINANCE_READ',icon:Wallet,accent:'green'},
-  {key:'catalog',title:'Lentes e armações',description:'Cadastre marcas e modelos com facilidade.',permission:'CATALOG_READ',icon:Glasses,accent:'pink'},
-  {key:'machines',title:'Maquininhas',description:'Configure taxas de débito e crédito.',permission:'FINANCE_READ',icon:CreditCard,accent:'orange'},
-  {key:'reports',title:'Relatórios',description:'Resultados da sua ótica, vendas e equipe.',permission:'REPORTS_READ',icon:ChartColumnIncreasing,accent:'purple'},
-  {key:'calendar',title:'Calendário e feriados',description:'Confira os dias em que a ótica abre e planeje suas metas.',permission:'REPORTS_READ',icon:CalendarDays,accent:'orange'},
-  {key:'team',title:'Minha equipe',description:'Envie convites e gerencie permissões.',permission:'USERS_MANAGE',icon:ShieldCheck,accent:'blue'},
-  {key:'site',title:'Meu site e campanhas',description:'Personalize sua vitrine digital e campanhas.',permission:'SITE_MANAGE',icon:Palette,accent:'mint'},
+  {key:'sales',title:'Vendas e entregas',description:'Registre vendas e confirme entregas.',permission:'SALES_READ',icon:ShoppingBag,accent:'accent-emerald'},
+  {key:'customers',title:'Clientes',description:'Cadastros, receitas e histórico.',permission:'CUSTOMERS_READ',icon:UsersRound,accent:'accent-blue'},
+  {key:'birthdays',title:'Aniversariantes',description:'Parabéns pelo WhatsApp.',permission:'CUSTOMERS_READ',icon:Cake,accent:'accent-pink'},
+  {key:'retention',title:'Clientes para lembrar',description:'Retornos de 3, 6, 9 e 12 meses.',permission:'CUSTOMERS_READ',icon:BellRing,accent:'accent-violet'},
+  {key:'optometry',title:'Consultas de vista',description:'Pacientes, clínicas e agenda.',permission:'APPOINTMENTS_READ',icon:Eye,accent:'accent-cyan'},
+  {key:'visits',title:'Visitas em domicílio',description:'Pedidos de atendimento em casa.',permission:'VISITS_READ',icon:MapPinned,accent:'accent-orange'},
+  {key:'receipts',title:'Recibos',description:'Comprovantes com a sua marca.',permission:'RECEIPTS_READ',icon:ReceiptText,accent:'accent-teal'},
+  {key:'finance',title:'Financeiro',description:'Entradas, despesas e a receber.',permission:'FINANCE_READ',icon:Wallet,accent:'accent-lime'},
+  {key:'catalog',title:'Lentes e armações',description:'Marcas e modelos.',permission:'CATALOG_READ',icon:Glasses,accent:'accent-fuchsia'},
+  {key:'machines',title:'Maquininhas',description:'Taxas de débito e crédito.',permission:'FINANCE_READ',icon:CreditCard,accent:'accent-amber'},
+  {key:'reports',title:'Relatórios',description:'Vendas, metas e equipe.',permission:'REPORTS_READ',icon:ChartColumnIncreasing,accent:'accent-indigo'},
+  {key:'calendar',title:'Calendário',description:'Dias de abertura e feriados.',permission:'REPORTS_READ',icon:CalendarDays,accent:'accent-red'},
+  {key:'team',title:'Equipe',description:'Convites e permissões.',permission:'USERS_MANAGE',icon:UserCog,accent:'accent-sky'},
+  {key:'site',title:'Site e campanhas',description:'Sua vitrine na internet.',permission:'SITE_MANAGE',icon:Globe,accent:'accent-prism'},
 ];
 type Toast = {message:string;error:boolean}|null;
 
@@ -53,11 +55,15 @@ export function App(){
   const [ready,setReady]=useState(false);
   const [view,setView]=useState('dashboard');
   const [toast,setToast]=useState<Toast>(null);
-  const [menuOpen,setMenuOpen]=useState(false);
   const [monthlyReviewDismissed,setMonthlyReviewDismissed]=useState(false);
   const [alerts,setAlerts]=useState<{newVisits:number;retentionDue:number;unreadNotices:number}|null>(null);
   const seenAlertCount=useRef<number|null>(null);
   const notify=(message:string,error=false)=>{setToast({message,error});};
+  useEffect(()=>{
+    if(!toast)return;
+    const timer=window.setTimeout(()=>setToast(null),toast.error?9000:5000);
+    return ()=>window.clearTimeout(timer);
+  },[toast]);
   const load=async()=>{
     try {setMe(await api('/auth/me'));} catch {setMe(null);}
     finally {setReady(true);}
@@ -95,15 +101,15 @@ export function App(){
   if(invite)return <InviteAccept token={invite} notify={notify} toast={toast}/>;
   if(reset)return <AccountLinkAction kind="reset" token={reset} notify={notify} toast={toast}/>;
   if(verify)return <AccountLinkAction kind="verify" token={verify} notify={notify} toast={toast}/>;
-  if(!ready)return <div className="center-message app-splash">
-    <div className="brand-mark"><Glasses size={44}/></div>
-    <h2>Optics Management</h2><p>Organizando sua ótica...</p>
+  if(!ready)return <div className="center-message app-splash" role="status">
+    <BrandMark size={72}/>
+    <h2>Optics Management</h2><p>Preparando sua ótica...</p>
   </div>;
   if(!me)return <AccessScreen onSignedIn={()=>void load()} notify={notify} toast={toast}/>;
   if((!me.platformOperator||(me.shops?.length??0)>0)&&
     (me.profileComplete===false||me.opticRegistrationRequired===true))return <MyProfile
     person={me.account} required requiredCnpj={me.opticRegistrationRequired===true}
-    opticCnpj={me.opticCnpj||''} onSaved={()=>void load()}
+    opticCnpj={me.opticCnpj||''} opticAddress={me.opticAddress?.address||''} onSaved={()=>void load()}
     onLogout={()=>void perform(async()=>{
       await api('/auth/logout',{method:'POST'});await csrf();setMe(null);
     },notify)}/>;
@@ -116,37 +122,34 @@ export function App(){
   const selected=modules.find(tile=>tile.key===view);
   const isPlatform=view==='platform'&&me.platformOperator;
   const countLabel=(count:any)=>count==null?'—':String(count);
+  const logout=()=>void perform(async()=>{
+    await api('/auth/logout',{method:'POST'});await csrf();setMe(null);
+  },notify);
+  const pending=alerts?(alerts.newVisits+alerts.retentionDue+alerts.unreadNotices):0;
   return <div className="app-shell">
+    <a className="skip-link" href="#content">Ir para o conteúdo</a>
     <header className="app-header"><div className="header-inner">
       <button className="brand" type="button" onClick={()=>setView('dashboard')} aria-label="Voltar ao início">
-        <span className="brand-mark"><Glasses size={24}/></span>
-        <span className="brand-words"><strong>Optics</strong><small>MANAGEMENT</small></span></button>
-      <nav className={menuOpen?'header-nav open':'header-nav'} aria-label="Navegação principal">
-        <button className={view==='dashboard'?'nav-link active':'nav-link'}
-          onClick={()=>{setView('dashboard');setMenuOpen(false);}}>Início</button>
-        {modules.slice(0,3).map(tile=><button key={tile.key} className={view===tile.key?'nav-link active':'nav-link'}
-          onClick={()=>{setView(tile.key);setMenuOpen(false);}}>{tile.title}</button>)}
-      </nav>
+        <BrandLogo/></button>
+      {activeShop&&<span className="shop-chip" title={activeShop.trade_name}><i aria-hidden="true"/>
+        <span>{activeShop.trade_name}</span></span>}
       <div className="header-actions">
-        {me.platformOperator&&<button className="outline-action" onClick={()=>setView('platform')}>Painel LCM</button>}
-        <button className="outline-action" onClick={()=>setView('profile')}>Meu cadastro</button>
+        {me.platformOperator&&<button className="outline-action" onClick={()=>setView('platform')}>
+          <ShieldCheck size={16}/> Painel LCM</button>}
         <button className="icon-button" title="Notificações" aria-label="Notificações"
           onClick={()=>setView('notices')}><Bell size={19}/>
-          {alerts&&(alerts.newVisits+alerts.retentionDue+alerts.unreadNotices)>0&&
-            <span className="notification-dot" aria-label="Avisos pendentes"/>}</button>
-        <button className="icon-button" title="Sair" aria-label="Sair" onClick={()=>void perform(
-          async()=>{await api('/auth/logout',{method:'POST'});await csrf();setMe(null);},
-          notify)}><LogOut size={19}/></button>
-        <button className="icon-button mobile-menu" title="Menu" aria-label="Menu" aria-expanded={menuOpen}
-          onClick={()=>setMenuOpen(!menuOpen)}>{menuOpen?<X size={20}/>:<Menu size={20}/>}</button>
+          {pending>0&&<span className="notification-dot" aria-label="Avisos pendentes"/>}</button>
+        <button className="icon-button" title="Meus dados" aria-label="Meus dados"
+          onClick={()=>setView('profile')}><CircleUserRound size={20}/></button>
+        <button className="icon-button" title="Sair" aria-label="Sair" onClick={logout}><LogOut size={19}/></button>
       </div></div></header>
     <main className="container" id="content">
       {toast&&<div className={toast.error?'toast error':'toast'} role="status">
-        <span>{toast.message}</span><button onClick={()=>setToast(null)} aria-label="Fechar aviso"><X size={16}/></button></div>}
+        <span>{toast.message}</span><button type="button" onClick={()=>setToast(null)} aria-label="Fechar aviso"><X size={16}/></button></div>}
       {view==='dashboard'?<Dashboard me={me} shop={activeShop} modules={modules}
         onOpen={setView} countLabel={countLabel} notify={notify}/>:
         <div className="content-body">
-          <button className="back-link" onClick={()=>setView('dashboard')}><ArrowLeft size={17}/> Voltar ao início</button>
+          <button className="back-link" onClick={()=>setView('dashboard')}><ArrowLeft size={17}/> Início</button>
           {selected?.key==='sales'&&<Sales notify={notify} can={can}/>}
           {selected?.key==='customers'&&<Customers notify={notify} can={can}/>}
           {selected?.key==='retention'&&<Retention notify={notify} can={can}/>}
@@ -159,7 +162,7 @@ export function App(){
           {selected?.key==='machines'&&<Machines notify={notify} can={can}/>}
           {selected?.key==='reports'&&<Reports notify={notify} can={can} isMaster={activeShop?.role==='MASTER'}/>}
           {selected?.key==='calendar'&&<BusinessCalendar notify={notify} isMaster={activeShop?.role==='MASTER'}/>}
-          {selected?.key==='team'&&<Team notify={notify} can={can}/>}
+          {selected?.key==='team'&&<Team notify={notify} can={can} homeVisits={!!activeShop?.home_visits_enabled}/>}
           {selected?.key==='site'&&<Site notify={notify} can={can}/>}
           {view==='profile'&&<MyProfile person={me.account} required={false}
             onSaved={()=>void load()} onLogout={()=>setView('dashboard')}/>}
@@ -171,10 +174,9 @@ export function App(){
 
         </div>}
     </main>
-    <footer className="footer"><span>Optics Management ·
-      <a href="https://lcmtech.com.br" target="_blank" rel="noopener noreferrer">
-        Desenvolvido por LCM DEV TECH</a></span>
-      <span>Gestão simples para quem cuida do seu olhar</span></footer>
+    <footer className="footer"><span>Optics Management</span>
+      <a href="https://lcmtech.com.br" target="_blank" rel="noopener noreferrer">Desenvolvido por LCM DEV TECH</a>
+    </footer>
     {me.profileComplete!==false&&activeShop?.role==='MASTER'&&!monthlyReviewDismissed&&
       <MonthlyReview shopId={String(activeShop.id)} notify={notify}
         onDone={()=>setMonthlyReviewDismissed(true)}
@@ -186,51 +188,36 @@ export function App(){
   </div>;
 }
 
-function Dashboard({me,shop,modules,onOpen,countLabel,notify}:{
+function Dashboard({me,shop,modules,onOpen,countLabel}:{
   me:any;shop:any;modules:Tile[];onOpen:(key:string)=>void;
   countLabel:(n:any)=>string;notify:(msg:string,error?:boolean)=>void;
 }){
   const dashboard=useRemote<any>('/sales/dashboard');
   const firstName=String(me.account?.full_name||'').split(' ')[0]||'';
+  const today=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
   return <>
-    <section className="welcome">
-      <div><div className="eyebrow"><span className="online-dot"/> O seu dia na ótica</div>
-        <h1>Olá, {firstName}! <span>O que vamos fazer hoje?</span></h1>
-        <p>{shop?.trade_name||'Bem-vindo à plataforma'} · Escolha um bloco e siga o passo a passo.</p>
-        <div className="welcome-pills"><span><ClipboardCheck size={15}/> Tudo no mesmo lugar</span>
-          <span><CircleHelp size={15}/> Sem complicação</span></div>
-      </div><div className="welcome-art" aria-hidden="true"><Glasses size={110}/><span className="art-ring"/></div>
+    <section className="greeting">
+      <div><h1>Olá{firstName?', '+firstName:''}!</h1>
+        <p>{today.charAt(0).toUpperCase()+today.slice(1)}{shop?.trade_name?' · '+shop.trade_name:''}</p></div>
+      {shop&&shop.billing_mode!=='COMPLIMENTARY'&&<span className="plan-chip">
+        {shop.billing_mode==='TRIAL'?'Teste grátis até '+date(shop.trial_ends_at):'Plano mensal'}
+        <button type="button" onClick={()=>onOpen('subscription')}>Assinatura</button></span>}
     </section>
-    {shop?.billing_mode!=='COMPLIMENTARY'&&<div className="info-banner">
-      {shop?.billing_mode==='TRIAL'?'Você está no teste grátis até '+date(shop.trial_ends_at)+'.':
-        'Você está na modalidade de assinatura.'}
-      <button className="text-action" onClick={()=>onOpen('subscription')}>Ver assinatura</button>
-    </div>}
-    <div className="metric-grid">
-      {[['Vendas hoje',dashboard.data?.today],['Esta semana',dashboard.data?.week],
-        ['Este mês',dashboard.data?.month],['Entregas pendentes',dashboard.data?.pending_delivery],
+    {shop&&<div className="metric-grid">
+      {[['Vendas hoje',dashboard.data?.today],['Na semana',dashboard.data?.week],
+        ['No mês',dashboard.data?.month],['Entregas pendentes',dashboard.data?.pending_delivery],
         ...(shop?.home_visits_enabled?[['Visitas pendentes',dashboard.data?.pendingVisits]]:[])].map(([label,num])=>
           <div className="metric" key={String(label)}><span>{label}</span><strong>{countLabel(num)}</strong></div>)}
-    </div>
-    <section className="action-section"><div className="section-heading">
-      <div><span className="eyebrow">Acesso rápido</span><h2>Escolha o que deseja fazer</h2></div></div>
-      <div className="tile-grid">{modules.map(tile=><button key={tile.key} className="tile"
+    </div>}
+    <div className="section-heading"><h2>O que você quer fazer?</h2></div>
+    <div className="tile-grid">{modules.map(tile=>{
+      const locked=tile.key==='site'&&!shop?.site_enabled;
+      return <button key={tile.key} type="button" className={'tile '+tile.accent+(locked?' locked':'')}
         onClick={()=>onOpen(tile.key)}>
-        <span className={'tile-icon '+tile.accent}><tile.icon size={25}/></span>
-        <span className="tile-title">{tile.title}</span>
-        <span className="tile-description">{tile.key==='site'&&!shop?.site_enabled?
-          'Aguardando liberação da LCM Dev Tech. Saiba como habilitar.':tile.description}</span>
-        <span className="tile-cta">Abrir área <ArrowRight size={16}/></span>
-      </button>)}</div>
-    </section>
-    <section className="bottom-note"><div className="bottom-note-icon"><ShieldCheck size={22}/></div>
-      <div><strong>Seus dados são da sua ótica</strong><p>Somente quem tem permissão pode acessar cada área.
-        Se precisar de ajuda, fale com o administrador da ótica.</p></div></section>
-    <div className="surface"><h3>Preferências de notificação</h3>
-      <button className="outline-action" onClick={()=>void requestNotification(notify)}>
-        Habilitar avisos neste dispositivo</button><p className="helper">
-        Avisos na tela requerem sua autorização. Notificações quando o aplicativo está fechado
-        dependerão da futura integração com push.</p></div>
+        <span className="tile-icon"><tile.icon size={22}/></span>
+        <span className="tile-text"><span className="tile-title">{tile.title}</span>
+          <span className="tile-description">{locked?'Aguardando liberação':tile.description}</span></span>
+      </button>;})}</div>
   </>;
 }
 async function requestNotification(notify:(message:string,error?:boolean)=>void) {
@@ -257,9 +244,13 @@ function Notices({notify,onOpen,alerts,homeVisitsEnabled}: {notify:(msg:string,e
         {homeVisitsEnabled&&<button className="outline-action" onClick={()=>onOpen('visits')}>Ver visitas</button>}
         <button className="outline-action" onClick={()=>onOpen('retention')}>Ver lembretes</button>
       </div>
-      <p className="helper">Os contadores são atualizados enquanto o painel está aberto.
-        Para avisos do navegador, autorize as notificações na tela inicial.</p>
+      <p className="helper">Os contadores são atualizados enquanto o painel está aberto.</p>
     </div>
+    <div className="surface"><h3>Avisos neste aparelho</h3>
+      <p className="helper">Permita que o navegador mostre um aviso quando chegar algo novo
+        enquanto o Optics estiver aberto.</p>
+      <button className="outline-action" onClick={()=>void requestNotification(notify)}>
+        <Bell size={16}/> Ativar avisos</button></div>
     <div className="section-title"><h2>Mensagens da LCM Dev Tech</h2></div>
     <div className="surface">{!data?.length?<p className="empty">Não há mensagens por enquanto.</p>:
       <div className="list-cards">{data.map(n=><div className="mini-row" key={n.id}>
@@ -276,6 +267,7 @@ function AccessScreen({onSignedIn,notify,toast}:{
   const [mode,setMode]=useState<'login'|'signup'>('login');
   const [forgot,setForgot]=useState(false);
   if(forgot)return <div className="auth-layout"><div className="auth-box">
+    <div className="login-brand"><BrandLogo size={40}/></div>
     <h1>Redefinir senha</h1>
     <p>Informe seu e-mail. Se houver uma conta e o serviço de e-mail estiver configurado,
       enviaremos um link para criar uma nova senha.</p>
@@ -292,18 +284,19 @@ function AccessScreen({onSignedIn,notify,toast}:{
   </div></div>;
   return <div className="auth-layout">
     <div className="auth-box">
-      <div className="brand login-brand"><span className="brand-mark"><Glasses size={26}/></span>
-        <span className="brand-words"><strong>Optics</strong><small>MANAGEMENT</small></span></div>
+      <div className="login-brand"><BrandLogo size={40}/></div>
       <h1>{mode==='login'?'Bem-vindo de volta!':'Sua ótica, muito mais organizada'}</h1>
       <p>{mode==='login'?'Entre para cuidar dos seus clientes e vendas.':
         'Crie sua conta e experimente grátis por 7 dias.'}</p>
       {toast&&<div className={toast.error?'toast error':'toast'}>{toast.message}</div>}
       <form className="auth-form" onSubmit={event=>{
         event.preventDefault();const form=event.currentTarget;
+        // Ao entrar, só mostramos aviso se algo der errado.
+        const onlyErrors=(message:string,error?:boolean)=>{if(error)notify(message,true);};
         if(mode==='login'){
           void perform(async()=>{await api('/auth/login',{method:'POST',isForm:true,
             body:{email:getField(form,'email'),password:getField(form,'password')}});await csrf();
-            onSignedIn();},notify);
+            onSignedIn();},onlyErrors);
         }else{
           void perform(async()=>{
             const email=getField(form,'email'),password=getField(form,'password');
@@ -319,7 +312,7 @@ function AccessScreen({onSignedIn,notify,toast}:{
             }
             await api('/auth/login',{method:'POST',isForm:true,body:{email,password}});
             await csrf();onSignedIn();
-          },notify);
+          },onlyErrors);
         }
       }}>
         {mode==='signup'&&<><label className="field">Nome da ótica<input name="opticName" required/></label>
@@ -337,10 +330,12 @@ function AccessScreen({onSignedIn,notify,toast}:{
       </form>
       <button className="text-action auth-switch" onClick={()=>setMode(mode==='login'?'signup':'login')}>
         {mode==='login'?'Ainda não tem conta? Experimente grátis.':'Já tem conta? Entrar.'}</button>
-      <p className="helper">Ambiente de homologação · Não utilize dados reais nesta etapa.</p>
+      <p className="helper">Desenvolvido por <a href="https://lcmtech.com.br" target="_blank"
+        rel="noopener noreferrer">LCM DEV TECH</a></p>
     </div>
-    <aside className="auth-aside"><House size={44}/><h2>Mais tempo para atender, menos tempo com planilhas.</h2>
-      <p>Vendas, entregas, clientes e financeiro. Tudo claro, no mesmo lugar.</p></aside>
+    <aside className="auth-aside"><BrandMark size={56}/>
+      <h2>Mais tempo para atender, menos tempo com planilhas.</h2>
+      <p>Vendas, entregas, clientes e financeiro da sua ótica. Tudo claro, no mesmo lugar.</p></aside>
   </div>;
 }
 
@@ -348,7 +343,8 @@ function InviteAccept({token,notify,toast}:{
   token:string;notify:(msg:string,error?:boolean)=>void;toast:Toast;
 }){
   const [success,setSuccess]=useState(false);
-  return <div className="auth-layout"><div className="auth-box"><h1>Bem-vindo à equipe!</h1>
+  return <div className="auth-layout"><div className="auth-box">
+    <div className="login-brand"><BrandLogo size={40}/></div><h1>Bem-vindo à equipe!</h1>
     <p>Complete seus dados e escolha uma senha para acessar a ótica que convidou você.</p>
     {toast&&<div className={toast.error?'toast error':'toast'}>{toast.message}</div>}
     {success?<p>Cadastro concluído! <a href="/">Clique aqui para entrar.</a></p>:
@@ -364,11 +360,14 @@ function InviteAccept({token,notify,toast}:{
         <label className="field">CPF<input name="cpf" required/></label>
         <label className="field">Telefone<input name="phone" required/></label>
         <label className="field">Nascimento<input name="birthDate" type="date" required/></label>
-        <label className="field">Endereço (opcional)<input name="address"/></label>
+        <AddressFields legend="Seu endereço"/>
         <label className="field">Crie uma senha<input name="password" type="password" minLength={10} required/></label>
         <button className="primary-action wide">Concluir cadastro</button>
       </form>}
-    <a className="text-action" href="/">Voltar para login</a></div></div>;
+    <a className="text-action" href="/">Voltar para o login</a></div>
+    <aside className="auth-aside"><BrandMark size={56}/>
+      <h2>Que bom ter você na equipe.</h2>
+      <p>Depois de concluir, é só entrar com seu e-mail e a senha que você criou.</p></aside></div>;
 }
 
 function PublicSite({slug,notify,toast}:{
@@ -392,9 +391,9 @@ function PublicSite({slug,notify,toast}:{
   if(loading)return <div className="center-message">Abrindo página da ótica...</div>;
   if(!data)return <div className="center-message"><h1>Página indisponível</h1>
     <a href="/">Voltar ao Optics Management</a></div>;
-  const primary=data.primary_color||'#116b6d';
+  const primary=data.primary_color||'#5b4cf0';
   const safeFont=['Manrope','DM Sans','Arial','Georgia'].includes(data.font)?data.font:'Manrope';
-  return <div className="public-shell" style={{'--site-primary':primary,fontFamily:safeFont} as CSSProperties}>
+  return <div className="public-shell" style={{'--site-primary':primary,fontFamily:"'"+safeFont+"', 'Plus Jakarta Sans', system-ui, sans-serif"} as CSSProperties}>
     <header className="public-header"><div className="public-container">
       <span className="site-logo">
         {data.has_logo?<img src={'/api/v1/public/site/'+encodeURIComponent(slug)+'/logo'}
@@ -435,7 +434,7 @@ function PublicSite({slug,notify,toast}:{
           <label className="field">Seu nome<input name="name" required/></label>
           <label className="field">WhatsApp<input name="phone" type="tel" required/></label>
           <label className="field">E-mail (opcional)<input name="email" type="email"/></label>
-          <label className="field">Endereço completo<input name="address" required/></label>
+          <AddressFields legend="Onde será a visita?" required/>
           <label className="field">Data e hora desejadas<input name="appointmentAt" type="datetime-local" required/></label>
           <label className="field">Anexe sua receita (PDF ou foto)<input name="prescription"
             type="file" accept=".pdf,image/png,image/jpeg,image/webp" required/></label>
@@ -457,7 +456,7 @@ function PublicSite({slug,notify,toast}:{
             href={'mailto:'+data.contact_email}>Enviar e-mail</a>}
         </div>
       </section>}
-    </main><footer className="public-footer">Página de {data.trade_name} ·
+    </main><footer className="public-footer">Página de {data.trade_name} ·{' '}
       <a href="https://lcmtech.com.br" target="_blank" rel="noopener noreferrer">
         Desenvolvido por LCM DEV TECH</a></footer>
   </div>;
@@ -493,6 +492,7 @@ function AccountLinkAction({kind,token,notify,toast}:{
 }) {
   const [done,setDone]=useState(false);
   if(kind==='verify')return <div className="auth-layout"><div className="auth-box">
+    <div className="login-brand"><BrandLogo size={40}/></div>
     <h1>Confirme seu e-mail</h1><p>Este link confirma que você tem acesso ao e-mail de cadastro.</p>
     {toast&&<div className={toast.error?'toast error':'toast'}>{toast.message}</div>}
     <button className="primary-action wide" onClick={()=>void perform(
@@ -501,6 +501,7 @@ function AccountLinkAction({kind,token,notify,toast}:{
     {done&&<p><a href="/">Agora você pode entrar.</a></p>}
   </div></div>;
   return <div className="auth-layout"><div className="auth-box">
+    <div className="login-brand"><BrandLogo size={40}/></div>
     <h1>Crie uma nova senha</h1>
     {toast&&<div className={toast.error?'toast error':'toast'}>{toast.message}</div>}
     {done?<p>Senha alterada. <a href="/">Acesse sua conta.</a></p>:

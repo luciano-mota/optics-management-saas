@@ -73,7 +73,9 @@ const roleDefaults: Record<string,string[]> = {
   ]
 };
 
-export function Team({notify}:ScreenProps){
+export function Team({notify,homeVisits=false}:ScreenProps&{homeVisits?:boolean}){
+  // Visita em domicílio é um recurso liberado por ótica: sem ele, as permissões nem aparecem.
+  const visible=perms.filter(([id])=>homeVisits||!id.startsWith('VISITS_'));
   const [inviteLink,setInviteLink]=useState('');
   const [inviteRole,setInviteRole]=useState('SELLER');
   const [invitePermissions,setInvitePermissions]=useState<string[]>(roleDefaults.SELLER);
@@ -102,7 +104,7 @@ export function Team({notify}:ScreenProps){
         </select></label>
         <fieldset className="invite-permissions"><legend>Acessos ao enviar convite</legend>
           <p className="helper">Selecione quais áreas o funcionário poderá usar. O perfil Master tem acesso completo.</p>
-          <div className="permission-selection">{perms.map(([id,label])=>
+          <div className="permission-selection">{visible.map(([id,label])=>
             <label key={id} className="checkline">
               <input type="checkbox" disabled={inviteRole==='MASTER'}
                 checked={inviteRole==='MASTER'||invitePermissions.includes(id)}
@@ -131,7 +133,7 @@ export function Team({notify}:ScreenProps){
       <div className="section-title"><h3>Acessos de {selected.full_name}</h3>
         <button className="outline-action" onClick={()=>setSelected(null)}>Fechar</button></div>
       <p className="helper">O acesso de administradores é completo. Nos demais perfis, conceder ou bloquear um acesso substitui o padrão.</p>
-      <div className="permission-grid">{perms.map(([id,label])=><div className="mini-row" key={id}>
+      <div className="permission-grid">{visible.map(([id,label])=><div className="mini-row" key={id}>
         <span>{label}</span><select aria-label={label} disabled={selected.role==='MASTER'}
           defaultValue="DEFAULT" onChange={e=>void perform(
             ()=>api('/team/'+selected.account_id+'/permission',
