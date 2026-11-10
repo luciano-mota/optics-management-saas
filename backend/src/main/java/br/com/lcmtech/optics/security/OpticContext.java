@@ -77,6 +77,13 @@ public class OpticContext {
         UUID account = accountId(auth);
         UUID optic = optic(auth,session);
         if (!can(account,optic,permission)) throw new AccessDeniedException("Você não tem permissão para esta operação.");
+        // Funcionalidade especial, liberada apenas pela LCM para a ótica autorizada.
+        if(permission.equals("VISITS_READ")||permission.equals("VISITS_MANAGE")) {
+            Boolean enabled=jdbc.queryForObject(
+                    "SELECT home_visits_enabled FROM optics WHERE id=?",Boolean.class,optic);
+            if(!Boolean.TRUE.equals(enabled))
+                throw new AccessDeniedException("Atendimento em domicílio não habilitado para esta ótica.");
+        }
         var status = jdbc.queryForMap("SELECT s.billing_mode,s.trial_ends_at,s.payment_active,s.paid_through_at "
                 + "FROM optic_subscriptions s WHERE s.optic_id=?", optic);
         String mode = (String) status.get("billing_mode");
