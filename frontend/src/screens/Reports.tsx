@@ -1,4 +1,4 @@
-import { downloadReport, currency, api, date } from '../api';
+import { downloadReport, currency, api } from '../api';
 import { useEffect, useState } from 'react';
 import type { ScreenProps } from './common';
 import { perform, useRemote } from './common';
@@ -42,7 +42,6 @@ export function Reports({notify,isMaster}:ScreenProps&{isMaster:boolean}) {
   },[report.data?.summary.monthlyGoal,report.data?.summary.year,report.data?.summary.month]);
   function changePeriod(nextYear:number,nextMonth:number){
     setYear(nextYear);setMonth(nextMonth);
-    const first=new Date(nextYear,nextMonth-1,1);
     const end=new Date(nextYear,nextMonth,0);
     const cutoff=end>new Date()?new Date():end;
     setAsOf([cutoff.getFullYear(),String(cutoff.getMonth()+1).padStart(2,'0'),
