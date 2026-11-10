@@ -104,7 +104,16 @@ public class BusinessCalendarController {
         return buildMonth(optic,year,month);
     }
 
+    /** Permite fechamento do relatório na data selecionada sem usar o relógio atual. */
+    public MonthPlan forReporting(UUID optic,int year,int month,LocalDate cutoff) {
+        return buildMonth(optic,year,month,cutoff);
+    }
+
     private MonthPlan buildMonth(UUID optic,Integer yearParam,Integer monthParam) {
+        return buildMonth(optic,yearParam,monthParam,null);
+    }
+
+    private MonthPlan buildMonth(UUID optic,Integer yearParam,Integer monthParam,LocalDate cutoff) {
         Map<String,Object> setup=jdbc.queryForList(
              "SELECT state_uf,municipality_ibge,time_zone,open_weekdays "
                 +"FROM optic_business_calendar WHERE optic_id=?",optic)
@@ -112,7 +121,7 @@ public class BusinessCalendarController {
                                             "open_weekdays","1,2,3,4,5,6"));
         String tz=(String)setup.get("time_zone");
         ZoneId zone=ZoneId.of(tz);
-        LocalDate today=LocalDate.now(zone);
+        LocalDate today=cutoff==null?LocalDate.now(zone):cutoff;
         int year=yearParam==null?today.getYear():yearParam;
         int month=monthParam==null?today.getMonthValue():monthParam;
         if(year<2000||year>2199||month<1||month>12)
