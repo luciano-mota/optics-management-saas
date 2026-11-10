@@ -1,6 +1,7 @@
 package br.com.lcmtech.optics.sales;
 
 import br.com.lcmtech.optics.customers.CustomerController;
+import br.com.lcmtech.optics.finance.CardMachineController;
 import br.com.lcmtech.optics.finance.domain.CardFees;
 import br.com.lcmtech.optics.finance.domain.CardFees.Calculation;
 import br.com.lcmtech.optics.finance.domain.CardFees.Machine;
@@ -28,8 +29,11 @@ public class SalesController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
     private final CustomerController customers;
-    public SalesController(JdbcTemplate jdbc,OpticContext context,CustomerController customers) {
+    private final CardMachineController machineRegistry;
+    public SalesController(JdbcTemplate jdbc,OpticContext context,CustomerController customers,
+                           CardMachineController machineRegistry) {
         this.jdbc=jdbc;this.context=context;this.customers=customers;
+        this.machineRegistry=machineRegistry;
     }
 
     @GetMapping
@@ -239,23 +243,12 @@ public class SalesController {
     }
 
     private Machine loadMachine(UUID optic,CardFees.Method method,UUID machineId) {
-        if(method==CardFees.Method.DINHEIRO || method==CardFees.Method.PIX) {
+        if(method==CardFees.Method.DINHEIRO||method==CardFees.Method.PIX) {
             if(machineId!=null)throw new IllegalArgumentException("Não indique maquininha para Pix ou dinheiro.");
             return null;
         }
         if(machineId==null)throw new IllegalArgumentException("Escolha a maquininha.");
-        Map<String,Object> row=jdbc.queryForList("SELECT debit_fee,credit_fee,fixed_fee,"
-                +"debit_days,credit_days,anticipated FROM card_machines "
-                +"WHERE optic_id=? AND id=? AND active",optic,machineId).stream().findFirst()
-                .orElseThrow(()->new IllegalArgumentException("Maquininha não encontrada."));
-        Map<Integer,BigDecimal> rates=new HashMap<>();
-        jdbc.query("SELECT installments,fee FROM card_machine_rates WHERE optic_id=? AND machine_id=?",
-                rs->{rates.put(rs.getInt(1),rs.getBigDecimal(2));},optic,machineId);
-        int creditDays=((Number)row.get("credit_days")).intValue();
-        BigDecimal creditFee=(BigDecimal)row.get("credit_fee");
-        return new Machine((BigDecimal)row.get("debit_fee"),creditFee,rates,
-                (BigDecimal)row.get("fixed_fee"),((Number)row.get("debit_days")).intValue(),
-                creditDays,(Boolean)row.get("anticipated"),Map.of(creditDays,creditFee));
+        return machineRegistry.fees(optic,machineId);
     }
 
     private void requireRelated(UUID optic,String table,UUID id,String kind) {
