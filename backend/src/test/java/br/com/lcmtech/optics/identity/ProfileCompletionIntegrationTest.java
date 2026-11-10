@@ -62,4 +62,43 @@ class ProfileCompletionIntegrationTest {
         assertThat(after.path("account").path("birth_date").asText()).isEqualTo("1995-01-01");
         assertThat(after.path("account").path("cpf").asText()).isEqualTo("52998224725");
     }
+
+    @Test
+    void masterPrecisaDoCnpjDaOticaParaConcluirOPrimeiroAcesso() throws Exception {
+        String email=incompleteUser();
+        UUID account=jdbc.queryForObject("SELECT id FROM accounts WHERE email=?",UUID.class,email);
+        UUID optic=UUID.randomUUID();
+        jdbc.update("INSERT INTO optics(id,slug,trade_name,contact_email) VALUES(?,?,?,?)",
+                optic,optic.toString(),"Ótica Nova",email);
+        jdbc.update("INSERT INTO optic_memberships(optic_id,account_id,role) "
+                +"VALUES(?,?,'MASTER')",optic,account);
+        jdbc.update("INSERT INTO optic_subscriptions(optic_id) VALUES(?)",optic);
+        String initial=mvc.perform(get("/api/v1/auth/me").with(user(email)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(initial).path("opticRegistrationRequired").asBoolean()).isTrue();
+
+        String emptyCnpj="""
+             {"fullName":"Usuário Novo","cpf":"52998224725","phone":"98999991234",
+              "birthDate":"1995-01-01","address":null}
+             """;
+        mvc.perform(put("/api/v1/auth/profile").with(user(email)).with(csrf())
+            .contentType(MediaType.APPLICATION_JSON).content(emptyCnpj))
+            .andExpect(status().isBadRequest());
+
+        String validCnpj="""
+             {"fullName":"Usuário Novo","cpf":"52998224725","phone":"98999991234",
+              "birthDate":"1995-01-01","address":null,"opticCnpj":"11.222.333/0001-81"}
+             """;
+        mvc.perform(put("/api/v1/auth/profile").with(user(email)).with(csrf())
+            .contentType(MediaType.APPLICATION_JSON).content(validCnpj))
+            .andExpect(status().isOk());
+        String saved=jdbc.queryForObject("SELECT tax_document FROM optics WHERE id=?",
+                String.class,optic);
+        assertThat(saved).isEqualTo("11222333000181");
+        String after=mvc.perform(get("/api/v1/auth/me").with(user(email)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(after).path("opticRegistrationRequired").asBoolean()).isFalse();
+        assertThat(json.readTree(after).path("profileComplete").asBoolean()).isTrue();
+    }
+
 }
