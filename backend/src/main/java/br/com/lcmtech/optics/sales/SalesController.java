@@ -1,5 +1,6 @@
 package br.com.lcmtech.optics.sales;
 
+import br.com.lcmtech.optics.shop.OpticClock;
 import br.com.lcmtech.optics.customers.CustomerController;
 import br.com.lcmtech.optics.finance.CardMachineController;
 import br.com.lcmtech.optics.finance.domain.CardFees;
@@ -30,10 +31,11 @@ public class SalesController {
     private final OpticContext context;
     private final CustomerController customers;
     private final CardMachineController machineRegistry;
+    private final OpticClock clock;
     public SalesController(JdbcTemplate jdbc,OpticContext context,CustomerController customers,
-                           CardMachineController machineRegistry) {
+                           CardMachineController machineRegistry,OpticClock clock) {
         this.jdbc=jdbc;this.context=context;this.customers=customers;
-        this.machineRegistry=machineRegistry;
+        this.machineRegistry=machineRegistry;this.clock=clock;
     }
 
     @GetMapping
@@ -63,13 +65,15 @@ public class SalesController {
     public Map<String,Object> dashboard(Authentication auth,HttpSession session) {
         context.require(auth,session,"SALES_READ");
         UUID optic=context.optic(auth,session);
+        java.time.LocalDate today=clock.today(optic);
         Map<String,Object> counts=jdbc.queryForMap("SELECT "
-            +"count(*) FILTER (WHERE sold_on=current_date AND status<>'CANCELLED') AS today,"
-            +"count(*) FILTER (WHERE sold_on>=date_trunc('week',current_date)::date AND status<>'CANCELLED') AS week,"
-            +"count(*) FILTER (WHERE sold_on>=date_trunc('month',current_date)::date AND status<>'CANCELLED') AS month,"
+            +"count(*) FILTER (WHERE sold_on=?::date AND status<>'CANCELLED') AS today,"
+            +"count(*) FILTER (WHERE sold_on>=date_trunc('week',?::date)::date AND status<>'CANCELLED') AS week,"
+            +"count(*) FILTER (WHERE sold_on>=date_trunc('month',?::date)::date AND status<>'CANCELLED') AS month,"
             +"count(*) FILTER (WHERE status IN ('AWAITING_PRODUCTION','READY_FOR_DELIVERY')) AS pending_delivery,"
-            +"coalesce(sum(charged_amount) FILTER (WHERE sold_on>=date_trunc('month',current_date)::date "
-            +"AND status<>'CANCELLED'),0) AS month_gross FROM sales WHERE optic_id=?",optic);
+            +"coalesce(sum(charged_amount) FILTER (WHERE sold_on>=date_trunc('month',?::date)::date "
+            +"AND status<>'CANCELLED'),0) AS month_gross FROM sales WHERE optic_id=?",
+            today,today,today,today,optic);
         Integer pendingVisits=jdbc.queryForObject("SELECT count(*) FROM home_visits WHERE optic_id=? "
                 +"AND status IN ('REQUESTED','CLAIMED','CONFIRMED')",Integer.class,optic);
         Map<String,Object> answer=new HashMap<>(counts);
@@ -205,7 +209,7 @@ public class SalesController {
         try {method=CardFees.Method.valueOf(request.paymentMethod());}
         catch(Exception e) {throw new IllegalArgumentException("Escolha uma forma de pagamento.");}
         int installments=request.installments()==0?1:request.installments();
-        LocalDate soldOn=request.soldOn()==null?LocalDate.now():request.soldOn();
+        LocalDate soldOn=request.soldOn()==null?clock.today(optic):request.soldOn();
         Machine machine=loadMachine(optic,method,request.cardMachineId());
         Calculation total=CardFees.calculate(request.amount(),method,installments,machine,
                 request.passFee(),soldOn,request.settlementDays());

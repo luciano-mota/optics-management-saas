@@ -1,5 +1,6 @@
 package br.com.lcmtech.optics.finance;
 
+import br.com.lcmtech.optics.shop.OpticClock;
 import br.com.lcmtech.optics.finance.domain.FinancialAmount;
 import br.com.lcmtech.optics.security.OpticContext;
 import jakarta.servlet.http.HttpSession;
@@ -22,8 +23,9 @@ import org.springframework.web.bind.annotation.*;
 public class FinanceController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
-    public FinanceController(JdbcTemplate jdbc,OpticContext context) {
-        this.jdbc=jdbc; this.context=context;
+    private final OpticClock clock;
+    public FinanceController(JdbcTemplate jdbc,OpticContext context,OpticClock clock) {
+        this.jdbc=jdbc; this.context=context; this.clock=clock;
     }
 
     @GetMapping
@@ -46,16 +48,18 @@ public class FinanceController {
     @GetMapping("/summary")
     public Map<String,Object> summary(Authentication auth,HttpSession session) {
         context.require(auth,session,"FINANCE_READ");
+        UUID optic=context.optic(auth,session);
+        LocalDate today=clock.today(optic);
         return jdbc.queryForMap("SELECT "
             +"coalesce(sum(net_amount) FILTER (WHERE direction='INCOME' AND settled_on IS NOT NULL AND "
-            +"reversed_at IS NULL AND settled_on>=date_trunc('month',current_date)::date),0) AS received_month,"
+            +"reversed_at IS NULL AND settled_on>=date_trunc('month',?::date)::date),0) AS received_month,"
             +"coalesce(sum(net_amount) FILTER (WHERE direction='EXPENSE' AND settled_on IS NOT NULL AND "
-            +"reversed_at IS NULL AND settled_on>=date_trunc('month',current_date)::date),0) AS spent_month,"
+            +"reversed_at IS NULL AND settled_on>=date_trunc('month',?::date)::date),0) AS spent_month,"
             +"coalesce(sum(net_amount) FILTER (WHERE direction='INCOME' AND settled_on IS NULL "
             +"AND reversed_at IS NULL),0) AS receivable,"
             +"coalesce(sum(fee_amount) FILTER (WHERE direction='INCOME' AND reversed_at IS NULL "
-            +"AND occurred_on>=date_trunc('month',current_date)::date),0) AS card_fees_month "
-            +"FROM finance_entries WHERE optic_id=?",context.optic(auth,session));
+            +"AND occurred_on>=date_trunc('month',?::date)::date),0) AS card_fees_month "
+            +"FROM finance_entries WHERE optic_id=?",today,today,today,optic);
     }
 
     public record ManualEntry(String direction,String category,String description,
@@ -69,7 +73,7 @@ public class FinanceController {
             throw new IllegalArgumentException("Informe tipo, categoria e descrição.");
         BigDecimal amount=new FinancialAmount(req.amount()).value();
         UUID id=UUID.randomUUID();
-        LocalDate day=req.occurredOn()==null?LocalDate.now():req.occurredOn();
+        LocalDate day=req.occurredOn()==null?clock.today(context.optic(auth,session)):req.occurredOn();
         jdbc.update("INSERT INTO finance_entries(optic_id,id,direction,category,description,"
                 +"gross_amount,net_amount,occurred_on,due_on,settled_on,created_by) "
                 +"VALUES(?,?,?,?,?,?,?,?,?,?,?)",

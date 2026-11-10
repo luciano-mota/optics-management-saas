@@ -1,6 +1,8 @@
 package br.com.lcmtech.optics.calendar;
 
 import br.com.lcmtech.optics.security.OpticContext;
+import br.com.lcmtech.optics.shop.OpticLocationService;
+import br.com.lcmtech.optics.shop.domain.BrazilianState;
 import jakarta.servlet.http.HttpSession;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -28,12 +30,14 @@ import org.springframework.web.bind.annotation.*;
 public class BusinessCalendarController {
     private final JdbcTemplate jdbc;
     private final OpticContext access;
+    private final OpticLocationService locations;
 
     private static final String FEDERAL_SOURCE =
         "https://www.planalto.gov.br/ccivil_03/leis/l9093.htm";
 
-    public BusinessCalendarController(JdbcTemplate jdbc, OpticContext access) {
-        this.jdbc = jdbc; this.access = access;
+    public BusinessCalendarController(JdbcTemplate jdbc, OpticContext access,
+                                      OpticLocationService locations) {
+        this.jdbc = jdbc; this.access = access; this.locations = locations;
     }
 
     public record Holiday(String name, String scope, String source, String sourceUrl, boolean verified) {}
@@ -44,19 +48,22 @@ public class BusinessCalendarController {
             List<String> warnings, int totalOpenDays, int openDaysThroughToday,
             int remainingOpenDays, List<CalendarDay> days) {}
 
-    public record Settings(String stateUf, String municipalityIbge,
-            String municipalityName, String timeZone, List<Integer> openWeekdays) {}
+    /**
+     * Apenas os dias em que a loja abre. Cidade, UF, código IBGE e fuso vêm do
+     * endereço da ótica (OpticLocationService); campos antigos enviados são ignorados.
+     */
+    public record Settings(List<Integer> openWeekdays) {}
 
     @GetMapping("/settings")
     public Map<String,Object> settings(Authentication auth,HttpSession session) {
         access.require(auth,session,"REPORTS_READ");
         UUID optic=access.optic(auth,session);
-        List<Map<String,Object>> items=jdbc.queryForList("SELECT state_uf,municipality_ibge,"
-                +"municipality_name,time_zone,open_weekdays FROM optic_business_calendar WHERE optic_id=?",optic);
-        if(items.isEmpty()) return Map.of("timeZone","America/Fortaleza",
-                "openWeekdays",List.of(1,2,3,4,5,6),"configured",false);
-        Map<String,Object> result=new HashMap<>(items.get(0));
-        result.put("configured",result.get("state_uf")!=null && result.get("municipality_ibge")!=null);
+        Map<String,Object> result=new HashMap<>(locations.describe(optic));
+        String weekdays=jdbc.query("SELECT open_weekdays FROM optic_business_calendar WHERE optic_id=?",
+                (rs,n)->rs.getString(1),optic).stream().findFirst().orElse("1,2,3,4,5,6");
+        result.put("openWeekdays",java.util.Arrays.stream(weekdays.split(","))
+                .map(Integer::valueOf).toList());
+        result.put("configured",result.get("state_uf")!=null);
         return result;
     }
 
@@ -64,14 +71,8 @@ public class BusinessCalendarController {
     @Transactional
     public Map<String,Boolean> updateSettings(@RequestBody Settings req, Authentication auth,HttpSession session) {
         access.requireMaster(auth,session);
-        if(req==null||req.stateUf()==null||!req.stateUf().matches("[A-Z]{2}")||
-                req.municipalityIbge()==null||!req.municipalityIbge().matches("[0-9]{7}")||
-                req.municipalityName()==null||req.municipalityName().isBlank()||
-                req.timeZone()==null||req.openWeekdays()==null||req.openWeekdays().isEmpty())
-            throw new IllegalArgumentException("Informe UF, cidade, código IBGE, fuso e dias de atendimento.");
-        try { ZoneId.of(req.timeZone()); } catch(Exception e) {
-            throw new IllegalArgumentException("Fuso horário inválido.");
-        }
+        if(req==null||req.openWeekdays()==null||req.openWeekdays().isEmpty())
+            throw new IllegalArgumentException("Marque pelo menos um dia em que a loja abre.");
         Set<Integer> weekdays=new HashSet<>(req.openWeekdays());
         if(weekdays.size()!=req.openWeekdays().size()||
                 weekdays.stream().anyMatch(day->day<1||day>7))
@@ -80,17 +81,11 @@ public class BusinessCalendarController {
                 .collect(java.util.stream.Collectors.joining(","));
         UUID optic=access.optic(auth,session),actor=access.accountId(auth);
         jdbc.update("""
-            INSERT INTO optic_business_calendar
-                (optic_id,state_uf,municipality_ibge,municipality_name,time_zone,
-                 open_weekdays,updated_by)
-            VALUES(?,?,?,?,?,?,?)
+            INSERT INTO optic_business_calendar(optic_id,time_zone,open_weekdays,updated_by)
+            VALUES(?,?,?,?)
             ON CONFLICT(optic_id) DO UPDATE SET
-                state_uf=excluded.state_uf,municipality_ibge=excluded.municipality_ibge,
-                municipality_name=excluded.municipality_name,time_zone=excluded.time_zone,
-                open_weekdays=excluded.open_weekdays,updated_by=excluded.updated_by,
-                updated_at=now()
-            """,optic,req.stateUf(),req.municipalityIbge(),req.municipalityName(),
-                req.timeZone(),serialized,actor);
+                open_weekdays=excluded.open_weekdays,updated_by=excluded.updated_by,updated_at=now()
+            """,optic,BrazilianState.DEFAULT_ZONE.getId(),serialized,actor);
         audit(optic,actor,"CALENDAR_SETTINGS_UPDATED");
         return Map.of("saved",true);
     }
@@ -117,7 +112,7 @@ public class BusinessCalendarController {
         Map<String,Object> setup=jdbc.queryForList(
              "SELECT state_uf,municipality_ibge,time_zone,open_weekdays "
                 +"FROM optic_business_calendar WHERE optic_id=?",optic)
-            .stream().findFirst().orElse(Map.of("time_zone","America/Fortaleza",
+            .stream().findFirst().orElse(Map.of("time_zone",BrazilianState.DEFAULT_ZONE.getId(),
                                             "open_weekdays","1,2,3,4,5,6"));
         String tz=(String)setup.get("time_zone");
         ZoneId zone=ZoneId.of(tz);
@@ -171,15 +166,15 @@ public class BusinessCalendarController {
                 "SELECT count(*) FROM optic_month_reviews WHERE optic_id=? AND calendar_year=? AND calendar_month=?",
                 Integer.class,optic,year,month);
         List<String> warnings=new ArrayList<>();
-        if(uf==null||city==null) warnings.add("Configure UF e município IBGE para verificar feriados locais.");
+        if(uf==null) warnings.add("Cadastre o endereço da ótica para identificarmos os feriados da sua cidade.");
         int syncCount=0;
-        if(uf!=null&&city!=null) {
+        if(uf!=null) {
             Integer count=jdbc.queryForObject("""
                 SELECT count(*) FROM regional_holiday_sync
                 WHERE calendar_year=? AND success=true AND region_key IN (?,?)
-                """,Integer.class,year,"UF:"+uf,"MUN:"+city);
+                """,Integer.class,year,"UF:"+uf,"MUN:"+(city==null?"":city));
             syncCount=count==null?0:count;
-            if(syncCount<2) warnings.add("Feriados estaduais ou municipais não foram totalmente verificados. Confira manualmente.");
+            if(syncCount<2) warnings.add("Confira os feriados do seu estado e da sua cidade e marque os dias em que a loja não abre.");
         }
         boolean localVerified=uf!=null&&city!=null&&syncCount==2;
         List<CalendarDay> days=new ArrayList<>();

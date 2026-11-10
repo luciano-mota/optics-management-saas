@@ -9,7 +9,8 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
-    autoDeployTrigger: commit
+    # Publica somente depois que o GitHub Actions (backend, frontend e Docker) passar.
+    autoDeployTrigger: checksPass
     envVars:
       - key: DB_HOST
         fromDatabase:

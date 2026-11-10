@@ -1,5 +1,6 @@
 package br.com.lcmtech.optics.customers;
 
+import br.com.lcmtech.optics.shop.OpticClock;
 import br.com.lcmtech.optics.security.OpticContext;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDate;
@@ -16,8 +17,9 @@ import org.springframework.web.bind.annotation.*;
 public class CustomerController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
-    public CustomerController(JdbcTemplate jdbc,OpticContext context) {
-        this.jdbc=jdbc;this.context=context;
+    private final OpticClock clock;
+    public CustomerController(JdbcTemplate jdbc,OpticContext context,OpticClock clock) {
+        this.jdbc=jdbc;this.context=context;this.clock=clock;
     }
 
     @GetMapping
@@ -30,19 +32,20 @@ public class CustomerController {
         UUID optic=context.optic(auth,session);
         String sql="SELECT c.id,c.full_name,c.cpf,c.birth_date,c.phone,c.address,c.created_at,"
             +"last_sale.sold_on AS last_sale_on,last_sale.replacement_months,"
-            +"(extract(year from age(current_date,last_sale.sold_on))*12"
-            +" +extract(month from age(current_date,last_sale.sold_on)))::int AS months_since_sale "
+            +"(extract(year from age(?::date,last_sale.sold_on))*12"
+            +" +extract(month from age(?::date,last_sale.sold_on)))::int AS months_since_sale "
             +"FROM customers c LEFT JOIN LATERAL (SELECT sold_on,replacement_months FROM sales s "
             +"WHERE s.optic_id=c.optic_id AND s.customer_id=c.id AND s.status<>'CANCELLED' "
             +"ORDER BY sold_on DESC,s.created_at DESC LIMIT 1) last_sale ON true "
             +"WHERE c.optic_id=? AND (lower(c.full_name) LIKE lower(?) OR c.cpf LIKE ? OR c.phone LIKE ?)"
             +(months==null?"":" AND last_sale.sold_on IS NOT NULL AND "
-                +"(extract(year from age(current_date,last_sale.sold_on))*12"
-                +" +extract(month from age(current_date,last_sale.sold_on)))::int=?")
+                +"(extract(year from age(?::date,last_sale.sold_on))*12"
+                +" +extract(month from age(?::date,last_sale.sold_on)))::int=?")
             +" ORDER BY c.full_name LIMIT 300";
         String filter="%"+(q==null?"":q.trim())+"%";
-        return months==null?jdbc.queryForList(sql,optic,filter,filter,filter)
-                :jdbc.queryForList(sql,optic,filter,filter,filter,months);
+        java.time.LocalDate today=clock.today(optic);
+        return months==null?jdbc.queryForList(sql,today,today,optic,filter,filter,filter)
+                :jdbc.queryForList(sql,today,today,optic,filter,filter,filter,today,today,months);
     }
 
     public record Customer(String fullName,String cpf,LocalDate birthDate,String phone,String address){}

@@ -2,6 +2,7 @@ package br.com.lcmtech.optics.identity;
 
 import br.com.lcmtech.optics.security.OpticContext;
 import br.com.lcmtech.optics.customers.RetentionController;
+import br.com.lcmtech.optics.shop.OpticLocationService;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +19,10 @@ public class AuthController {
     private final OpticContext context;
     private final JdbcTemplate jdbc;
     private final RetentionController retention;
-    public AuthController(OpticContext context, JdbcTemplate jdbc,RetentionController retention) {
-        this.context = context; this.jdbc = jdbc; this.retention = retention;
+    private final OpticLocationService locations;
+    public AuthController(OpticContext context, JdbcTemplate jdbc,RetentionController retention,
+                          OpticLocationService locations) {
+        this.context = context; this.jdbc = jdbc; this.retention = retention; this.locations = locations;
     }
     @GetMapping("/csrf")
     public Map<String,String> csrf(CsrfToken token) { return Map.of("token",token.getToken()); }
@@ -50,14 +53,16 @@ public class AuthController {
             String saved=jdbc.queryForObject("SELECT tax_document FROM optics WHERE id=?",
                     String.class,activeOptic);
             cnpj=saved==null?"":saved;
-            opticRegistrationRequired=!BrazilianTaxId.validCnpj(cnpj);
+            opticRegistrationRequired=!BrazilianTaxId.validCnpj(cnpj)||!locations.hasAddress(activeOptic);
         }
+        Map<String,Object> opticAddress=activeOptic==null?Map.of():locations.describe(activeOptic);
         return Map.of("account",person,"shops",shops,
                 "activeOpticId",activeOptic==null?"":activeOptic.toString(),
                 "permissions",rights,"platformOperator",op!=null&&op>0,
                 "profileComplete",Boolean.TRUE.equals(profileComplete),
                 "opticRegistrationRequired",opticRegistrationRequired,
-                "opticCnpj",cnpj);
+                "opticCnpj",cnpj,
+                "opticAddress",opticAddress);
     }
 
     public record SelectOptic(UUID opticId) {}
