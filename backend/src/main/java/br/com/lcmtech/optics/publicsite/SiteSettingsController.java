@@ -1,6 +1,8 @@
 package br.com.lcmtech.optics.publicsite;
 
+import br.com.lcmtech.optics.publicsite.domain.SiteContent;
 import br.com.lcmtech.optics.security.OpticContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +16,9 @@ import org.springframework.web.bind.annotation.*;
 public class SiteSettingsController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
-    public SiteSettingsController(JdbcTemplate jdbc,OpticContext context){
-        this.jdbc=jdbc;this.context=context;
+    private final ObjectMapper json;
+    public SiteSettingsController(JdbcTemplate jdbc,OpticContext context,ObjectMapper json){
+        this.jdbc=jdbc;this.context=context;this.json=json;
     }
 
     private UUID activeSite(Authentication auth,HttpSession session){
@@ -26,46 +29,56 @@ public class SiteSettingsController {
         return optic;
     }
 
+    private static final String COLUMNS="o.slug,o.site_enabled,o.home_visits_enabled,coalesce(o.address,'') AS address,"
+            +"o.whatsapp,o.contact_phone,o.contact_email,s.primary_color,s.secondary_color,s.template,s.mood,s.fonts,"
+            +"s.campaign_title AS headline,s.campaign_description AS subtitle,s.about,s.hours,s.instagram,s.show_map,"
+            +"s.services::text AS services,s.testimonials::text AS testimonials,s.faqs::text AS faqs,"
+            +"s.home_visit_title,s.home_visit_description,(s.logo IS NOT NULL) AS has_logo";
+
+    /** Lê o site com as listas já convertidas de JSON (usado também pelo site público). */
+    static Map<String,Object> read(JdbcTemplate jdbc,ObjectMapper json,String where,Object key) {
+        Map<String,Object> row=jdbc.queryForList("SELECT o.id,o.trade_name,"+COLUMNS
+                +" FROM site_settings s JOIN optics o ON o.id=s.optic_id WHERE "+where,key)
+                .stream().findFirst().orElse(null);
+        if(row==null)return null;
+        Map<String,Object> result=new java.util.HashMap<>(row);
+        for(String list:List.of("services","testimonials","faqs")) {
+            try { result.put(list,json.readValue((String)row.get(list),List.class)); }
+            catch(Exception invalid) { result.put(list,List.of()); }
+        }
+        return result;
+    }
+
     @GetMapping
     public Map<String,Object> get(Authentication auth,HttpSession session) {
         context.require(auth,session,"SITE_MANAGE");
         UUID optic=activeSite(auth,session);
-        return jdbc.queryForMap("SELECT o.slug,o.site_enabled,o.home_visits_enabled,s.primary_color,s.secondary_color,s.font,"
-                +"s.template,s.campaign_title,s.campaign_description,s.home_visit_title,s.home_visit_description,"
-                +"(s.logo IS NOT NULL) AS has_logo "
-                +"FROM site_settings s JOIN optics o ON o.id=s.optic_id WHERE s.optic_id=?",optic);
+        Map<String,Object> site=read(jdbc,json,"s.optic_id=?",optic);
+        site.remove("id");
+        return site;
     }
-    public record Settings(String primaryColor,String secondaryColor,String font,String template,
-                          String campaignTitle,String campaignDescription,
-                          Boolean homeVisitsEnabled,String homeVisitTitle,String homeVisitDescription){}
+
     @PutMapping
-    public Map<String,Boolean> put(@RequestBody Settings request,Authentication auth,HttpSession session){
+    public Map<String,Boolean> put(@RequestBody SiteContent content,Authentication auth,HttpSession session){
         context.require(auth,session,"SITE_MANAGE");
         UUID optic=activeSite(auth,session);
-        if(request.primaryColor()==null||!request.primaryColor().matches("#[A-Fa-f0-9]{6}")||
-                request.secondaryColor()==null||!request.secondaryColor().matches("#[A-Fa-f0-9]{6}"))
-            throw new IllegalArgumentException("Informe cores válidas (#RRGGBB).");
-        if(!List.of("Manrope","DM Sans","Arial","Georgia").contains(request.font()) ||
-                !List.of("classic","modern","compact").contains(request.template()))
-            throw new IllegalArgumentException("Escolha uma fonte e um modelo disponíveis.");
-        if(request.campaignTitle()==null||request.campaignTitle().isBlank())
-            throw new IllegalArgumentException("Informe o título da campanha.");
+        try {
+            jdbc.update("""
+                UPDATE site_settings SET primary_color=?,secondary_color=?,template=?,mood=?,fonts=?,
+                    campaign_title=?,campaign_description=?,about=?,hours=?,instagram=?,show_map=?,
+                    services=?::jsonb,testimonials=?::jsonb,faqs=?::jsonb,
+                    home_visit_title=COALESCE(?,home_visit_title),home_visit_description=COALESCE(?,home_visit_description),
+                    updated_at=now() WHERE optic_id=?
+                """,content.primaryColor(),content.secondaryColor(),content.template(),content.mood(),content.fonts(),
+                    content.headline(),content.subtitle()==null?"":content.subtitle(),content.about(),content.hours(),
+                    content.instagram(),content.showMap(),json.writeValueAsString(content.services()),
+                    json.writeValueAsString(content.testimonials()),json.writeValueAsString(content.faqs()),
+                    content.homeVisitTitle(),content.homeVisitDescription(),optic);
+        } catch(com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalArgumentException("Conteúdo do site inválido.");
+        }
         // Atendimento em domicílio é uma campanha que a própria ótica decide oferecer no site.
-        boolean homeVisits=Boolean.TRUE.equals(request.homeVisitsEnabled());
-        String visitTitle=request.homeVisitTitle()==null?"":request.homeVisitTitle().trim();
-        String visitText=request.homeVisitDescription()==null?"":request.homeVisitDescription().trim();
-        if(homeVisits&&visitTitle.isBlank())
-            throw new IllegalArgumentException("Informe o título da campanha de atendimento em domicílio.");
-        if(visitTitle.length()>140||visitText.length()>600)
-            throw new IllegalArgumentException("Título até 140 e descrição até 600 caracteres.");
-        jdbc.update("UPDATE optics SET home_visits_enabled=?,updated_at=now() WHERE id=?",homeVisits,optic);
-        if(!visitTitle.isBlank())
-            jdbc.update("UPDATE site_settings SET home_visit_title=?,home_visit_description=? WHERE optic_id=?",
-                    visitTitle,visitText,optic);
-        jdbc.update("UPDATE site_settings SET primary_color=?,secondary_color=?,font=?,template=?,"
-                +"campaign_title=?,campaign_description=?,updated_at=now() WHERE optic_id=?",
-                request.primaryColor(),request.secondaryColor(),request.font(),request.template(),
-                request.campaignTitle(),request.campaignDescription(),optic);
+        jdbc.update("UPDATE optics SET home_visits_enabled=?,updated_at=now() WHERE id=?",content.homeVisitsEnabled(),optic);
         return Map.of("updated",true);
     }
 }

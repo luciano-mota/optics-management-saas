@@ -16,18 +16,22 @@ import org.springframework.web.bind.annotation.*;
 public class PublicSiteController {
     private final JdbcTemplate jdbc;
     private final br.com.lcmtech.optics.visits.VisitNotifier notifier;
-    public PublicSiteController(JdbcTemplate jdbc,br.com.lcmtech.optics.visits.VisitNotifier notifier) {
-        this.jdbc=jdbc;this.notifier=notifier;
+    private final ObjectMapper json;
+    public PublicSiteController(JdbcTemplate jdbc,br.com.lcmtech.optics.visits.VisitNotifier notifier,ObjectMapper json) {
+        this.jdbc=jdbc;this.notifier=notifier;this.json=json;
     }
 
     @GetMapping("/{slug}")
     public Map<String,Object> site(@PathVariable String slug) {
-        return jdbc.queryForList("SELECT o.id,o.trade_name,o.whatsapp,o.contact_phone,"
-            +"o.contact_email,o.home_visits_enabled,s.primary_color,s.secondary_color,s.font,s.template,"
-            +"s.campaign_title,s.campaign_description,s.home_visit_title,s.home_visit_description,"
-            +"(s.logo IS NOT NULL) AS has_logo FROM optics o JOIN site_settings s "
-            +"ON s.optic_id=o.id WHERE o.slug=? AND o.active AND o.site_enabled",slug)
-            .stream().findFirst().orElseThrow(()->new IllegalArgumentException("Esta página não está disponível."));
+        Map<String,Object> site=load(slug);
+        site.remove("id"); // o identificador interno da ótica não sai na página pública
+        return site;
+    }
+
+    private Map<String,Object> load(String slug) {
+        Map<String,Object> site=SiteSettingsController.read(jdbc,json,"o.slug=? AND o.active AND o.site_enabled",slug);
+        if(site==null)throw new IllegalArgumentException("Esta página não está disponível.");
+        return site;
     }
 
     public record RequestVisit(String name,String phone,String email,String address,
@@ -37,7 +41,7 @@ public class PublicSiteController {
     @PostMapping("/{slug}/visits")
     @Transactional
     public Map<String,Object> visit(@PathVariable String slug,@RequestBody RequestVisit request) {
-        Map<String,Object> shop=site(slug);
+        Map<String,Object> shop=load(slug);
         if(!Boolean.TRUE.equals(shop.get("home_visits_enabled")))
             throw new org.springframework.web.server.ResponseStatusException(
                 org.springframework.http.HttpStatus.NOT_FOUND,"Campanha não disponibilizada.");
