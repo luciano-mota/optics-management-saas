@@ -66,7 +66,7 @@ public class CardMachineController {
 
     @GetMapping
     public List<MachineView> list(Authentication auth,HttpSession session) {
-        context.require(auth,session,"FINANCE_READ");
+        requireVisibleToSales(auth,session);
         UUID optic=context.optic(auth,session);
         return jdbc.query("SELECT id FROM card_machines WHERE optic_id=? ORDER BY active DESC,name",
                 (rs,n)->(UUID)rs.getObject(1),optic)
@@ -238,7 +238,7 @@ public class CardMachineController {
     @PostMapping("/preview")
     public CardFees.Calculation preview(@RequestBody Preview req,
             Authentication auth,HttpSession session) {
-        context.require(auth,session,"FINANCE_READ");
+        requireVisibleToSales(auth,session);
         if(req==null||req.amount()==null||req.amount().signum()<=0)
             throw new IllegalArgumentException("Informe um valor positivo para a simulação.");
         CardFees.Method method;
@@ -253,6 +253,13 @@ public class CardMachineController {
         }
         return CardFees.calculate(req.amount(),method,req.installments()==0?1:req.installments(),
                 machine,req.passFee(),LocalDate.now(),req.settlementDays());
+    }
+
+    /** Vendedores precisam escolher uma maquininha e simular taxas sem acessar o caixa inteiro. */
+    private void requireVisibleToSales(Authentication auth,HttpSession session) {
+        UUID account=context.accountId(auth),optic=context.optic(auth,session);
+        if(context.can(account,optic,"FINANCE_READ"))context.require(auth,session,"FINANCE_READ");
+        else context.require(auth,session,"SALES_CREATE");
     }
 
     private static void validateRate(BigDecimal rate,String name) {
