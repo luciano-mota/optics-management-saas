@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api, date, fileAsBase64 } from '../api';
 import type { ScreenProps } from './common';
-import { FormField, getField, perform, useRemote } from './common';
+import { FormField, getField, perform, useRemote, PhoneField } from './common';
 import { AddressFields } from './AddressFields';
 
 export function Customers({ notify }: ScreenProps) {
@@ -45,7 +45,7 @@ export function Customers({ notify }: ScreenProps) {
         <FormField name="fullName" title="Nome completo" required />
         <FormField name="cpf" title="CPF" required />
         <FormField name="birthDate" title="Data de nascimento" type="date" required />
-        <FormField name="phone" title="WhatsApp ou telefone" type="tel" />
+        <PhoneField name="phone" title="WhatsApp ou telefone" />
         <AddressFields required />
         <button className="primary-action form-action" type="submit">Salvar cliente</button>
       </form>

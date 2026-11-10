@@ -1,6 +1,6 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import { api, currency, date, fileAsBase64 } from '../api';
-import { getField, perform, useRemote } from './common';
+import { getField, perform, useRemote, PhoneField } from './common';
 import { AddressFields } from './AddressFields';
 import type { ScreenProps } from './common';
 
@@ -143,13 +143,13 @@ export function Receipts({notify,isMaster}:ScreenProps&{isMaster:boolean}) {
         {[
           ['legalName','Razão social',config.data?.legal_name||''],
           ['taxDocument','CNPJ',config.data?.tax_document||''],
-          ['contactPhone','Telefone da ótica',config.data?.contact_phone||''],
           ['signerName','Nome do responsável pela assinatura',config.data?.signer_name||''],
           ['signerRole','Cargo do responsável',config.data?.signer_role||''],
         ].map(([name,title,value])=><label className="field" key={name}>{title}
           <input name={name} defaultValue={value}
-            required={['legalName','taxDocument','contactPhone'].includes(name)}/>
+            required={['legalName','taxDocument'].includes(name)}/>
         </label>)}
+        <PhoneField name="contactPhone" title="Telefone da ótica" required defaultValue={config.data?.contact_phone||''}/>
         <AddressFields legend="Endereço que aparece no recibo" required defaultValue={config.data?.address||''}/>
         <button className="primary-action form-action">Salvar identificação</button>
       </form>

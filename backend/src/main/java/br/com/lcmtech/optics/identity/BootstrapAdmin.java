@@ -86,7 +86,7 @@ public class BootstrapAdmin implements CommandLineRunner {
             account=UUID.randomUUID();
             jdbc.update("""
                 INSERT INTO accounts(id,email,password_hash,full_name,email_verified_at)
-                VALUES(?,?,?,'Administrador LCM Dev Tech',now())
+                VALUES(?,?,?,'Administrador LCM DEV TECH',now())
                 """,account,email,passwords.encode(bootstrapPassword));
         }
         jdbc.update("INSERT INTO platform_operators(account_id) VALUES(?) "

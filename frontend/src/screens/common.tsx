@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { phoneMask } from '../phone';
 
 export type Notify = (message: string, error?: boolean) => void;
 export type ScreenProps = { notify: Notify; can?: (permission: string) => boolean };
@@ -30,6 +31,17 @@ export function FormField({ name, title, type = 'text', required = false, defaul
   return <label className="field">{title}
     <input name={name} type={type} required={required} step={type === "number" ? "any" : undefined}
       defaultValue={defaultValue} placeholder={placeholder || title} />
+  </label>;
+}
+/** Telefone/WhatsApp com DDD e máscara; aceita colar com +55. Envia o texto formatado no formulário. */
+export function PhoneField({ name, title, required = false, defaultValue = '' }: {
+  name: string; title: string; required?: boolean; defaultValue?: string | null;
+}) {
+  const [value, setValue] = useState(phoneMask(defaultValue || ''));
+  return <label className="field">{title}
+    <input name={name} type="tel" inputMode="tel" autoComplete="tel" required={required}
+      placeholder="(00) 00000-0000" value={value} onChange={event => setValue(phoneMask(event.target.value))}
+      pattern="\(\d{2}\) \d{4,5}-\d{4}" title="Informe o telefone com DDD" />
   </label>;
 }
 export function getField(form: HTMLFormElement, key: string): string {
