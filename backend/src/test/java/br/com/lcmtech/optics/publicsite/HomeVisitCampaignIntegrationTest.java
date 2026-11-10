@@ -33,8 +33,11 @@ class HomeVisitCampaignIntegrationTest {
 
     private String settings(boolean homeVisits) {
         return """
-            {"primaryColor":"#5b4cf0","secondaryColor":"#f6f6fa","font":"Manrope","template":"modern",
-             "campaignTitle":"Bem-vindo","campaignDescription":"Texto",
+            {"primaryColor":"#5b4cf0","secondaryColor":"#1e1b4b","template":"imersivo","mood":"suave",
+             "fonts":"moderna","headline":"Bem-vindo","subtitle":"Texto","showMap":true,
+             "services":[{"name":"Óculos de grau","description":"Com receita"}],
+             "testimonials":[{"author":"Ana","text":"Ótimo atendimento"}],
+             "faqs":[{"question":"Aceita cartão?","answer":"Sim."}],
              "homeVisitsEnabled":%s,"homeVisitTitle":"Vamos até você","homeVisitDescription":"Envie a receita"}
             """.formatted(homeVisits);
     }
@@ -71,6 +74,11 @@ class HomeVisitCampaignIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
         assertThat(site.path("home_visits_enabled").asBoolean()).isTrue();
         assertThat(site.path("home_visit_title").asText()).isEqualTo("Vamos até você");
+        // Conteúdo no modelo do PhysioEvo chega pronto ao site público, sem o id interno da ótica.
+        assertThat(site.path("template").asText()).isEqualTo("imersivo");
+        assertThat(site.path("services").get(0).path("name").asText()).isEqualTo("Óculos de grau");
+        assertThat(site.path("faqs").get(0).path("answer").asText()).isEqualTo("Sim.");
+        assertThat(site.has("id")).isFalse();
 
         mvc.perform(post("/api/v1/public/site/" + slug + "/visits").with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isOk());

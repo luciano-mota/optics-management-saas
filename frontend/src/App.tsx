@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft, Bell, BellRing, Cake, CalendarDays, ChartColumnIncreasing,
   CircleUserRound, CreditCard, Eye, Glasses, Globe, LogOut, MapPinned,
@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { BrandLogo, BrandMark } from './brand';
 import { AddressFields } from './screens/AddressFields';
-import { api, csrf, date, fileAsBase64, currency } from './api';
+import { PublicSitePage } from './site/PublicSite';
+import { api, csrf, date, currency } from './api';
 import { Catalog } from './screens/Catalog';
 import { Customers } from './screens/Customers';
 import { Retention } from './screens/Retention';
@@ -97,7 +98,7 @@ export function App(){
     const timer=window.setInterval(()=>void check(),60000);
     return ()=>{mounted=false;window.clearInterval(timer);};
   },[me?.activeOpticId]);
-  if(site)return <PublicSite slug={site} notify={notify} toast={toast}/>;
+  if(site)return <PublicSitePage slug={site} notify={notify} toast={toast}/>;
   if(invite)return <InviteAccept token={invite} notify={notify} toast={toast}/>;
   if(reset)return <AccountLinkAction kind="reset" token={reset} notify={notify} toast={toast}/>;
   if(verify)return <AccountLinkAction kind="verify" token={verify} notify={notify} toast={toast}/>;
@@ -372,99 +373,6 @@ function InviteAccept({token,notify,toast}:{
     <aside className="auth-aside"><BrandMark size={56}/>
       <h2>Que bom ter você na equipe.</h2>
       <p>Depois de concluir, é só entrar com seu e-mail e a senha que você criou.</p></aside></div>;
-}
-
-function PublicSite({slug,notify,toast}:{
-  slug:string;notify:(msg:string,error?:boolean)=>void;toast:Toast;
-}){
-  const {data,loading}=useRemote<any>('/public/site/'+encodeURIComponent(slug));
-  const [submitted,setSubmitted]=useState(false);
-  useEffect(()=>{
-    if(!data)return;
-    const previousTitle=document.title;
-    const favicon=document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-    const previousIcon=favicon?.getAttribute('href');
-    document.title=data.trade_name;
-    if(favicon)favicon.href=data.has_logo?
-      '/api/v1/public/site/'+encodeURIComponent(slug)+'/logo':'/icon.svg';
-    return ()=>{
-      document.title=previousTitle;
-      if(favicon)favicon.href=previousIcon||'/icon.svg';
-    };
-  },[data?.trade_name,data?.has_logo,slug]);
-  if(loading)return <div className="center-message">Abrindo página da ótica...</div>;
-  if(!data)return <div className="center-message"><h1>Página indisponível</h1>
-    <a href="/">Voltar ao Optics Management</a></div>;
-  const primary=data.primary_color||'#5b4cf0';
-  const safeFont=['Manrope','DM Sans','Arial','Georgia'].includes(data.font)?data.font:'Manrope';
-  return <div className="public-shell" style={{'--site-primary':primary,fontFamily:"'"+safeFont+"', 'Plus Jakarta Sans', system-ui, sans-serif"} as CSSProperties}>
-    <header className="public-header"><div className="public-container">
-      <span className="site-logo">
-        {data.has_logo?<img src={'/api/v1/public/site/'+encodeURIComponent(slug)+'/logo'}
-          alt="Logo da ótica" style={{maxWidth:120,maxHeight:50,objectFit:'contain'}}/>:
-          <Glasses size={27}/>}
-        {data.trade_name}
-      </span>
-      <span>Atendimento personalizado</span></div></header>
-    <main className="public-container public-main">
-      <section className="public-hero"><span className="eyebrow">Cuidar do seu olhar é nossa prioridade</span>
-        <h1>{data.campaign_title}</h1><p>{data.campaign_description}</p>
-        <div className="welcome-pills">
-          <span><Glasses size={15}/> Cuidado com seu olhar</span>
-          <span><ShieldCheck size={15}/> Atendimento personalizado</span>
-        </div></section>
-      {data.home_visits_enabled?<section className="public-form-card">
-        <span className="eyebrow site-eyebrow">Atendimento em domicílio</span>
-        <h2>{data.home_visit_title||'Agende uma visita em casa'}</h2>
-        <p>{data.home_visit_description||'Preencha os dados abaixo. Vamos entrar em contato para confirmar.'}</p>
-        {toast&&<div className={toast.error?'toast error':'toast'}>{toast.message}</div>}
-        {submitted?<div className="inline-panel"><strong>Pedido recebido!</strong>
-          <p>A ótica recebeu sua solicitação e entrará em contato para confirmar.</p></div>:
-        <form className="form-grid" onSubmit={event=>{
-          event.preventDefault();const form=event.currentTarget;
-          void perform(async()=>{
-            const file=(form.elements.namedItem('prescription') as HTMLInputElement).files?.[0];
-            if(!file)throw new Error('Anexe a receita para agendar.');
-            const data64=await fileAsBase64(file);
-            const when=getField(form,'appointmentAt');
-            await api('/public/site/'+encodeURIComponent(slug)+'/visits',{method:'POST',body:{
-              name:getField(form,'name'),phone:getField(form,'phone'),
-              email:getField(form,'email'),address:getField(form,'address'),
-              appointmentAt:new Date(when).toISOString(),notes:getField(form,'notes'),
-              privacyAccepted:new FormData(form).get('privacyAccepted')==='on',
-              prescriptionMime:file.type,prescriptionName:file.name,prescriptionBase64:data64,
-            }});
-          },notify,()=>setSubmitted(true));
-        }}>
-          <label className="field">Seu nome<input name="name" required/></label>
-          <PhoneField name="phone" title="WhatsApp" required/>
-          <label className="field">E-mail (opcional)<input name="email" type="email"/></label>
-          <AddressFields legend="Onde será a visita?" required/>
-          <label className="field">Data e hora desejadas<input name="appointmentAt" type="datetime-local" required/></label>
-          <label className="field">Anexe sua receita (PDF ou foto)<input name="prescription"
-            type="file" accept=".pdf,image/png,image/jpeg,image/webp" required/></label>
-          <label className="field">Observações<textarea name="notes" rows={3}/></label>
-          <label className="checkline"><input type="checkbox" name="privacyAccepted" required/>
-            Concordo em enviar meus dados e a receita à ótica para receber este atendimento.</label>
-          <button className="primary-action wide" type="submit">Solicitar visita em casa</button>
-        </form>}
-      </section>:<section className="public-form-card">
-        <h2>Entre em contato com nossa equipe</h2>
-        <p>Saiba mais sobre nossos produtos, armações, lentes e campanhas disponíveis.</p>
-        <div className="filter-bar">
-          {(data.whatsapp||data.contact_phone)&&<a className="primary-action" target="_blank"
-            rel="noopener noreferrer" href={'https://wa.me/'+
-              ((String(data.whatsapp||data.contact_phone).replace(/[^0-9]/g,'').startsWith('55')?
-              '':'55')+String(data.whatsapp||data.contact_phone).replace(/[^0-9]/g,''))}>
-            Conversar no WhatsApp</a>}
-          {data.contact_email&&<a className="outline-action"
-            href={'mailto:'+data.contact_email}>Enviar e-mail</a>}
-        </div>
-      </section>}
-    </main><footer className="public-footer">Página de {data.trade_name} ·{' '}
-      <a href="https://lcmtech.com.br" target="_blank" rel="noopener noreferrer">
-        Desenvolvido por LCM DEV TECH</a></footer>
-  </div>;
 }
 
 function SubscriptionView({notify,shop}:{notify:(message:string,error?:boolean)=>void;shop:any}) {
