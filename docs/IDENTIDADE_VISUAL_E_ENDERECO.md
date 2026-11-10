@@ -47,8 +47,9 @@ recibo, endereço da ótica e formulário de visita do site público).
   servidor (UTC) gravava vendas feitas após as 21h com a data do dia seguinte.
 - **Limite de tentativas de login por IP real** (`server.forward-headers-strategy: native`): antes,
   atrás do proxy do Render, 30 senhas erradas de qualquer pessoa bloqueavam o login de todas as óticas.
-- **Deploy só com CI verde** (`autoDeployTrigger: checksPass` no `render.yaml`). No serviço já criado,
-  conferir no painel do Render: Settings → Auto-Deploy → "After CI Checks Pass".
+- **Deploy só com CI verde**: recomendado (`autoDeployTrigger: checksPass` / Render → Settings →
+  Auto-Deploy → "After CI Checks Pass"), mas **mantido em `commit`** enquanto os minutos do GitHub
+  Actions do repositório privado estiverem esgotados; caso contrário o Render nunca publicaria.
 - Permissões de "visitas" só aparecem na tela de Equipe quando a ótica tem o atendimento em domicílio liberado.
 
 ## Pendências conhecidas
