@@ -42,7 +42,7 @@ public class PlatformController {
     }
 
     public record ChangeOptic(String billingMode,BigDecimal monthlyPrice,
-                              Boolean siteEnabled,Boolean homeVisitsEnabled,Boolean active){}
+                              Boolean siteEnabled,Boolean active){}
     @PatchMapping("/optics/{id}")
     @Transactional
     public Map<String,Boolean> change(@PathVariable UUID id,@RequestBody ChangeOptic request,
@@ -52,9 +52,6 @@ public class PlatformController {
         if(exists==null||exists==0)throw new IllegalArgumentException("Ótica não encontrada.");
         if(request.siteEnabled()!=null)
             jdbc.update("UPDATE optics SET site_enabled=?,updated_at=now() WHERE id=?",request.siteEnabled(),id);
-        if(request.homeVisitsEnabled()!=null)
-            jdbc.update("UPDATE optics SET home_visits_enabled=?,updated_at=now() WHERE id=?",
-                    request.homeVisitsEnabled(),id);
         if(request.active()!=null)
             jdbc.update("UPDATE optics SET active=?,updated_at=now() WHERE id=?",request.active(),id);
         if(request.billingMode()!=null) {

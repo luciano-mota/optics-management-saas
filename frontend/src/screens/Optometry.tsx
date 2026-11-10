@@ -1,7 +1,7 @@
 import { api, date } from '../api';
 import type { ScreenProps } from './common';
 import { AddressFields } from './AddressFields';
-import { FormField, getField, perform, useRemote } from './common';
+import { FormField, getField, perform, useRemote, PhoneField } from './common';
 
 const stage:Record<string,string> = {
   SCHEDULED:'Agendado',CONFIRMED:'Confirmado',COMPLETED:'Consulta realizada',
@@ -25,7 +25,7 @@ export function Optometry({notify,can}:ScreenProps) {
         }}),notify,()=>{form.reset();refresh();});
       }}>
         <FormField name="name" title="Nome da clínica" required/>
-        <FormField name="phone" title="Telefone da clínica" type="tel"/>
+        <PhoneField name="phone" title="Telefone da clínica"/>
         <AddressFields legend="Endereço da clínica"/>
         <button className="primary-action form-action">Adicionar clínica</button>
       </form>}
@@ -43,7 +43,7 @@ export function Optometry({notify,can}:ScreenProps) {
         <FormField name="fullName" title="Nome do paciente" required/>
         <FormField name="cpf" title="CPF (opcional)"/>
         <FormField name="birthDate" title="Nascimento" type="date"/>
-        <FormField name="phone" title="Telefone" type="tel"/>
+        <PhoneField name="phone" title="Telefone"/>
         <FormField name="email" title="E-mail" type="email"/>
         <AddressFields/>
         <button className="primary-action form-action">Cadastrar paciente</button>

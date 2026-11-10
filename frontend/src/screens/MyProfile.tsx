@@ -1,5 +1,6 @@
 import { useState,type FormEvent } from 'react';
 import { api } from '../api';
+import { phoneDigits, phoneMask } from '../phone';
 import { BrandLogo } from '../brand';
 import type { CepAddress } from '../cep';
 import { AddressFields } from './AddressFields';
@@ -19,13 +20,6 @@ function cpfMask(s:string){
  return d.replace(/^(\d{3})(\d)/,'$1.$2')
   .replace(/^(\d{3})\.(\d{3})(\d)/,'$1.$2.$3')
   .replace(/\.(\d{3})(\d)/,'.$1-$2');
-}
-function phoneMask(s:string){
- const d=digits(s).slice(0,11);
- if(d.length<=2)return d;
- if(d.length<=6)return '('+d.slice(0,2)+') '+d.slice(2);
- if(d.length<=10)return '('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);
- return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
 }
 export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',opticAddress='',showPersonalAddress=true,onSaved,onLogout}:{
  person:Person;required:boolean;requiredCnpj?:boolean;opticCnpj?:string;opticAddress?:string;
@@ -47,7 +41,7 @@ export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',optic
   event.preventDefault();setSaving(true);setError('');
   try{
    await api('/auth/profile',{method:'PUT',body:{
-    fullName:name.trim(),cpf:digits(cpf),phone:digits(phone),
+    fullName:name.trim(),cpf:digits(cpf),phone:phoneDigits(phone),
     birthDate:birth,address:address.trim()||null,
     opticCnpj:requiredCnpj?cnpj.replace(/[^A-Z0-9]/g,''):null,
     // Cidade, UF e código IBGE vêm do CEP: o calendário de feriados se ajusta sozinho.
@@ -97,7 +91,7 @@ export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',optic
     <label className="field">Data de nascimento<input type="date" required value={birth}
       max={new Date().toISOString().slice(0,10)} onChange={e=>setBirth(e.target.value)}/></label>
     <label className="field">Telefone com DDD<input inputMode="tel" autoComplete="tel"
-      required maxLength={16} value={phone} placeholder="(98) 99999-9999"
+      required value={phone} placeholder="(98) 99999-9999"
       onChange={e=>setPhone(phoneMask(e.target.value))}/></label>
     {showPersonalAddress&&<AddressFields name="personalAddress" legend="Seu endereço" defaultValue={person.address||''}
       onChange={setAddress}/>}

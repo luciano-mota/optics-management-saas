@@ -40,7 +40,6 @@ export function Platform({notify}:ScreenProps){
         void perform(()=>api('/platform/optics/'+selected.id,{method:'PATCH',body:{
           billingMode:getField(form,'billingMode'),monthlyPrice:getField(form,'monthlyPrice')||null,
           siteEnabled:new FormData(form).get('siteEnabled')==='on',
-          homeVisitsEnabled:new FormData(form).get('homeVisitsEnabled')==='on',
           active:new FormData(form).get('active')==='on',
         }}),notify,()=>{reload();setSelected(null);});
       }}>
@@ -51,12 +50,6 @@ export function Platform({notify}:ScreenProps){
           defaultValue={selected.monthly_price||''} /></label>
         <label className="checkline"><input name="siteEnabled" type="checkbox"
           defaultChecked={selected.site_enabled} /> Liberar site e campanhas</label>
-        <label className="checkline"><input name="homeVisitsEnabled" type="checkbox"
-          defaultChecked={selected.home_visits_enabled} />
-          Campanha exclusiva: permitir atendimento em domicílio neste site
-        </label>
-        <p className="helper">Desativado por padrão. Habilite somente para a ótica que oferece
-          visitas em casa. As outras exibem uma página comercial comum, sem formulário de visita.</p>
         <label className="checkline"><input name="active" type="checkbox"
           defaultChecked={selected.active} /> Ótica ativa</label>
         <button className="primary-action form-action" type="submit">Salvar configurações</button>

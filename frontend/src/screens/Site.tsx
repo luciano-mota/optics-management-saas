@@ -3,7 +3,7 @@ import { api, fileAsBase64 } from '../api';
 import type { ScreenProps } from './common';
 import { getField, perform, useRemote } from './common';
 
-export function Site({notify}:ScreenProps){
+export function Site({notify,onSaved}:ScreenProps&{onSaved?:()=>void}){
   const {data,refresh}=useRemote<any>('/site-settings');
   const [primary,setPrimary]=useState('#5b4cf0');
   const [secondary,setSecondary]=useState('#f6f6fa');
@@ -17,12 +17,12 @@ export function Site({notify}:ScreenProps){
       <p>Personalize seu site institucional, sua vitrine e suas campanhas.</p></div></div>
     <div className="surface">
       {data==null?<div className="inline-panel">
-        <span className="eyebrow">Recurso exclusivo liberado pela LCM Dev Tech</span>
+        <span className="eyebrow">Recurso liberado pela LCM DEV TECH</span>
         <h3>Seu site e suas campanhas ainda não estão habilitados</h3>
         <p>Você poderá criar uma página da sua ótica, personalizar a identidade visual,
           divulgar seus produtos e campanhas, além de facilitar o contato com seus clientes.
           A ativação é feita somente pela administração do Optics Management.</p>
-        <p><strong>Para solicitar acesso:</strong> entre em contato com a equipe LCM Dev Tech.</p>
+        <p><strong>Para solicitar acesso:</strong> entre em contato com a equipe LCM DEV TECH.</p>
         <div className="filter-bar">
           <a className="outline-action" href="mailto:contato@lcmtech.com.br?subject=Ativacao%20do%20site%20Optics%20Management">
             Solicitar liberação por e-mail</a>
@@ -33,11 +33,6 @@ export function Site({notify}:ScreenProps){
       </div>:<>
         <div className="inline-panel"><strong>Seu site está habilitado</strong><p>
           <a href={link} target="_blank" rel="noreferrer">{link}</a></p></div>
-        {data.home_visits_enabled&&<div className="inline-panel">
-          <strong>Campanha especial: atendimento em domicílio</strong>
-          <p>Essa modalidade foi ativada especificamente para sua ótica pela LCM Dev Tech.
-            O site exibirá o formulário de solicitação de visita com receita anexada.</p>
-        </div>}
         <div className="inline-panel">
           <h4>Logo da ótica</h4>
           <p>Envie PNG ou JPG com até 2 MB. A paleta de cores será sugerida com base na logo e ajustada para leitura.</p>
@@ -61,7 +56,10 @@ export function Site({notify}:ScreenProps){
             font:getField(form,'font'),template:getField(form,'template'),
             campaignTitle:getField(form,'campaignTitle'),
             campaignDescription:getField(form,'campaignDescription'),
-          }}),notify,refresh);
+            homeVisitsEnabled:new FormData(form).get('homeVisitsEnabled')==='on',
+            homeVisitTitle:getField(form,'homeVisitTitle'),
+            homeVisitDescription:getField(form,'homeVisitDescription'),
+          }}),notify,()=>{refresh();onSaved?.();});
         }}>
           <label className="field">Cor principal<input name="primaryColor" type="color"
             defaultValue={data.primary_color||primary} onChange={e=>setPrimary(e.target.value)} /></label>
@@ -77,6 +75,20 @@ export function Site({notify}:ScreenProps){
             defaultValue={data.campaign_title} required /></label>
           <label className="field">Descrição da campanha<textarea name="campaignDescription" rows={3}
             defaultValue={data.campaign_description} /></label>
+          <fieldset className="invite-permissions">
+            <legend>Atendimento em domicílio</legend>
+            <label className="checkline"><input type="checkbox" name="homeVisitsEnabled"
+              defaultChecked={!!data.home_visits_enabled}/>
+              Oferecer atendimento em domicílio no site, com destaque e formulário de agendamento</label>
+            <p className="helper">O cliente envia endereço, receita e o melhor dia e horário. Todos os
+              funcionários com acesso a visitas recebem o aviso no sistema e por e-mail.</p>
+            <div className="form-grid">
+              <label className="field">Título do destaque<input name="homeVisitTitle" maxLength={140}
+                defaultValue={data.home_visit_title}/></label>
+              <label className="field span-2">Texto do destaque<textarea name="homeVisitDescription" rows={2}
+                maxLength={600} defaultValue={data.home_visit_description}/></label>
+            </div>
+          </fieldset>
           <button className="primary-action form-action" type="submit">Salvar personalização</button>
         </form>
         <div className="site-preview" style={{background:primary,color:secondary}}>

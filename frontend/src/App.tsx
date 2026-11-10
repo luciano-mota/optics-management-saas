@@ -23,7 +23,7 @@ import { Optometry } from './screens/Optometry';
 import { Birthdays, BirthdayWelcome } from './screens/Birthdays';
 import { Receipts } from './screens/Receipts';
 import { MyProfile } from './screens/MyProfile';
-import { getField, perform, useRemote } from './screens/common';
+import { getField, perform, PhoneField, useRemote } from './screens/common';
 
 type Tile={key:string;title:string;description:string;permission:string;icon:typeof Glasses;accent:string};
 /** Cada bloco tem ícone e cor próprios, sem repetição, para ser reconhecido de relance. */
@@ -166,7 +166,7 @@ export function App(){
           {selected?.key==='calendar'&&<BusinessCalendar notify={notify} isMaster={activeShop?.role==='MASTER'}/>}
           {selected?.key==='team'&&<Team notify={notify} can={can} homeVisits={!!activeShop?.home_visits_enabled}
             isPrimary={!!activeShop?.primary_master}/>}
-          {selected?.key==='site'&&<Site notify={notify} can={can}/>}
+          {selected?.key==='site'&&<Site notify={notify} can={can} onSaved={()=>void load()}/>}
           {view==='profile'&&<MyProfile person={me.account} required={false}
             showPersonalAddress={!me.platformOperator&&activeShop?.role!=='MASTER'}
             onSaved={()=>void load()} onLogout={()=>setView('dashboard')}/>}
@@ -255,7 +255,7 @@ function Notices({notify,onOpen,alerts,homeVisitsEnabled}: {notify:(msg:string,e
         enquanto o Optics estiver aberto.</p>
       <button className="outline-action" onClick={()=>void requestNotification(notify)}>
         <Bell size={16}/> Ativar avisos</button></div>
-    <div className="section-title"><h2>Mensagens da LCM Dev Tech</h2></div>
+    <div className="section-title"><h2>Mensagens da LCM DEV TECH</h2></div>
     <div className="surface">{!data?.length?<p className="empty">Não há mensagens por enquanto.</p>:
       <div className="list-cards">{data.map(n=><div className="mini-row" key={n.id}>
         <div><strong>{n.subject}</strong><small>{n.message}</small><small>{date(n.created_at)}</small></div>
@@ -321,7 +321,7 @@ function AccessScreen({onSignedIn,notify,toast}:{
       }}>
         {mode==='signup'&&<><label className="field">Nome da ótica<input name="opticName" required/></label>
           <label className="field">Seu nome<input name="fullName" required/></label>
-          <label className="field">WhatsApp da ótica<input name="whatsapp" type="tel"/></label></>}
+          <PhoneField name="whatsapp" title="WhatsApp da ótica"/></>}
         <label className="field">Seu e-mail<input name="email" type="email" autoComplete="email" required/></label>
         <label className="field">Senha<input name="password" type="password" minLength={10}
           autoComplete={mode==='login'?'current-password':'new-password'} required /></label>
@@ -362,7 +362,7 @@ function InviteAccept({token,notify,toast}:{
       }}>
         <label className="field">Nome completo<input name="fullName" required/></label>
         <label className="field">CPF<input name="cpf" required/></label>
-        <label className="field">Telefone<input name="phone" required/></label>
+        <PhoneField name="phone" title="Telefone com DDD" required/>
         <label className="field">Nascimento<input name="birthDate" type="date" required/></label>
         <AddressFields legend="Seu endereço"/>
         <label className="field">Crie uma senha<input name="password" type="password" minLength={10} required/></label>
@@ -414,8 +414,9 @@ function PublicSite({slug,notify,toast}:{
           <span><ShieldCheck size={15}/> Atendimento personalizado</span>
         </div></section>
       {data.home_visits_enabled?<section className="public-form-card">
-        <h2>Agende sua visita</h2>
-        <p>Preencha os dados abaixo. Vamos entrar em contato para confirmar a disponibilidade.</p>
+        <span className="eyebrow site-eyebrow">Atendimento em domicílio</span>
+        <h2>{data.home_visit_title||'Agende uma visita em casa'}</h2>
+        <p>{data.home_visit_description||'Preencha os dados abaixo. Vamos entrar em contato para confirmar.'}</p>
         {toast&&<div className={toast.error?'toast error':'toast'}>{toast.message}</div>}
         {submitted?<div className="inline-panel"><strong>Pedido recebido!</strong>
           <p>A ótica recebeu sua solicitação e entrará em contato para confirmar.</p></div>:
@@ -436,7 +437,7 @@ function PublicSite({slug,notify,toast}:{
           },notify,()=>setSubmitted(true));
         }}>
           <label className="field">Seu nome<input name="name" required/></label>
-          <label className="field">WhatsApp<input name="phone" type="tel" required/></label>
+          <PhoneField name="phone" title="WhatsApp" required/>
           <label className="field">E-mail (opcional)<input name="email" type="email"/></label>
           <AddressFields legend="Onde será a visita?" required/>
           <label className="field">Data e hora desejadas<input name="appointmentAt" type="datetime-local" required/></label>

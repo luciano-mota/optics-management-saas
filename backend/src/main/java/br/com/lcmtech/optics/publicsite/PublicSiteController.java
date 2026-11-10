@@ -15,13 +15,17 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/public/site")
 public class PublicSiteController {
     private final JdbcTemplate jdbc;
-    public PublicSiteController(JdbcTemplate jdbc) {this.jdbc=jdbc;}
+    private final br.com.lcmtech.optics.visits.VisitNotifier notifier;
+    public PublicSiteController(JdbcTemplate jdbc,br.com.lcmtech.optics.visits.VisitNotifier notifier) {
+        this.jdbc=jdbc;this.notifier=notifier;
+    }
 
     @GetMapping("/{slug}")
     public Map<String,Object> site(@PathVariable String slug) {
         return jdbc.queryForList("SELECT o.id,o.trade_name,o.whatsapp,o.contact_phone,"
             +"o.contact_email,o.home_visits_enabled,s.primary_color,s.secondary_color,s.font,s.template,"
-            +"s.campaign_title,s.campaign_description,(s.logo IS NOT NULL) AS has_logo FROM optics o JOIN site_settings s "
+            +"s.campaign_title,s.campaign_description,s.home_visit_title,s.home_visit_description,"
+            +"(s.logo IS NOT NULL) AS has_logo FROM optics o JOIN site_settings s "
             +"ON s.optic_id=o.id WHERE o.slug=? AND o.active AND o.site_enabled",slug)
             .stream().findFirst().orElseThrow(()->new IllegalArgumentException("Esta página não está disponível."));
     }
@@ -56,6 +60,7 @@ public class PublicSiteController {
         if(!empty(request.prescriptionBase64()))
             AttachmentCodec.store(jdbc,optic,null,null,id,request.prescriptionName(),
                     request.prescriptionMime(),request.prescriptionBase64());
+        notifier.newRequest(optic,(String)shop.get("trade_name"),request.appointmentAt());
         return Map.of("requested",true,"requestId",id,
                 "message","Solicitação recebida. A ótica entrará em contato para confirmar o horário.");
     }

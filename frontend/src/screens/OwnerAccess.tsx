@@ -10,7 +10,7 @@ export function OwnerInviteRequest({notify,toast,onBack}:{
 }) {
   const [sent,setSent]=useState(false);
   return <div className="auth-layout"><section className="auth-box">
-    <h1>Administração LCM Dev Tech</h1>
+    <h1>Administração LCM DEV TECH</h1>
     <p>Este acesso é exclusivo do proprietário da plataforma. Informe o e-mail
       autorizado para receber um link de cadastro seguro, válido por 30 minutos.</p>
     {toast&&<div className={toast.error?'toast error':'toast'} role="status">{toast.message}</div>}
@@ -36,7 +36,7 @@ export function OwnerInviteComplete({token,notify,toast}:{
   const [created,setCreated]=useState(false);
   return <div className="auth-layout"><section className="auth-box">
     <h1>Ativar administração da plataforma</h1>
-    <p>Este convite foi enviado ao e-mail autorizado da LCM Dev Tech.
+    <p>Este convite foi enviado ao e-mail autorizado da LCM DEV TECH.
       Defina seus dados para gerenciar as óticas cadastradas.</p>
     {toast&&<div className={toast.error?'toast error':'toast'} role="status">{toast.message}</div>}
     {created?<div className="inline-panel"><strong>Acesso ativado!</strong>

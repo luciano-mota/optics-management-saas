@@ -22,7 +22,7 @@ public class SiteSettingsController {
         UUID optic=context.optic(auth,session);
         Integer enabled=jdbc.queryForObject("SELECT count(*) FROM optics WHERE id=? AND site_enabled",Integer.class,optic);
         if(enabled==null||enabled==0)throw new org.springframework.security.access.AccessDeniedException(
-                "Este recurso precisa ser habilitado pela LCM Dev Tech.");
+                "Este recurso precisa ser habilitado pela LCM DEV TECH.");
         return optic;
     }
 
@@ -31,11 +31,13 @@ public class SiteSettingsController {
         context.require(auth,session,"SITE_MANAGE");
         UUID optic=activeSite(auth,session);
         return jdbc.queryForMap("SELECT o.slug,o.site_enabled,o.home_visits_enabled,s.primary_color,s.secondary_color,s.font,"
-                +"s.template,s.campaign_title,s.campaign_description,(s.logo IS NOT NULL) AS has_logo "
+                +"s.template,s.campaign_title,s.campaign_description,s.home_visit_title,s.home_visit_description,"
+                +"(s.logo IS NOT NULL) AS has_logo "
                 +"FROM site_settings s JOIN optics o ON o.id=s.optic_id WHERE s.optic_id=?",optic);
     }
     public record Settings(String primaryColor,String secondaryColor,String font,String template,
-                          String campaignTitle,String campaignDescription){}
+                          String campaignTitle,String campaignDescription,
+                          Boolean homeVisitsEnabled,String homeVisitTitle,String homeVisitDescription){}
     @PutMapping
     public Map<String,Boolean> put(@RequestBody Settings request,Authentication auth,HttpSession session){
         context.require(auth,session,"SITE_MANAGE");
@@ -48,6 +50,18 @@ public class SiteSettingsController {
             throw new IllegalArgumentException("Escolha uma fonte e um modelo disponíveis.");
         if(request.campaignTitle()==null||request.campaignTitle().isBlank())
             throw new IllegalArgumentException("Informe o título da campanha.");
+        // Atendimento em domicílio é uma campanha que a própria ótica decide oferecer no site.
+        boolean homeVisits=Boolean.TRUE.equals(request.homeVisitsEnabled());
+        String visitTitle=request.homeVisitTitle()==null?"":request.homeVisitTitle().trim();
+        String visitText=request.homeVisitDescription()==null?"":request.homeVisitDescription().trim();
+        if(homeVisits&&visitTitle.isBlank())
+            throw new IllegalArgumentException("Informe o título da campanha de atendimento em domicílio.");
+        if(visitTitle.length()>140||visitText.length()>600)
+            throw new IllegalArgumentException("Título até 140 e descrição até 600 caracteres.");
+        jdbc.update("UPDATE optics SET home_visits_enabled=?,updated_at=now() WHERE id=?",homeVisits,optic);
+        if(!visitTitle.isBlank())
+            jdbc.update("UPDATE site_settings SET home_visit_title=?,home_visit_description=? WHERE optic_id=?",
+                    visitTitle,visitText,optic);
         jdbc.update("UPDATE site_settings SET primary_color=?,secondary_color=?,font=?,template=?,"
                 +"campaign_title=?,campaign_description=?,updated_at=now() WHERE optic_id=?",
                 request.primaryColor(),request.secondaryColor(),request.font(),request.template(),
