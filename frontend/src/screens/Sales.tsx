@@ -12,6 +12,15 @@ export function Sales({ notify, can }: ScreenProps) {
   const [lensBrand, setLensBrand] = useState('');
   const [frameBrand, setFrameBrand] = useState('');
   const [method, setMethod] = useState('PIX');
+  const [machineId,setMachineId]=useState('');
+  const [installments,setInstallments]=useState(1);
+  const [settlementDays,setSettlementDays]=useState<number|null>(null);
+  const [saleAmount,setSaleAmount]=useState('');
+  const [passFee,setPassFee]=useState(false);
+  const [simulation,setSimulation]=useState<{
+    chargedAmount:number;feeAmount:number;netAmount:number;feePercent:number;
+    receivables:{installment:number;dueOn:string;amount:number}[];
+  }|null>(null);
   const [newCustomer, setNewCustomer] = useState(false);
   const [patientSearch,setPatientSearch] = useState('');
   const [patient,setPatient] = useState<any|null>(null);
@@ -21,6 +30,26 @@ export function Sales({ notify, can }: ScreenProps) {
   const customers = useRemote<any[]>('/customers');
   const catalog = useRemote<any[]>('/catalog');
   const machines = useRemote<any[]>('/machines');
+  const chosenMachine=machines.data?.find(m=>m.id===machineId);
+  const allowedInstallments=chosenMachine?.installmentFees?.length?
+    Math.max(...chosenMachine.installmentFees.map((r:any)=>r.installments)):1;
+  const availableTerms=chosenMachine?.creditTerms?.length?chosenMachine.creditTerms:
+    chosenMachine?[{days:chosenMachine.creditDays,fee:chosenMachine.creditFee}]:[];
+  const simulate=async()=>{
+    if(!Number.isFinite(Number(saleAmount))||Number(saleAmount)<=0){
+      notify('Informe um valor de venda para simular.',true);return;
+    }
+    try {
+      const result=await api<any>('/machines/preview',{method:'POST',body:{
+        amount:Number(saleAmount),paymentMethod:method,
+        installments:method==='CREDITO'?installments:1,
+        cardMachineId:['CREDITO','DEBITO'].includes(method)?machineId:null,
+        passFee,settlementDays:method==='CREDITO'&&installments===1?
+          settlementDays??chosenMachine?.creditDays??null:null,
+      }});
+      setSimulation(result);
+    }catch(error){notify(error instanceof Error?error.message:'Erro na simulação.',true);}
+  };
   const sales = useRemote<any[]>('/sales?status=' + encodeURIComponent(status)
     + '&lensBrand=' + encodeURIComponent(lensBrand) + '&frameBrand=' + encodeURIComponent(frameBrand));
   const summary = useRemote<any>('/sales/dashboard');
@@ -67,9 +96,10 @@ export function Sales({ notify, can }: ScreenProps) {
           customerId: newCustomer ? null : getField(form,'customerId'),
           lensId:getField(form,'lensId'),
           frameId:getField(form,'frameId'),amount:getField(form,'amount'),
-          paymentMethod:method,cardMachineId:getField(form,'cardMachineId') || null,
-          installments:Number(getField(form,'installments') || 1),
-          passFee:new FormData(form).get('passFee') === 'on',
+          paymentMethod:method,cardMachineId:machineId||null,
+          installments:method==='CREDITO'?installments:1,
+          passFee,settlementDays:method==='CREDITO'&&installments===1?
+            settlementDays??chosenMachine?.creditDays??null:null,
           replacementMonths:Number(getField(form,'replacementMonths') || 12),
           expectedDelivery:getField(form,'expectedDelivery') || null,
           notes:getField(form,'notes'),idempotencyKey:crypto.randomUUID(),
@@ -83,7 +113,9 @@ export function Sales({ notify, can }: ScreenProps) {
           api('/sales/with-patient',{method:'POST',body:{patientId:patient.id,sale,customer}}) :
           newCustomer ? api('/sales/with-customer',{method:'POST',body:{sale,customer}}) :
           api('/sales',{method:'POST',body:sale}), notify, () => {
-            form.reset();setNewCustomer(false);setPatient(null);setPatientSearch('');refresh();
+            form.reset();setNewCustomer(false);setPatient(null);setPatientSearch('');
+            setMachineId('');setInstallments(1);setSettlementDays(null);
+            setSaleAmount('');setSimulation(null);setPassFee(false);refresh();
           });
       }}>
         {newCustomer ? <>
@@ -104,19 +136,51 @@ export function Sales({ notify, can }: ScreenProps) {
           <option value="" disabled>Selecione a armação</option>{catalog.data?.filter(c => c.kind==='FRAME'&&c.active).map(c =>
             <option key={c.id} value={c.id}>{c.brand} {c.model || ''}</option>)}
         </select></label>
-        <FormField name="amount" type="number" title="Valor (R$)" required placeholder="Ex.: 350.00" />
+        <label className="field">Valor (R$)<input name="amount" type="number" step="0.01"
+          required placeholder="Ex.: 350.00" value={saleAmount}
+          onChange={e=>{setSaleAmount(e.target.value);setSimulation(null);}}/></label>
         <label className="field">Forma de pagamento<select name="paymentMethod" value={method}
-          onChange={event => setMethod(event.target.value)}>
+          onChange={event=>{setMethod(event.target.value);setMachineId('');
+            setInstallments(1);setSettlementDays(null);setSimulation(null);}}>
           <option value="PIX">Pix</option><option value="DINHEIRO">Dinheiro</option>
           <option value="DEBITO">Cartão de débito</option><option value="CREDITO">Cartão de crédito</option>
         </select></label>
-        {(method==='DEBITO'||method==='CREDITO') && <>
-          <label className="field">Maquininha<select name="cardMachineId" required defaultValue="">
-            <option value="" disabled>Selecione</option>{machines.data?.filter(m=>m.active).map(m =>
-              <option key={m.id} value={m.id}>{m.name}</option>)}
+        {(method==='DEBITO'||method==='CREDITO')&&<>
+          <label className="field">Maquininha<select name="cardMachineId" required
+            value={machineId} onChange={e=>{
+              setMachineId(e.target.value);setInstallments(1);setSettlementDays(null);setSimulation(null);
+            }}>
+            <option value="" disabled>Selecione a maquininha</option>
+            {machines.data?.filter(m=>m.active).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
           </select></label>
-          {method==='CREDITO' && <FormField name="installments" title="Parcelas (1 a 12)" type="number" defaultValue="1" />}
-          <label className="checkline"><input type="checkbox" name="passFee"/> Repassar as taxas ao cliente</label>
+          {method==='CREDITO'&&<>
+            <label className="field">Parcelas<select value={installments}
+              onChange={e=>{setInstallments(Number(e.target.value));setSimulation(null);}}>
+              <option value={1}>1x (à vista)</option>
+              {Array.from({length:Math.max(0,allowedInstallments-1)},(_,i)=>i+2)
+                .map(n=><option key={n} value={n}>{n}x</option>)}
+            </select></label>
+            {installments===1&&<label className="field">Quando a operadora deposita?<select
+              value={settlementDays??chosenMachine?.creditDays??30}
+              onChange={e=>{setSettlementDays(Number(e.target.value));setSimulation(null);}}>
+              {availableTerms.map((t:any)=><option value={t.days} key={t.days}>
+                {t.days===0?'Na hora':t.days===1?'No dia seguinte':'Em '+t.days+' dias'} · {t.fee}%
+              </option>)}
+              </select></label>}
+          </>}
+          <label className="checkline"><input type="checkbox" checked={passFee}
+            onChange={e=>{setPassFee(e.target.checked);setSimulation(null);}}/>
+            Repassar a taxa da maquininha ao cliente</label>
+          <button type="button" className="outline-action" disabled={!machineId}
+            onClick={()=>void simulate()}>Simular taxa e valor líquido</button>
+          {simulation&&<div className="inline-panel">
+            <strong>Cobrar do cliente: {currency(simulation.chargedAmount)}</strong>
+            <p>Taxas: {currency(simulation.feeAmount)} ({simulation.feePercent}%) ·
+             Líquido previsto: {currency(simulation.netAmount)}</p>
+            {simulation.receivables?.map(r=><small key={r.installment}>
+              {r.installment}ª parcela · {date(r.dueOn)} · {currency(r.amount)}
+            </small>)}
+          </div>}
         </>}
         <label className="field">Periodicidade de troca<select name="replacementMonths" defaultValue="12">
           <option value="6">A cada 6 meses</option><option value="12">A cada 1 ano</option>
