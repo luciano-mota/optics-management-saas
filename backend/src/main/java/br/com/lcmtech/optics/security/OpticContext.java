@@ -64,10 +64,11 @@ public class OpticContext {
             case "SECRETARY" -> List.of("CUSTOMERS_READ","CUSTOMERS_WRITE","SALES_READ",
                         "SALES_DELIVER","VISITS_READ","VISITS_MANAGE","CATALOG_READ","REPORTS_READ",
                         "PATIENTS_READ","PATIENTS_WRITE","APPOINTMENTS_READ","APPOINTMENTS_MANAGE",
-                        "PARTNER_CLINICS_MANAGE").contains(permission);
+                        "PARTNER_CLINICS_MANAGE","RECEIPTS_READ","RECEIPTS_ISSUE").contains(permission);
             case "SELLER" -> List.of("CUSTOMERS_READ","CUSTOMERS_WRITE","SALES_READ",
                         "SALES_CREATE","SALES_DELIVER","VISITS_READ","VISITS_MANAGE",
-                        "CATALOG_READ","REPORTS_READ","PATIENTS_READ").contains(permission);
+                        "CATALOG_READ","REPORTS_READ","PATIENTS_READ",
+                        "RECEIPTS_READ","RECEIPTS_ISSUE").contains(permission);
             default -> false;
         };
     }

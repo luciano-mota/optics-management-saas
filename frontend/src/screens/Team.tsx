@@ -10,6 +10,7 @@ const perms = [
   ['VISITS_MANAGE','Atender visitas'], ['FINANCE_READ','Consultar financeiro'],
   ['FINANCE_WRITE','Lançar receitas e despesas'], ['CATALOG_READ','Consultar catálogo'],
   ['CATALOG_WRITE','Editar catálogo'], ['REPORTS_READ','Emitir relatórios'],
+  ['RECEIPTS_READ','Consultar recibos'],['RECEIPTS_ISSUE','Emitir recibos'],
   ['USERS_MANAGE','Gerenciar equipe'], ['SITE_MANAGE','Personalizar site'],
 ] as const;
 const roleDefaults: Record<string,string[]> = {
@@ -22,7 +23,9 @@ const roleDefaults: Record<string,string[]> = {
     "VISITS_READ",
     "VISITS_MANAGE",
     "CATALOG_READ",
-    "REPORTS_READ"
+    "REPORTS_READ",
+    "RECEIPTS_READ",
+    "RECEIPTS_ISSUE"
   ],
   "SECRETARY": [
     "CUSTOMERS_READ",
@@ -32,7 +35,9 @@ const roleDefaults: Record<string,string[]> = {
     "VISITS_READ",
     "VISITS_MANAGE",
     "CATALOG_READ",
-    "REPORTS_READ"
+    "REPORTS_READ",
+    "RECEIPTS_READ",
+    "RECEIPTS_ISSUE"
   ],
   "MANAGER": [
     "CUSTOMERS_READ",
@@ -46,7 +51,9 @@ const roleDefaults: Record<string,string[]> = {
     "FINANCE_WRITE",
     "CATALOG_READ",
     "CATALOG_WRITE",
-    "REPORTS_READ"
+    "REPORTS_READ",
+    "RECEIPTS_READ",
+    "RECEIPTS_ISSUE"
   ],
   "MASTER": [
     "CUSTOMERS_READ",

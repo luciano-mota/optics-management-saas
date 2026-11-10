@@ -33,7 +33,8 @@ public class TeamController {
             "SALES_READ", "SALES_CREATE", "SALES_DELIVER", "VISITS_READ",
             "VISITS_MANAGE", "CATALOG_READ", "CATALOG_WRITE", "REPORTS_READ",
             "USERS_MANAGE", "SITE_MANAGE", "PATIENTS_READ", "PATIENTS_WRITE",
-            "APPOINTMENTS_READ", "APPOINTMENTS_MANAGE", "PARTNER_CLINICS_MANAGE");
+            "APPOINTMENTS_READ", "APPOINTMENTS_MANAGE", "PARTNER_CLINICS_MANAGE",
+            "RECEIPTS_READ", "RECEIPTS_ISSUE");
     @Value("${optics.public-base-url:http://localhost:5173}") private String baseUrl;
     public TeamController(JdbcTemplate jdbc, OpticContext context,PasswordEncoder passwordEncoder,EmailDelivery mail) {
         this.jdbc=jdbc;this.context=context;this.passwordEncoder=passwordEncoder;this.mail=mail;

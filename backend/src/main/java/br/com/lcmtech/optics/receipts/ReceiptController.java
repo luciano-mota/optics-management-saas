@@ -142,7 +142,7 @@ public class ReceiptController {
         UUID optic=access.optic(auth,session);
         return jdbc.queryForList("""
             SELECT r.id,r.receipt_number,r.sale_id,r.finance_entry_id,r.payment_gross,
-                r.paid_on,r.issued_at,c.full_name AS customer_name
+                r.paid_on,r.issued_at,c.full_name AS customer_name,c.phone AS customer_phone
             FROM sale_receipts r JOIN sales s ON s.optic_id=r.optic_id AND s.id=r.sale_id
             JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id
             WHERE r.optic_id=? ORDER BY r.issued_at DESC LIMIT 300
