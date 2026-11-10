@@ -28,7 +28,8 @@ public class AuthController {
     public Map<String,Object> me(Authentication auth,HttpSession session) {
         UUID account=context.accountId(auth);
         Map<String,Object> person=jdbc.queryForMap(
-                "SELECT id,email,coalesce(full_name,'') AS full_name,coalesce(phone,'') AS phone "
+                "SELECT id,email,coalesce(full_name,'') AS full_name,coalesce(phone,'') AS phone, "
+                        + "coalesce(cpf,'') AS cpf, birth_date,coalesce(address,'') AS address "
                         + "FROM accounts WHERE id=?",account);
         List<Map<String,Object>> shops=context.memberships(account);
         UUID activeOptic=shops.isEmpty()?null:context.optic(auth,session);
@@ -41,8 +42,11 @@ public class AuthController {
                         "RECEIPTS_ISSUE").stream()
                         .filter(p->context.can(account,activeOptic,p)).toList();
         Integer op=jdbc.queryForObject("SELECT COUNT(*) FROM platform_operators WHERE account_id=? AND active",Integer.class,account);
+        Boolean profileComplete=jdbc.queryForObject(
+                "SELECT profile_completed_at IS NOT NULL FROM accounts WHERE id=?",Boolean.class,account);
         return Map.of("account",person,"shops",shops,"activeOpticId",activeOptic==null?"":activeOptic.toString(),
-                "permissions",rights,"platformOperator",op!=null&&op>0);
+                "permissions",rights,"platformOperator",op!=null&&op>0,
+                "profileComplete",Boolean.TRUE.equals(profileComplete));
     }
 
     public record SelectOptic(UUID opticId) {}
