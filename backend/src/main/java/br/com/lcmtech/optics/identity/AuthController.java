@@ -44,9 +44,20 @@ public class AuthController {
         Integer op=jdbc.queryForObject("SELECT COUNT(*) FROM platform_operators WHERE account_id=? AND active",Integer.class,account);
         Boolean profileComplete=jdbc.queryForObject(
                 "SELECT profile_completed_at IS NOT NULL FROM accounts WHERE id=?",Boolean.class,account);
-        return Map.of("account",person,"shops",shops,"activeOpticId",activeOptic==null?"":activeOptic.toString(),
+        String cnpj="";
+        boolean opticRegistrationRequired=false;
+        if(activeOptic!=null&&"MASTER".equals(context.role(account,activeOptic))) {
+            String saved=jdbc.queryForObject("SELECT tax_document FROM optics WHERE id=?",
+                    String.class,activeOptic);
+            cnpj=saved==null?"":saved;
+            opticRegistrationRequired=!BrazilianTaxId.validCnpj(cnpj);
+        }
+        return Map.of("account",person,"shops",shops,
+                "activeOpticId",activeOptic==null?"":activeOptic.toString(),
                 "permissions",rights,"platformOperator",op!=null&&op>0,
-                "profileComplete",Boolean.TRUE.equals(profileComplete));
+                "profileComplete",Boolean.TRUE.equals(profileComplete),
+                "opticRegistrationRequired",opticRegistrationRequired,
+                "opticCnpj",cnpj);
     }
 
     public record SelectOptic(UUID opticId) {}

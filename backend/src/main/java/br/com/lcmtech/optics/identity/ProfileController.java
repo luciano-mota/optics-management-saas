@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +20,8 @@ public class ProfileController {
     public ProfileController(JdbcTemplate jdbc,OpticContext context) {
         this.jdbc=jdbc;this.context=context;
     }
-    public record Profile(String fullName,String cpf,String phone,LocalDate birthDate,String address) {}
+    public record Profile(String fullName,String cpf,String phone,LocalDate birthDate,
+                          String address,String opticCnpj) {}
 
     @GetMapping
     public Map<String,Object> get(Authentication authentication) {
@@ -35,7 +37,8 @@ public class ProfileController {
 
     @PutMapping
     @Transactional
-    public Map<String,Boolean> update(@RequestBody Profile input,Authentication authentication) {
+    public Map<String,Boolean> update(@RequestBody Profile input,
+                                      Authentication authentication,HttpSession session) {
         if(input==null||input.fullName()==null||input.fullName().trim().length()<3
                 ||input.fullName().trim().length()>180)
             throw new IllegalArgumentException("Informe seu nome completo.");
@@ -55,6 +58,33 @@ public class ProfileController {
             """,Integer.class,cpf,account);
         if(duplicate!=null&&duplicate>0)
             throw new IllegalArgumentException("CPF já cadastrado. Entre em contato com o suporte.");
+        // Apenas o Master preenche o CNPJ; colaboradores e o operador LCM
+        // continuam identificados por CPF pessoal, sem CNPJ obrigatório.
+        UUID managedOptic=null;
+        var shops=context.memberships(account);
+        if(!shops.isEmpty()) {
+            UUID optic=context.optic(authentication,session);
+            if("MASTER".equals(context.role(account,optic)))managedOptic=optic;
+        }
+        if(managedOptic!=null) {
+            String current=jdbc.queryForObject(
+                    "SELECT tax_document FROM optics WHERE id=? FOR UPDATE",
+                    String.class,managedOptic);
+            String value=input.opticCnpj()==null||input.opticCnpj().isBlank()?
+                    BrazilianTaxId.normalizeCnpj(current):
+                    BrazilianTaxId.normalizeCnpj(input.opticCnpj());
+            if(!BrazilianTaxId.validCnpj(value))
+                throw new IllegalArgumentException("Informe o CNPJ válido da ótica.");
+            if(!value.equals(current)) {
+                jdbc.update("UPDATE optics SET tax_document=?,updated_at=now() WHERE id=?",
+                        value,managedOptic);
+                jdbc.update("""
+                    INSERT INTO audit_events(id,optic_id,actor_account_id,
+                        event_type,entity_type,entity_id)
+                    VALUES(?,?,?,'OPTIC_CNPJ_REGISTERED','OPTIC',?)
+                    """,UUID.randomUUID(),managedOptic,account,managedOptic);
+            }
+        }
         jdbc.update("""
             UPDATE accounts SET full_name=?,cpf=?,phone=?,birth_date=?,address=?,
                 profile_completed_at=COALESCE(profile_completed_at,now()),updated_at=now()

@@ -4,6 +4,13 @@ import { api } from '../api';
 type Person={email:string;full_name:string;phone?:string;cpf?:string;
  birth_date?:string|null;address?:string};
 const digits=(s:string)=>s.replace(/\D/g,'');
+function cnpjMask(s:string){
+ const raw=s.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,14);
+ return raw.replace(/^([A-Z0-9]{2})([A-Z0-9])/,'$1.$2')
+  .replace(/^([A-Z0-9]{2})\.([A-Z0-9]{3})([A-Z0-9])/,'$1.$2.$3')
+  .replace(/\.([A-Z0-9]{3})([A-Z0-9])/g,'.$1/$2')
+  .replace(/\/([A-Z0-9]{4})([0-9])/,'/$1-$2');
+}
 function cpfMask(s:string){
  const d=digits(s).slice(0,11);
  return d.replace(/^(\d{3})(\d)/,'$1.$2')
@@ -17,14 +24,16 @@ function phoneMask(s:string){
  if(d.length<=10)return '('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);
  return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
 }
-export function MyProfile({person,required,onSaved,onLogout}:{
- person:Person;required:boolean;onSaved:()=>void;onLogout:()=>void;
+export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',onSaved,onLogout}:{
+ person:Person;required:boolean;requiredCnpj?:boolean;opticCnpj?:string;
+ onSaved:()=>void;onLogout:()=>void;
 }){
  const [name,setName]=useState(person.full_name||'');
  const [cpf,setCpf]=useState(cpfMask(person.cpf||''));
  const [phone,setPhone]=useState(phoneMask(person.phone||''));
  const [birth,setBirth]=useState(person.birth_date?.slice(0,10)||'');
  const [address,setAddress]=useState(person.address||'');
+ const [cnpj,setCnpj]=useState(cnpjMask(opticCnpj));
  const [saving,setSaving]=useState(false);
  const [error,setError]=useState('');
  const submit=async(event:FormEvent)=>{
@@ -33,6 +42,7 @@ export function MyProfile({person,required,onSaved,onLogout}:{
    await api('/auth/profile',{method:'PUT',body:{
     fullName:name.trim(),cpf:digits(cpf),phone:digits(phone),
     birthDate:birth,address:address.trim()||null,
+    opticCnpj:requiredCnpj?cnpj.replace(/[^A-Z0-9]/g,''):null,
    }});
    onSaved();
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível salvar seus dados.');}
@@ -54,6 +64,16 @@ export function MyProfile({person,required,onSaved,onLogout}:{
     <small>O e-mail já foi confirmado no cadastro ou no convite e não é alterado aqui.</small>
    </div>
    <form className="form-grid" onSubmit={e=>void submit(e)}>
+    {requiredCnpj&&<div className="inline-panel">
+      <strong>Dados da sua ótica</strong>
+      <p>O CNPJ é obrigatório para concluir o cadastro da ótica.
+        Seu CPF abaixo identifica você como responsável.</p>
+      <label className="field">CNPJ da ótica
+        <input required autoComplete="off" value={cnpj}
+          placeholder="00.000.000/0000-00" maxLength={18}
+          onChange={e=>setCnpj(cnpjMask(e.target.value))}/>
+      </label>
+    </div>}
     <label className="field">Nome completo<input autoComplete="name" required
       maxLength={180} value={name} onChange={e=>setName(e.target.value)}/></label>
     <label className="field">CPF<input inputMode="numeric" autoComplete="off"
