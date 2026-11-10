@@ -34,7 +34,7 @@ export function MonthlyReview({shopId,onDone,onCalendar,notify}:{
     let alive=true;
     setLoading(true);setSelected({});setPlan(null);
     api<MonthPlan>('/business-calendar/month')
-      .then(value=>{if(alive)setPlan(value);})
+      .then(value=>{if(alive){setPlan(value);if(value.reviewed)onDone();}})
       .catch(error=>{if(alive){notify('Não foi possível verificar o calendário: '+String(error),true);onDone();}})
       .finally(()=>{if(alive)setLoading(false);});
     return ()=>{alive=false;};

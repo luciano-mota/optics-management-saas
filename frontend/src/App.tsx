@@ -20,12 +20,14 @@ import { Site } from './screens/Site';
 import { Platform } from './screens/Platform';
 import { OwnerInviteRequest, OwnerInviteComplete } from './screens/OwnerAccess';
 import { Optometry } from './screens/Optometry';
+import { Birthdays, BirthdayWelcome } from './screens/Birthdays';
 import { getField, perform, useRemote } from './screens/common';
 
 type Tile = {key:string;title:string;description:string;permission:string;icon:typeof Glasses;accent:string};
 const tiles:Tile[]=[
   {key:'sales',title:'Vendas e entregas',description:'Registre novas vendas e confirme as entregas.',permission:'SALES_READ',icon:ShoppingBag,accent:'mint'},
   {key:'customers',title:'Meus clientes',description:'Cadastros, receitas e retorno para novos óculos.',permission:'CUSTOMERS_READ',icon:UsersRound,accent:'blue'},
+  {key:'birthdays',title:'Aniversariantes',description:'Saudações de aniversário com WhatsApp autorizado.',permission:'CUSTOMERS_READ',icon:CalendarDays,accent:'pink'},
   {key:'retention',title:'Clientes para lembrar',description:'Listas de 3, 6, 9 meses e 1 ano, com WhatsApp preparado.',permission:'CUSTOMERS_READ',icon:CalendarDays,accent:'purple'},
   {key:'optometry',title:'Consultas de vista',description:'Pacientes, clínicas parceiras e agendamento.',permission:'APPOINTMENTS_READ',icon:CalendarDays,accent:'blue'},
   {key:'visits',title:'Visitas em domicílio',description:'Assuma pedidos, confirme visitas e feche vendas.',permission:'VISITS_READ',icon:MapPinned,accent:'orange'},
@@ -138,6 +140,7 @@ export function App(){
           {selected?.key==='sales'&&<Sales notify={notify} can={can}/>}
           {selected?.key==='customers'&&<Customers notify={notify} can={can}/>}
           {selected?.key==='retention'&&<Retention notify={notify} can={can}/>}
+          {selected?.key==='birthdays'&&<Birthdays notify={notify} can={can}/>}
           {selected?.key==='catalog'&&<Catalog notify={notify} can={can}/>}
           {selected?.key==='visits'&&<Visits notify={notify} can={can}/>}
           {selected?.key==='optometry'&&<Optometry notify={notify} can={can}/>}
@@ -160,6 +163,9 @@ export function App(){
       <MonthlyReview shopId={String(activeShop.id)} notify={notify}
         onDone={()=>setMonthlyReviewDismissed(true)}
         onCalendar={()=>setView('calendar')}/>}
+    <BirthdayWelcome allowed={!!activeShop&&can('CUSTOMERS_READ')&&
+       (activeShop?.role!=='MASTER'||monthlyReviewDismissed)}
+       notify={notify} onOpen={()=>setView('birthdays')}/>
 
   </div>;
 }
