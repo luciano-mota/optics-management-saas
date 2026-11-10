@@ -19,6 +19,7 @@ import { Team } from './screens/Team';
 import { Site } from './screens/Site';
 import { Platform } from './screens/Platform';
 import { OwnerInviteRequest, OwnerInviteComplete } from './screens/OwnerAccess';
+import { Optometry } from './screens/Optometry';
 import { getField, perform, useRemote } from './screens/common';
 
 type Tile = {key:string;title:string;description:string;permission:string;icon:typeof Glasses;accent:string};
@@ -26,6 +27,7 @@ const tiles:Tile[]=[
   {key:'sales',title:'Vendas e entregas',description:'Registre novas vendas e confirme as entregas.',permission:'SALES_READ',icon:ShoppingBag,accent:'mint'},
   {key:'customers',title:'Meus clientes',description:'Cadastros, receitas e retorno para novos óculos.',permission:'CUSTOMERS_READ',icon:UsersRound,accent:'blue'},
   {key:'retention',title:'Clientes para lembrar',description:'Listas de 3, 6, 9 meses e 1 ano, com WhatsApp preparado.',permission:'CUSTOMERS_READ',icon:CalendarDays,accent:'purple'},
+  {key:'optometry',title:'Consultas de vista',description:'Pacientes, clínicas parceiras e agendamento.',permission:'APPOINTMENTS_READ',icon:CalendarDays,accent:'blue'},
   {key:'visits',title:'Visitas em domicílio',description:'Assuma pedidos, confirme visitas e feche vendas.',permission:'VISITS_READ',icon:MapPinned,accent:'orange'},
   {key:'finance',title:'Meu financeiro',description:'Entradas, despesas, caixa e contas a receber.',permission:'FINANCE_READ',icon:Wallet,accent:'green'},
   {key:'catalog',title:'Lentes e armações',description:'Cadastre marcas e modelos com facilidade.',permission:'CATALOG_READ',icon:Glasses,accent:'pink'},
@@ -138,6 +140,7 @@ export function App(){
           {selected?.key==='retention'&&<Retention notify={notify} can={can}/>}
           {selected?.key==='catalog'&&<Catalog notify={notify} can={can}/>}
           {selected?.key==='visits'&&<Visits notify={notify} can={can}/>}
+          {selected?.key==='optometry'&&<Optometry notify={notify} can={can}/>}
           {selected?.key==='finance'&&<Finance notify={notify} can={can}/>}
           {selected?.key==='machines'&&<Machines notify={notify} can={can}/>}
           {selected?.key==='reports'&&<Reports notify={notify} can={can}/>}

@@ -7,12 +7,17 @@ const statusLabel: Record<string,string> = {
   AWAITING_PRODUCTION: 'Aguardando produção', READY_FOR_DELIVERY: 'Pronto para entrega',
   DELIVERED: 'Entregue', CANCELLED: 'Cancelado',
 };
-export function Sales({ notify }: ScreenProps) {
+export function Sales({ notify, can }: ScreenProps) {
   const [status, setStatus] = useState('');
   const [lensBrand, setLensBrand] = useState('');
   const [frameBrand, setFrameBrand] = useState('');
   const [method, setMethod] = useState('PIX');
   const [newCustomer, setNewCustomer] = useState(false);
+  const [patientSearch,setPatientSearch] = useState('');
+  const [patient,setPatient] = useState<any|null>(null);
+  const [loadingPatient,setLoadingPatient] = useState(false);
+  const suggestedPatients=useRemote<any[]>('/optometry/patients/suggestions?q='+encodeURIComponent(patientSearch));
+
   const customers = useRemote<any[]>('/customers');
   const catalog = useRemote<any[]>('/catalog');
   const machines = useRemote<any[]>('/machines');
@@ -28,10 +33,34 @@ export function Sales({ notify }: ScreenProps) {
         ([title,count]) => <div className="metric" key={String(title)}><span>{title}</span><strong>{count ?? '—'}</strong></div>)}
     </div>
     <div className="surface"><h3>Registrar uma venda</h3>
-      <p className="helper">Selecione um cliente existente ou cadastre um novo sem sair da venda.</p>
+      <p className="helper">Selecione um cliente existente, cadastre um novo ou aproveite o cadastro de um paciente que fez consulta pela ótica.</p>
+      {can?.('PATIENTS_READ')&&<div className="inline-panel">
+        <h4>Já é paciente de uma clínica parceira?</h4>
+        <label className="field">Buscar paciente pelo nome
+          <input type="search" value={patientSearch}
+            onChange={event=>{setPatientSearch(event.target.value);setPatient(null);}}
+            placeholder="Digite pelo menos 2 letras" autoComplete="off"/></label>
+        {patientSearch.trim().length>=2&&!patient&&<div className="list-cards">
+          {suggestedPatients.data?.map(p=><button key={p.id} type="button"
+            className="outline-action" onClick={()=>{
+              setLoadingPatient(true);
+              void api<any>('/optometry/patients/'+p.id+'/sales-prefill').then(details=>{
+                setPatient(details);setNewCustomer(true);setPatientSearch(p.name);
+              }).catch(error=>notify(String(error),true)).finally(()=>setLoadingPatient(false));
+            }}>{p.name} {p.birthDate?' · '+date(p.birthDate):''} {p.phoneSuffix||''}</button>)}
+          {!suggestedPatients.data?.length&&<p className="helper">Nenhum paciente disponível para conversão.</p>}
+        </div>}
+        {loadingPatient&&<p className="helper">Carregando cadastro do paciente...</p>}
+        {patient&&<p className="helper">Paciente selecionado: <strong>{patient.full_name}</strong>.
+          Confira os dados abaixo e complete os campos faltantes.
+          <button type="button" className="text-action" onClick={()=>{
+            setPatient(null);setPatientSearch('');setNewCustomer(false);
+          }}>Desvincular</button></p>}
+      </div>}
       <label className="checkline"><input type="checkbox" checked={newCustomer}
-        onChange={event=>setNewCustomer(event.target.checked)}/> Novo cliente nesta venda</label>
-      <form className="form-grid" onSubmit={event => {
+        onChange={event=>{setNewCustomer(event.target.checked);if(!event.target.checked)setPatient(null);}}/>
+        {patient?'Cadastro aproveitado de paciente':'Novo cliente nesta venda'}</label>
+      <form className="form-grid" key={patient?.id||'regular'} onSubmit={event => {
         event.preventDefault();
         const form=event.currentTarget;
         const sale = {
@@ -50,18 +79,19 @@ export function Sales({ notify }: ScreenProps) {
           birthDate:getField(form,'birthDate'),phone:getField(form,'phone'),
           address:getField(form,'address'),
         };
-        void perform(() => newCustomer ?
-          api('/sales/with-customer', {method:'POST',body:{sale,customer}}) :
-          api('/sales', {method:'POST',body:sale}), notify, () => {
-            form.reset();setNewCustomer(false);refresh();
+        void perform(() => patient ?
+          api('/sales/with-patient',{method:'POST',body:{patientId:patient.id,sale,customer}}) :
+          newCustomer ? api('/sales/with-customer',{method:'POST',body:{sale,customer}}) :
+          api('/sales',{method:'POST',body:sale}), notify, () => {
+            form.reset();setNewCustomer(false);setPatient(null);setPatientSearch('');refresh();
           });
       }}>
         {newCustomer ? <>
-          <FormField name="fullName" title="Nome completo" required />
-          <FormField name="cpf" title="CPF" required />
-          <FormField name="birthDate" title="Data de nascimento" type="date" required />
-          <FormField name="phone" title="WhatsApp ou telefone" type="tel" />
-          <FormField name="address" title="Endereço" required />
+          <FormField name="fullName" title="Nome completo" required defaultValue={patient?.full_name||''}/>
+          <FormField name="cpf" title="CPF" required defaultValue={patient?.cpf||''}/>
+          <FormField name="birthDate" title="Data de nascimento" type="date" required defaultValue={patient?.birth_date||''}/>
+          <FormField name="phone" title="WhatsApp ou telefone" type="tel" defaultValue={patient?.phone||''}/>
+          <FormField name="address" title="Endereço" required defaultValue={patient?.address||''}/>
         </> : <label className="field">Cliente<select name="customerId" required defaultValue="">
           <option value="" disabled>Selecione o cliente</option>{customers.data?.map(c =>
             <option key={c.id} value={c.id}>{c.full_name}</option>)}
