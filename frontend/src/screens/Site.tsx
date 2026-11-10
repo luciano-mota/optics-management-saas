@@ -16,7 +16,21 @@ export function Site({notify}:ScreenProps){
     <div className="section-title"><div><h2>Site e campanhas</h2>
       <p>Personalize sua página pública para receber pedidos de visita.</p></div></div>
     <div className="surface">
-      {data==null?<p className="empty">Este recurso ainda não foi habilitado pela LCM Dev Tech.</p>:<>
+      {data==null?<div className="inline-panel">
+        <span className="eyebrow">Recurso exclusivo liberado pela LCM Dev Tech</span>
+        <h3>Seu site e suas campanhas ainda não estão habilitados</h3>
+        <p>Você poderá criar uma página da sua ótica, personalizar a identidade visual,
+          divulgar campanhas e receber solicitações de atendimento em domicílio.
+          A ativação é feita somente pela administração do Optics Management.</p>
+        <p><strong>Para solicitar acesso:</strong> entre em contato com a equipe LCM Dev Tech.</p>
+        <div className="filter-bar">
+          <a className="outline-action" href="mailto:contato@lcmtech.com.br?subject=Ativacao%20do%20site%20Optics%20Management">
+            Solicitar liberação por e-mail</a>
+          <a className="outline-action" target="_blank" rel="noopener noreferrer"
+            href="https://wa.me/5598920026493?text=Ol%C3%A1%2C%20quero%20solicitar%20a%20ativa%C3%A7%C3%A3o%20do%20site%20da%20minha%20%C3%B3tica%20no%20Optics%20Management.">
+            Solicitar pelo WhatsApp</a>
+        </div>
+      </div>:<>
         <div className="inline-panel"><strong>Seu site está habilitado</strong><p>
           <a href={link} target="_blank" rel="noreferrer">{link}</a></p></div>
         <div className="inline-panel">
