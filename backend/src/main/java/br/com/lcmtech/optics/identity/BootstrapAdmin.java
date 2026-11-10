@@ -14,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Mesmo padrão do Ecclesia Finance: acesso inicial do operador via
- * BOOTSTRAP_ADMIN_EMAIL e BOOTSTRAP_ADMIN_PASSWORD, apenas no primeiro uso.
+ * BOOTSTRAP_ADMIN_EMAIL/PASSWORD (Ecclesia) ou PLATFORM_ADMIN_EMAIL/PASSWORD (PhysioEvo),
+ * apenas no primeiro uso (ver config.EnvironmentAliases).
  * Nunca publica token, endpoint ou senha padrão; não redefine senha no deploy.
  * Operadores existentes continuam entrando normalmente no login comum.
  */
@@ -27,8 +28,8 @@ public class BootstrapAdmin implements CommandLineRunner {
     private final String bootstrapPassword;
 
     public BootstrapAdmin(JdbcTemplate jdbc,PasswordEncoder passwords,
-            @Value("${BOOTSTRAP_ADMIN_EMAIL:${OPTICS_OPERATOR_EMAIL:}}") String email,
-            @Value("${BOOTSTRAP_ADMIN_PASSWORD:}") String password) {
+            @Value("${optics.bootstrap.email:}") String email,
+            @Value("${optics.bootstrap.password:}") String password) {
         this.jdbc=jdbc;
         this.passwords=passwords;
         this.bootstrapEmail=email;
@@ -42,7 +43,8 @@ public class BootstrapAdmin implements CommandLineRunner {
                 "SELECT COUNT(*) FROM platform_operators WHERE active",Integer.class);
         if(operators!=null && operators>0) return;
         if(bootstrapEmail.isBlank() && bootstrapPassword.isBlank()) {
-            LOG.info("Operador global: credenciais de bootstrap não configuradas.");
+            LOG.info("Operador global: credenciais de bootstrap não configuradas "
+                    +"(use BOOTSTRAP_ADMIN_EMAIL/PASSWORD ou PLATFORM_ADMIN_EMAIL/PASSWORD).");
             return;
         }
         if(bootstrapEmail.isBlank() || bootstrapPassword.isBlank()) {
@@ -54,7 +56,8 @@ public class BootstrapAdmin implements CommandLineRunner {
                 bootstrapPassword.length()<12||bootstrapPassword.length()>128||
                 !bootstrapPassword.matches("(?s).*[A-Za-z].*")||
                 !bootstrapPassword.matches("(?s).*\\d.*")) {
-            LOG.warn("Credenciais de bootstrap inválidas; não foi criado operador.");
+            LOG.warn("Credenciais de bootstrap inválidas (e-mail válido e senha de 12 a 128 caracteres "
+                    +"com letras e números); não foi criado operador.");
             return;
         }
         List<UUID> existing=jdbc.query(
@@ -66,8 +69,12 @@ public class BootstrapAdmin implements CommandLineRunner {
             String existingHash=jdbc.queryForObject(
                 "SELECT password_hash FROM accounts WHERE id=?",String.class,account);
             if(!passwords.matches(bootstrapPassword,existingHash)) {
-                LOG.warn("Conta já existente com senha distinta. Nenhuma permissão global concedida.");
-                return;
+                // Só acontece enquanto não existe nenhum operador: quem define as variáveis do servidor
+                // é o dono da plataforma, então a senha das variáveis passa a valer para essa conta.
+                jdbc.update("UPDATE accounts SET password_hash=?,email_verified_at=COALESCE(email_verified_at,now()),"
+                        +"updated_at=now() WHERE id=?",passwords.encode(bootstrapPassword),account);
+                jdbc.update("DELETE FROM spring_session WHERE lower(principal_name)=lower(?)",email);
+                LOG.warn("Conta existente do operador recebeu a senha definida nas variáveis do servidor.");
             }
         } else {
             Integer inactive=jdbc.queryForObject(

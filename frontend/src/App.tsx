@@ -109,7 +109,9 @@ export function App(){
   if((!me.platformOperator||(me.shops?.length??0)>0)&&
     (me.profileComplete===false||me.opticRegistrationRequired===true))return <MyProfile
     person={me.account} required requiredCnpj={me.opticRegistrationRequired===true}
-    opticCnpj={me.opticCnpj||''} opticAddress={me.opticAddress?.address||''} onSaved={()=>void load()}
+    opticCnpj={me.opticCnpj||''} opticAddress={me.opticAddress?.address||''}
+    showPersonalAddress={!me.platformOperator&&me.shops?.find((shop:any)=>shop.id===me.activeOpticId)?.role!=='MASTER'}
+    onSaved={()=>void load()}
     onLogout={()=>void perform(async()=>{
       await api('/auth/logout',{method:'POST'});await csrf();setMe(null);
     },notify)}/>;
@@ -162,9 +164,11 @@ export function App(){
           {selected?.key==='machines'&&<Machines notify={notify} can={can}/>}
           {selected?.key==='reports'&&<Reports notify={notify} can={can} isMaster={activeShop?.role==='MASTER'}/>}
           {selected?.key==='calendar'&&<BusinessCalendar notify={notify} isMaster={activeShop?.role==='MASTER'}/>}
-          {selected?.key==='team'&&<Team notify={notify} can={can} homeVisits={!!activeShop?.home_visits_enabled}/>}
+          {selected?.key==='team'&&<Team notify={notify} can={can} homeVisits={!!activeShop?.home_visits_enabled}
+            isPrimary={!!activeShop?.primary_master}/>}
           {selected?.key==='site'&&<Site notify={notify} can={can}/>}
           {view==='profile'&&<MyProfile person={me.account} required={false}
+            showPersonalAddress={!me.platformOperator&&activeShop?.role!=='MASTER'}
             onSaved={()=>void load()} onLogout={()=>setView('dashboard')}/>}
           {isPlatform&&<Platform notify={notify}/>}
           {view==='notices'&&<Notices notify={notify} onOpen={setView} alerts={alerts}

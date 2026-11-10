@@ -1,5 +1,7 @@
 package br.com.lcmtech.optics.identity;
 
+import br.com.lcmtech.optics.identity.domain.TeamGovernance;
+import br.com.lcmtech.optics.identity.domain.TeamGovernance.Member;
 import br.com.lcmtech.optics.security.OpticContext;
 import jakarta.servlet.http.HttpSession;
 import java.nio.charset.StandardCharsets;
@@ -43,9 +45,20 @@ public class TeamController {
     @GetMapping("/team")
     public List<Map<String,Object>> team(Authentication auth,HttpSession session) {
         context.requireMaster(auth,session);
-        return jdbc.queryForList("SELECT m.account_id,a.full_name,a.email,a.phone,m.role,m.active "
-                + "FROM optic_memberships m JOIN accounts a ON a.id=m.account_id "
-                + "WHERE m.optic_id=? ORDER BY a.full_name",context.optic(auth,session));
+        UUID optic=context.optic(auth,session);
+        Member actor=member(optic,context.accountId(auth));
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT m.account_id,a.full_name,a.email,a.phone,"
+                + "m.role,m.active,m.primary_master FROM optic_memberships m JOIN accounts a ON a.id=m.account_id "
+                + "WHERE m.optic_id=? ORDER BY m.primary_master DESC,(m.role='MASTER') DESC,a.full_name",optic);
+        // O próprio servidor diz o que cada linha permite; a tela só mostra o que for permitido.
+        return rows.stream().map(row->{
+            Map<String,Object> item=new java.util.HashMap<>(row);
+            Member target=new Member((UUID)row.get("account_id"),(String)row.get("role"),
+                    Boolean.TRUE.equals(row.get("primary_master")));
+            item.put("self",target.accountId().equals(actor.accountId()));
+            item.put("can_manage",TeamGovernance.canManage(actor,target));
+            return item;
+        }).toList();
     }
 
     public record Invite(String email,String role,List<String> permissions){}
@@ -55,8 +68,8 @@ public class TeamController {
         context.requireMaster(auth,session);
         if(data.email()==null||!data.email().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
             throw new IllegalArgumentException("E-mail inválido.");
-        if(!List.of("MASTER","MANAGER","SECRETARY","SELLER").contains(data.role()))
-            throw new IllegalArgumentException("Escolha um perfil válido.");
+        UUID currentOptic=context.optic(auth,session);
+        TeamGovernance.requireInvite(member(currentOptic,context.accountId(auth)),data.role());
         if(data.permissions()!=null && !ALL_PERMISSIONS.containsAll(data.permissions()))
             throw new IllegalArgumentException("O convite contém permissões inválidas.");
         if(!mail.available())
@@ -137,9 +150,8 @@ public class TeamController {
     public Map<String,Boolean> update(@PathVariable UUID userId,@RequestBody RoleChange data,
                                       Authentication auth,HttpSession session) {
         context.requireMaster(auth,session);
-        if(!List.of("MASTER","MANAGER","SECRETARY","SELLER").contains(data.role()))
-            throw new IllegalArgumentException("Perfil inválido.");
         UUID optic=context.optic(auth,session);
+        TeamGovernance.requireRoleChange(member(optic,context.accountId(auth)),member(optic,userId),data.role());
         if(!data.active()||!"MASTER".equals(data.role())) {
             String current=context.role(userId,optic);
             if("MASTER".equals(current)) {
@@ -164,9 +176,7 @@ public class TeamController {
         if(!List.of("ALLOW","DENY","DEFAULT").contains(data.effect()))
             throw new IllegalArgumentException("Efeito inválido.");
         UUID optic=context.optic(auth,session);
-        if(!context.isMember(userId,optic)) throw new IllegalArgumentException("Funcionário não encontrado.");
-        if("MASTER".equals(context.role(userId,optic)))
-            throw new IllegalArgumentException("Acesso de administrador não pode ser restringido por permissões.");
+        TeamGovernance.requirePermissionChange(member(optic,context.accountId(auth)),member(optic,userId));
         if("DEFAULT".equals(data.effect())) {
             jdbc.update("DELETE FROM member_permission_overrides WHERE optic_id=? AND account_id=? AND permission=?",
                     optic,userId,data.permission());
@@ -176,6 +186,13 @@ public class TeamController {
                     + "DO UPDATE SET effect=excluded.effect",optic,userId,data.permission(),data.effect());
         }
         return Map.of("updated",true);
+    }
+
+    /** Vínculo (ativo ou não) de uma conta com a ótica, com o indicador de Master principal. */
+    private Member member(UUID optic,UUID account) {
+        return jdbc.query("SELECT role,primary_master FROM optic_memberships WHERE optic_id=? AND account_id=?",
+                (rs,n)->new Member(account,rs.getString(1),rs.getBoolean(2)),optic,account)
+                .stream().findFirst().orElseThrow(()->new IllegalArgumentException("Funcionário não encontrado."));
     }
 
     private void applyPermissions(Map<String,Object> invitation,UUID optic,UUID account) {

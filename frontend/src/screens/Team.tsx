@@ -73,7 +73,10 @@ const roleDefaults: Record<string,string[]> = {
   ]
 };
 
-export function Team({notify,homeVisits=false}:ScreenProps&{homeVisits?:boolean}){
+const roleLabel:Record<string,string>={MASTER:'Administrador master',MANAGER:'Gerente',
+  SECRETARY:'Secretário(a)',SELLER:'Vendedor(a)'};
+
+export function Team({notify,homeVisits=false,isPrimary=false}:ScreenProps&{homeVisits?:boolean;isPrimary?:boolean}){
   // Visita em domicílio é um recurso liberado por ótica: sem ele, as permissões nem aparecem.
   const visible=perms.filter(([id])=>homeVisits||!id.startsWith('VISITS_'));
   const [inviteLink,setInviteLink]=useState('');
@@ -100,7 +103,8 @@ export function Team({notify,homeVisits=false}:ScreenProps&{homeVisits?:boolean}
           const role=event.target.value;setInviteRole(role);setInvitePermissions(roleDefaults[role]||[]);
         }}>
           <option value="SELLER">Vendedor(a)</option><option value="SECRETARY">Secretário(a)</option>
-          <option value="MANAGER">Gerente</option><option value="MASTER">Administrador master</option>
+          <option value="MANAGER">Gerente</option>
+          {isPrimary&&<option value="MASTER">Administrador master</option>}
         </select></label>
         <fieldset className="invite-permissions"><legend>Acessos ao enviar convite</legend>
           <p className="helper">Selecione quais áreas o funcionário poderá usar. O perfil Master tem acesso completo.</p>
@@ -124,29 +128,50 @@ export function Team({notify,homeVisits=false}:ScreenProps&{homeVisits?:boolean}
       </div>}
     </div>
     <div className="surface"><h3>Funcionários cadastrados</h3>
+      <p className="helper">Administradores master têm acesso completo.{isPrimary?
+        ' Como administrador principal, você gerencia toda a equipe, inclusive os outros administradores.':
+        ' Somente o administrador principal gerencia outros administradores.'}</p>
       {!data?.length?<p className="empty">Nenhum funcionário cadastrado.</p>:
         <div className="list-cards">{data.map(person=><div className="mini-row" key={person.account_id}>
-          <div><strong>{person.full_name}</strong><small>{person.email} · {person.role}</small></div>
-          <button className="outline-action" onClick={()=>setSelected(person)}>Gerenciar acessos</button></div>)}</div>}
+          <div><strong>{person.full_name||person.email}
+            {person.primary_master&&<span className="badge badge-primary">Principal</span>}
+            {person.self&&<span className="badge">Você</span>}
+            {!person.active&&<span className="badge badge-muted">Sem acesso</span>}</strong>
+            <small>{person.email} · {roleLabel[person.role]||person.role}</small></div>
+          {person.can_manage&&<button className="outline-action" onClick={()=>setSelected(person)}>
+            {person.role==='MASTER'?'Gerenciar administrador':'Gerenciar acessos'}</button>}
+        </div>)}</div>}
     </div>
     {selected&&<div className="surface">
-      <div className="section-title"><h3>Acessos de {selected.full_name}</h3>
+      <div className="section-title"><h3>{selected.full_name||selected.email}</h3>
         <button className="outline-action" onClick={()=>setSelected(null)}>Fechar</button></div>
-      <p className="helper">O acesso de administradores é completo. Nos demais perfis, conceder ou bloquear um acesso substitui o padrão.</p>
-      <div className="permission-grid">{visible.map(([id,label])=><div className="mini-row" key={id}>
-        <span>{label}</span><select aria-label={label} disabled={selected.role==='MASTER'}
-          defaultValue="DEFAULT" onChange={e=>void perform(
-            ()=>api('/team/'+selected.account_id+'/permission',
-              {method:'PUT',body:{permission:id,effect:e.target.value}}),notify)}>
-          <option value="DEFAULT">Padrão do perfil</option><option value="ALLOW">Permitir</option>
-          <option value="DENY">Bloquear</option></select></div>)}</div>
-      <div className="filter-bar"><label className="field">Perfil<select defaultValue={selected.role}
-        onChange={e=>void perform(()=>api('/team/'+selected.account_id,
-          {method:'PATCH',body:{role:e.target.value,active:selected.active}}),
-          notify,refresh)}>
-        <option value="MASTER">Administrador master</option><option value="MANAGER">Gerente</option>
-        <option value="SECRETARY">Secretário(a)</option><option value="SELLER">Vendedor(a)</option>
-      </select></label></div>
+      {selected.role!=='MASTER'&&<>
+        <p className="helper">Conceder ou bloquear um acesso substitui o padrão do perfil.</p>
+        <div className="permission-grid">{visible.map(([id,label])=><div className="mini-row" key={id}>
+          <span>{label}</span><select aria-label={label}
+            defaultValue="DEFAULT" onChange={e=>void perform(
+              ()=>api('/team/'+selected.account_id+'/permission',
+                {method:'PUT',body:{permission:id,effect:e.target.value}}),notify)}>
+            <option value="DEFAULT">Padrão do perfil</option><option value="ALLOW">Permitir</option>
+            <option value="DENY">Bloquear</option></select></div>)}</div>
+      </>}
+      <div className="filter-bar team-actions">
+        <label className="field">Perfil<select defaultValue={selected.role}
+          onChange={e=>void perform(()=>api('/team/'+selected.account_id,
+            {method:'PATCH',body:{role:e.target.value,active:selected.active}}),
+            notify,()=>{setSelected(null);refresh();})}>
+          {isPrimary&&<option value="MASTER">Administrador master</option>}
+          <option value="MANAGER">Gerente</option>
+          <option value="SECRETARY">Secretário(a)</option><option value="SELLER">Vendedor(a)</option>
+        </select></label>
+        <button className={selected.active?'outline-action danger':'outline-action'} type="button"
+          onClick={()=>{
+            if(selected.active&&!window.confirm('Remover o acesso de '+(selected.full_name||selected.email)+
+              ' a esta ótica? Você pode reativar depois.'))return;
+            void perform(()=>api('/team/'+selected.account_id,{method:'PATCH',
+              body:{role:selected.role,active:!selected.active}}),notify,()=>{setSelected(null);refresh();});
+          }}>{selected.active?'Remover acesso':'Reativar acesso'}</button>
+      </div>
     </div>}
   </div>;
 }

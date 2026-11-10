@@ -113,7 +113,7 @@ public class OpticContext {
     }
 
     public List<Map<String,Object>> memberships(UUID account) {
-        return jdbc.queryForList("SELECT o.id, o.trade_name, o.slug, m.role, o.site_enabled, o.home_visits_enabled, o.tax_document, "
+        return jdbc.queryForList("SELECT o.id, o.trade_name, o.slug, m.role, m.primary_master, o.site_enabled, o.home_visits_enabled, o.tax_document, "
                 + "s.billing_mode, s.trial_ends_at FROM optic_memberships m "
                 + "JOIN optics o ON o.id=m.optic_id JOIN optic_subscriptions s ON s.optic_id=o.id "
                 + "WHERE m.account_id=? AND m.active AND o.active ORDER BY o.trade_name",account);

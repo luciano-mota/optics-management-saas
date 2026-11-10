@@ -36,4 +36,17 @@ class BootstrapAdminIntegrationTest {
         assertThat(jdbc.queryForObject(
             "SELECT password_hash FROM accounts WHERE email=?",String.class,email)).isEqualTo(hash);
     }
+
+    @Test
+    void contaExistenteDoDonoRecebeASenhaDasVariaveisNoPrimeiroBootstrap() {
+        jdbc.update("DELETE FROM platform_operators");
+        String email="dono-"+UUID.randomUUID()+"@example.test";
+        jdbc.update("INSERT INTO accounts(id,email,password_hash,full_name) VALUES(?,?,?,'Dono')",
+                UUID.randomUUID(),email,encoder.encode("SenhaAntigaDoCadastro2026"));
+        new BootstrapAdmin(jdbc,encoder,email.toUpperCase(),"SenhaDoRender2026Forte").run();
+        String hash=jdbc.queryForObject("SELECT password_hash FROM accounts WHERE email=?",String.class,email);
+        assertThat(encoder.matches("SenhaDoRender2026Forte",hash)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM platform_operators p JOIN accounts a "
+                +"ON a.id=p.account_id WHERE a.email=?",Integer.class,email)).isEqualTo(1);
+    }
 }

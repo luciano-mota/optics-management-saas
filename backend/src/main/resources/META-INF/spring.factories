@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+  br.com.lcmtech.optics.config.EnvironmentAliases

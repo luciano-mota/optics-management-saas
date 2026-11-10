@@ -27,8 +27,10 @@ function phoneMask(s:string){
  if(d.length<=10)return '('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);
  return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
 }
-export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',opticAddress='',onSaved,onLogout}:{
+export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',opticAddress='',showPersonalAddress=true,onSaved,onLogout}:{
  person:Person;required:boolean;requiredCnpj?:boolean;opticCnpj?:string;opticAddress?:string;
+ /** Master e operador LCM não informam endereço pessoal: só o endereço da ótica importa. */
+ showPersonalAddress?:boolean;
  onSaved:()=>void;onLogout:()=>void;
 }){
  const [name,setName]=useState(person.full_name||'');
@@ -97,15 +99,14 @@ export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',optic
     <label className="field">Telefone com DDD<input inputMode="tel" autoComplete="tel"
       required maxLength={16} value={phone} placeholder="(98) 99999-9999"
       onChange={e=>setPhone(phoneMask(e.target.value))}/></label>
-    <AddressFields name="personalAddress" legend="Seu endereço" defaultValue={person.address||''}
-      onChange={setAddress}/>
+    {showPersonalAddress&&<AddressFields name="personalAddress" legend="Seu endereço" defaultValue={person.address||''}
+      onChange={setAddress}/>}
     {error&&<p className="calendar-warning" role="alert">{error}</p>}
     <button className="primary-action form-action" disabled={saving}>
       {saving?'Salvando...':required?'Concluir e acessar o painel':'Salvar alterações'}</button>
    </form>
    {required&&<div className="profile-onboarding-footer"><p className="helper">
       Seus dados são utilizados para identificar o titular da conta. Não os compartilhamos com outras óticas.
-      O endereço residencial é opcional.
     </p><button className="text-action" type="button" onClick={onLogout}>
       Sair e concluir depois</button></div>}
   </section>

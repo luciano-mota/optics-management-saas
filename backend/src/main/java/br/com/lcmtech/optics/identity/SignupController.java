@@ -45,7 +45,8 @@ public class SignupController {
                 emailVerificationRequired?null:java.sql.Timestamp.from(java.time.Instant.now()));
         jdbc.update("INSERT INTO optics(id,slug,trade_name,contact_email,whatsapp) VALUES(?,?,?,?,?)",
                 optic,slug,data.opticName().trim(),email,data.whatsapp());
-        jdbc.update("INSERT INTO optic_memberships(optic_id,account_id,role) VALUES(?,?,'MASTER')",optic,account);
+        // Quem cria a ótica é o Master principal: nunca pode ser removido por outro administrador.
+        jdbc.update("INSERT INTO optic_memberships(optic_id,account_id,role,primary_master) VALUES(?,?,'MASTER',true)",optic,account);
         jdbc.update("INSERT INTO optic_subscriptions(optic_id) VALUES(?)",optic);
         jdbc.update("INSERT INTO site_settings(optic_id) VALUES(?)",optic);
         if(emailVerificationRequired)actions.sendVerification(account,email);

@@ -205,11 +205,21 @@ input[type=file]::file-selector-button:hover { background: #e2defd; }
 /* Endereço com CEP */
 .address-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
 .address-fields legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--ink); }
-.address-grid { display: grid; grid-template-columns: 150px minmax(0, 1fr) 110px; gap: 12px 14px;
-  grid-template-areas: "cep street number" "complement district district" "city city uf"; }
-.address-cep { grid-area: cep; } .address-street { grid-area: street; } .address-number { grid-area: number; }
-.address-complement { grid-area: complement; } .address-district { grid-area: district; }
-.address-city { grid-area: city; } .address-uf { grid-area: uf; }
+/* 12 colunas: Rua e Complemento (textos longos) ganham espaço; Bairro, Cidade e UF ficam compactos. */
+.address-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px 14px; }
+.address-cep { grid-column: span 3; } .address-street { grid-column: span 7; } .address-number { grid-column: span 2; }
+.address-complement { grid-column: span 4; } .address-district { grid-column: span 3; }
+.address-city { grid-column: span 3; } .address-uf { grid-column: span 2; }
+.address-uf input { text-align: center; padding-left: 6px; padding-right: 6px; }
+/* Espaços estreitos (cartão do site público, celular): uma informação por linha, número e UF ao lado. */
+.public-form-card .address-grid, .address-fields.compact .address-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.public-form-card .address-cep, .address-fields.compact .address-cep { grid-column: span 3; }
+.public-form-card .address-street, .address-fields.compact .address-street { grid-column: 1 / span 4; }
+.public-form-card .address-number, .address-fields.compact .address-number { grid-column: span 2; }
+.public-form-card .address-complement, .address-fields.compact .address-complement { grid-column: 1 / -1; }
+.public-form-card .address-district, .address-fields.compact .address-district { grid-column: 1 / -1; }
+.public-form-card .address-city, .address-fields.compact .address-city { grid-column: 1 / span 4; }
+.public-form-card .address-uf, .address-fields.compact .address-uf { grid-column: span 2; }
 
 /* ---------- Botões ---------- */
 .primary-action, .outline-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -258,6 +268,13 @@ td small, .mini-row small { font-size: 11.5px; line-height: 1.5; color: var(--su
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 13px; }
 .mini-row > div { min-width: 0; }
 .mini-row strong { font-size: 13.5px; color: var(--ink); }
+.badge { display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); font-size: 11px; font-weight: 700;
+  vertical-align: middle; }
+.badge-primary { background: var(--primary-soft); border-color: transparent; color: var(--primary-ink); }
+.badge-muted { background: var(--danger-soft); border-color: transparent; color: var(--danger); }
+.team-actions { margin: 18px 0 0; align-items: end; }
+.team-actions .field { max-width: 260px; }
 .permission-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .permission-grid select { max-width: 170px; }
 .invite-permissions { grid-column: 1 / -1; border: 1px solid var(--border); padding: 16px; border-radius: var(--radius-md);
@@ -368,8 +385,10 @@ td a:hover { text-decoration: underline; }
   .surface { padding: 18px; }
   .form-grid { grid-template-columns: 1fr; }
   .permission-grid, .permission-selection { grid-template-columns: 1fr; }
-  .address-grid { grid-template-columns: minmax(0, 1fr) 96px;
-    grid-template-areas: "cep cep" "street number" "complement complement" "district district" "city uf"; }
+  .address-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .address-cep { grid-column: 1 / span 4; } .address-street { grid-column: 1 / span 4; }
+  .address-number { grid-column: span 2; } .address-complement, .address-district { grid-column: 1 / -1; }
+  .address-city { grid-column: 1 / span 4; } .address-uf { grid-column: span 2; }
   .public-form-card .form-grid { grid-template-columns: 1fr; }
   .public-form-card { padding: 20px; }
   .public-hero { padding: 32px 24px; }
