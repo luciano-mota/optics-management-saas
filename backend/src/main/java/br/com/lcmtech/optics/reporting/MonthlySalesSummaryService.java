@@ -54,12 +54,14 @@ public class MonthlySalesSummaryService {
         YearMonth period=YearMonth.of(year,month);
         if(asOf==null||!period.equals(YearMonth.from(asOf)))
             throw new IllegalArgumentException("A data de corte deve pertencer ao mês consultado.");
-        if(asOf.isAfter(LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"))))
-            throw new IllegalArgumentException("Não é possível apurar vendas em uma data futura.");
-
         String name=jdbc.queryForObject("SELECT trade_name FROM optics WHERE id=?",
                 String.class,optic);
         var plan=calendar.forReporting(optic,year,month,asOf);
+        java.time.ZoneId shopZone=java.time.ZoneId.of(plan.timeZone());
+        if(asOf.isAfter(LocalDate.now(shopZone)))
+            throw new IllegalArgumentException("Não é possível apurar vendas em uma data futura.");
+        java.time.OffsetDateTime endExclusive=asOf.plusDays(1)
+                .atStartOfDay(shopZone).toOffsetDateTime();
         List<String> warnings=new ArrayList<>(plan.warnings());
 
         // A data de criação impede que venda cadastrada retroativamente depois do
@@ -72,15 +74,14 @@ public class MonthlySalesSummaryService {
                    COALESCE(SUM(s.fee_amount),0) AS fees
             FROM sales s
             WHERE s.optic_id=? AND s.sold_on BETWEEN ? AND ?
-                AND s.created_at::date <= ?
+                AND s.created_at < ?
                 AND NOT EXISTS (
                     SELECT 1 FROM sale_events ev WHERE ev.optic_id=s.optic_id
                     AND ev.sale_id=s.id AND ev.next_status='CANCELLED'
-                    AND ev.occurred_at::date <= ?
+                    AND ev.occurred_at < ?
                 )
             """,optic,java.sql.Date.valueOf(period.atDay(1)),
-                java.sql.Date.valueOf(asOf),java.sql.Date.valueOf(asOf),
-                java.sql.Date.valueOf(asOf));
+                java.sql.Date.valueOf(asOf),endExclusive,endExclusive);
         var settlements=jdbc.queryForMap("""
             SELECT
               COALESCE(SUM(e.net_amount) FILTER
@@ -90,19 +91,18 @@ public class MonthlySalesSummaryService {
             FROM finance_entries e JOIN sales s
                  ON s.optic_id=e.optic_id AND s.id=e.sale_id
             WHERE e.optic_id=? AND e.origin='SALE' AND e.direction='INCOME'
-                AND e.created_at::date <= ?
-                AND s.sold_on BETWEEN ? AND ? AND s.created_at::date <= ?
-                AND (e.reversed_at IS NULL OR e.reversed_at::date > ?)
+                AND e.created_at < ?
+                AND s.sold_on BETWEEN ? AND ? AND s.created_at < ?
+                AND (e.reversed_at IS NULL OR e.reversed_at >= ?)
                 AND NOT EXISTS (
                     SELECT 1 FROM sale_events ev WHERE ev.optic_id=s.optic_id
                     AND ev.sale_id=s.id AND ev.next_status='CANCELLED'
-                    AND ev.occurred_at::date <= ?
+                    AND ev.occurred_at < ?
                 )
             """,java.sql.Date.valueOf(asOf),java.sql.Date.valueOf(asOf),
-                optic,java.sql.Date.valueOf(asOf),
+                optic,endExclusive,
                 java.sql.Date.valueOf(period.atDay(1)),java.sql.Date.valueOf(asOf),
-                java.sql.Date.valueOf(asOf),java.sql.Date.valueOf(asOf),
-                java.sql.Date.valueOf(asOf));
+                endExclusive,endExclusive,endExclusive);
 
         BigDecimal gross=amount(sales,"gross");
         BigDecimal charged=amount(sales,"charged");
@@ -132,7 +132,7 @@ public class MonthlySalesSummaryService {
             warnings.add("Existe diferença entre cobrança, recebíveis líquidos e taxas. Verifique os lançamentos.");
         if(commercialDifference.signum()!=0)
             warnings.add("A conciliação com a venda bruta não fecha. Pode haver taxa repassada ou divergência.");
-        if(asOf.isBefore(LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"))))
+        if(asOf.isBefore(LocalDate.now(shopZone)))
             warnings.add("Fechamento histórico: baixas informadas retroativamente podem alterar o resultado. Confira a memória de lançamentos.");
         if(configured && plan.remainingOpenDays()==0 && remaining.signum()>0)
             warnings.add("Não restam dias de funcionamento no período e a meta não foi atingida.");
