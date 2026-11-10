@@ -7,6 +7,7 @@ import {
 import { BrandLogo, BrandMark } from './brand';
 import { AddressFields } from './screens/AddressFields';
 import { PublicSitePage } from './site/PublicSite';
+import { PrivacyPage, TermsPage } from './Legal';
 import { api, csrf, date, currency } from './api';
 import { Catalog } from './screens/Catalog';
 import { Customers } from './screens/Customers';
@@ -69,7 +70,7 @@ export function App(){
     try {setMe(await api('/auth/me'));} catch {setMe(null);}
     finally {setReady(true);}
   };
-  useEffect(()=>{if(!site&&!invite&&!reset&&!verify)void load();},[site,invite,reset,verify]);
+  useEffect(()=>{if(!site&&!invite&&!reset&&!verify&&!params.has('termos')&&!params.has('privacidade'))void load();},[site,invite,reset,verify]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(()=>{
     if(me?.platformOperator && !(me.shops||[]).length)setView('platform');
   },[me?.platformOperator]);
@@ -98,6 +99,8 @@ export function App(){
     const timer=window.setInterval(()=>void check(),60000);
     return ()=>{mounted=false;window.clearInterval(timer);};
   },[me?.activeOpticId]);
+  if(params.has('termos'))return <TermsPage/>;
+  if(params.has('privacidade'))return <PrivacyPage/>;
   if(site)return <PublicSitePage slug={site} notify={notify} toast={toast}/>;
   if(invite)return <InviteAccept token={invite} notify={notify} toast={toast}/>;
   if(reset)return <AccountLinkAction kind="reset" token={reset} notify={notify} toast={toast}/>;
@@ -327,7 +330,9 @@ function AccessScreen({onSignedIn,notify,toast}:{
         <label className="field">Senha<input name="password" type="password" minLength={10}
           autoComplete={mode==='login'?'current-password':'new-password'} required /></label>
         {mode==='signup'&&<label className="checkline">
-          <input type="checkbox" name="acceptedTerms" required/> Concordo com os termos e com a política de privacidade</label>}
+          <input type="checkbox" name="acceptedTerms" required/>
+          <span>Li e concordo com os <a href="/?termos" target="_blank" rel="noreferrer">termos de uso</a> e a{' '}
+            <a href="/?privacidade" target="_blank" rel="noreferrer">política de privacidade</a></span></label>}
         {mode==='login'&&<button className="text-action" type="button"
           onClick={()=>setForgot(true)}>Esqueci minha senha</button>}
         <button type="submit" className="primary-action wide">
@@ -359,6 +364,7 @@ function InviteAccept({token,notify,toast}:{
           token,fullName:getField(form,'fullName'),password:getField(form,'password'),
           cpf:getField(form,'cpf'),phone:getField(form,'phone'),
           address:getField(form,'address'),birthDate:getField(form,'birthDate'),
+          acceptedTerms:new FormData(form).get('acceptedTerms')==='on',
         }}),notify,()=>setSuccess(true));
       }}>
         <label className="field">Nome completo<input name="fullName" required/></label>
@@ -367,6 +373,9 @@ function InviteAccept({token,notify,toast}:{
         <label className="field">Nascimento<input name="birthDate" type="date" required/></label>
         <AddressFields legend="Seu endereço"/>
         <label className="field">Crie uma senha<input name="password" type="password" minLength={10} required/></label>
+        <label className="checkline"><input type="checkbox" name="acceptedTerms" required/>
+          <span>Li e concordo com os <a href="/?termos" target="_blank" rel="noreferrer">termos de uso</a> e a{' '}
+            <a href="/?privacidade" target="_blank" rel="noreferrer">política de privacidade</a></span></label>
         <button className="primary-action wide">Concluir cadastro</button>
       </form>}
     <a className="text-action" href="/">Voltar para o login</a></div>

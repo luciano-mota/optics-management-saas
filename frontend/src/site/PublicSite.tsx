@@ -327,7 +327,8 @@ function VisitForm({ slug, notify, toast, disabled }: {
       accept=".pdf,image/png,image/jpeg,image/webp" required /></label>
     <label className="field span-all">Observações<textarea name="notes" rows={2} /></label>
     <label className="checkline span-all"><input type="checkbox" name="privacyAccepted" required />
-      Concordo em enviar meus dados e a receita à ótica para receber este atendimento.</label>
+      <span>Concordo em enviar meus dados e a receita à ótica para receber este atendimento
+        (<a href="/?privacidade" target="_blank" rel="noreferrer">privacidade</a>).</span></label>
     <button className="btn btn-primary btn-lg span-all" type="submit" disabled={disabled}>Solicitar visita em casa</button>
   </form>;
 }
