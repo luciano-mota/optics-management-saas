@@ -1,5 +1,8 @@
 import { useState,type FormEvent } from 'react';
 import { api } from '../api';
+import { BrandLogo } from '../brand';
+import type { CepAddress } from '../cep';
+import { AddressFields } from './AddressFields';
 
 type Person={email:string;full_name:string;phone?:string;cpf?:string;
  birth_date?:string|null;address?:string};
@@ -24,8 +27,8 @@ function phoneMask(s:string){
  if(d.length<=10)return '('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);
  return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
 }
-export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',onSaved,onLogout}:{
- person:Person;required:boolean;requiredCnpj?:boolean;opticCnpj?:string;
+export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',opticAddress='',onSaved,onLogout}:{
+ person:Person;required:boolean;requiredCnpj?:boolean;opticCnpj?:string;opticAddress?:string;
  onSaved:()=>void;onLogout:()=>void;
 }){
  const [name,setName]=useState(person.full_name||'');
@@ -34,6 +37,8 @@ export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',onSav
  const [birth,setBirth]=useState(person.birth_date?.slice(0,10)||'');
  const [address,setAddress]=useState(person.address||'');
  const [cnpj,setCnpj]=useState(cnpjMask(opticCnpj));
+ const [shopAddress,setShopAddress]=useState(opticAddress);
+ const [shopPlace,setShopPlace]=useState<CepAddress|null>(null);
  const [saving,setSaving]=useState(false);
  const [error,setError]=useState('');
  const submit=async(event:FormEvent)=>{
@@ -43,6 +48,10 @@ export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',onSav
     fullName:name.trim(),cpf:digits(cpf),phone:digits(phone),
     birthDate:birth,address:address.trim()||null,
     opticCnpj:requiredCnpj?cnpj.replace(/[^A-Z0-9]/g,''):null,
+    // Cidade, UF e código IBGE vêm do CEP: o calendário de feriados se ajusta sozinho.
+    opticAddress:requiredCnpj&&shopAddress?{address:shopAddress,
+      city:shopPlace?.city||cityFrom(shopAddress),uf:shopPlace?.uf||ufFrom(shopAddress),
+      ibge:shopPlace?.ibge||null}:null,
    }});
    onSaved();
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível salvar seus dados.');}
@@ -52,6 +61,7 @@ export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',onSav
   <section className={required?'profile-onboarding surface':'surface'}
     role={required?'dialog':undefined} aria-modal={required?true:undefined}
     aria-labelledby="profile-title">
+   {required&&<div className="onboarding-brand"><BrandLogo size={36}/></div>}
    <div className="section-title"><div>
     <span className="eyebrow">{required?'Primeiro acesso ao Optics Management':'Minha conta'}</span>
     <h2 id="profile-title">{required?'Conclua seu cadastro':'Meus dados pessoais'}</h2>
@@ -64,16 +74,19 @@ export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',onSav
     <small>O e-mail já foi confirmado no cadastro ou no convite e não é alterado aqui.</small>
    </div>
    <form className="form-grid" onSubmit={e=>void submit(e)}>
-    {requiredCnpj&&<div className="inline-panel">
-      <strong>Dados da sua ótica</strong>
-      <p>O CNPJ é obrigatório para concluir o cadastro da ótica.
-        Seu CPF abaixo identifica você como responsável.</p>
+    {requiredCnpj&&<>
+      <p className="onboarding-section">Dados da ótica</p>
       <label className="field">CNPJ da ótica
         <input required autoComplete="off" value={cnpj}
           placeholder="00.000.000/0000-00" maxLength={18}
           onChange={e=>setCnpj(cnpjMask(e.target.value))}/>
       </label>
-    </div>}
+      <AddressFields name="opticAddress" legend="Endereço da ótica" required
+        defaultValue={opticAddress} onChange={setShopAddress} onLocation={setShopPlace}/>
+      <p className="helper span-all">Usamos a cidade da ótica para
+        mostrar os feriados no calendário e calcular as metas. Você não precisa configurar mais nada.</p>
+      <p className="onboarding-section">Seus dados</p>
+    </>}
     <label className="field">Nome completo<input autoComplete="name" required
       maxLength={180} value={name} onChange={e=>setName(e.target.value)}/></label>
     <label className="field">CPF<input inputMode="numeric" autoComplete="off"
@@ -84,8 +97,8 @@ export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',onSav
     <label className="field">Telefone com DDD<input inputMode="tel" autoComplete="tel"
       required maxLength={16} value={phone} placeholder="(98) 99999-9999"
       onChange={e=>setPhone(phoneMask(e.target.value))}/></label>
-    <label className="field">Endereço (opcional)<input maxLength={1000} value={address}
-      autoComplete="street-address" onChange={e=>setAddress(e.target.value)}/></label>
+    <AddressFields name="personalAddress" legend="Seu endereço" defaultValue={person.address||''}
+      onChange={setAddress}/>
     {error&&<p className="calendar-warning" role="alert">{error}</p>}
     <button className="primary-action form-action" disabled={saving}>
       {saving?'Salvando...':required?'Concluir e acessar o painel':'Salvar alterações'}</button>
@@ -97,4 +110,14 @@ export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',onSav
       Sair e concluir depois</button></div>}
   </section>
  </div>;
+}
+
+/** Para endereços já salvos (sem nova busca de CEP): "... - Cidade/UF - CEP ...". */
+function cityFrom(address:string){
+ const match=address.match(/([^,-]+)\/([A-Z]{2})(?: - CEP|$)/);
+ return match?match[1].trim():'';
+}
+function ufFrom(address:string){
+ const match=address.match(/\/([A-Z]{2})(?: - CEP|$)/);
+ return match?match[1]:'';
 }

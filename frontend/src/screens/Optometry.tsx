@@ -1,5 +1,6 @@
 import { api, date } from '../api';
 import type { ScreenProps } from './common';
+import { AddressFields } from './AddressFields';
 import { FormField, getField, perform, useRemote } from './common';
 
 const stage:Record<string,string> = {
@@ -25,7 +26,7 @@ export function Optometry({notify,can}:ScreenProps) {
       }}>
         <FormField name="name" title="Nome da clínica" required/>
         <FormField name="phone" title="Telefone da clínica" type="tel"/>
-        <FormField name="address" title="Endereço da clínica"/>
+        <AddressFields legend="Endereço da clínica"/>
         <button className="primary-action form-action">Adicionar clínica</button>
       </form>}
     </div>
@@ -44,7 +45,7 @@ export function Optometry({notify,can}:ScreenProps) {
         <FormField name="birthDate" title="Nascimento" type="date"/>
         <FormField name="phone" title="Telefone" type="tel"/>
         <FormField name="email" title="E-mail" type="email"/>
-        <FormField name="address" title="Endereço"/>
+        <AddressFields/>
         <button className="primary-action form-action">Cadastrar paciente</button>
       </form>}
       <div className="list-cards">{patients.data?.map(patient=><div className="mini-row" key={patient.id}>

@@ -1,5 +1,6 @@
 package br.com.lcmtech.optics.visits;
 
+import br.com.lcmtech.optics.shop.OpticClock;
 import br.com.lcmtech.optics.sales.SalesController;
 import br.com.lcmtech.optics.security.OpticContext;
 import br.com.lcmtech.optics.visits.domain.VisitStatus;
@@ -23,8 +24,9 @@ public class VisitController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
     private final SalesController sales;
-    public VisitController(JdbcTemplate jdbc,OpticContext context,SalesController sales){
-        this.jdbc=jdbc;this.context=context;this.sales=sales;
+    private final OpticClock clock;
+    public VisitController(JdbcTemplate jdbc,OpticContext context,SalesController sales,OpticClock clock){
+        this.jdbc=jdbc;this.context=context;this.sales=sales;this.clock=clock;
     }
 
     @GetMapping
@@ -123,7 +125,7 @@ public class VisitController {
         Map<String,Object> result=sales.create(
                 new SalesController.NewSale(customer,req.lensId(),req.frameId(),req.amount(),req.paymentMethod(),
                     req.cardMachineId(),req.installments(),req.passFee(),req.settlementDays(),
-                    req.replacementMonths(),LocalDate.now(),req.expectedDelivery(),req.notes(),"VISIT-"+id),
+                    req.replacementMonths(),clock.today(optic),req.expectedDelivery(),req.notes(),"VISIT-"+id),
                     auth,session);
         UUID sale=(UUID)result.get("id");
         jdbc.update("UPDATE home_visits SET status='CONVERTED',customer_id=?,sale_id=?,"

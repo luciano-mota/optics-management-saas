@@ -1,5 +1,5 @@
 /* Cache apenas do shell público. Dados pessoais e APIs privadas nunca ficam no cache. */
-const CACHE='optics-public-static-v1';
+const CACHE='optics-public-static-v2';
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(['/','/icon.svg'])));
   self.skipWaiting();

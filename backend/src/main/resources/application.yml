@@ -33,6 +33,10 @@ spring:
     time-zone: America/Sao_Paulo
 server:
   port: ${PORT:8080}
+  # O Render entrega as requisições por um proxy. Sem isto, todo acesso parece vir do mesmo IP
+  # e o limite de tentativas de login bloquearia todas as óticas ao mesmo tempo. O Tomcat só
+  # aceita X-Forwarded-For vindo de proxies de rede interna (valor padrão de internal-proxies).
+  forward-headers-strategy: native
   servlet:
     session:
       cookie:

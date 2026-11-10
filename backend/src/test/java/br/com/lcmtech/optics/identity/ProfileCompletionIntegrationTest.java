@@ -89,12 +89,30 @@ class ProfileCompletionIntegrationTest {
              {"fullName":"Usuário Novo","cpf":"52998224725","phone":"98999991234",
               "birthDate":"1995-01-01","address":null,"opticCnpj":"11.222.333/0001-81"}
              """;
+        // Sem o endereço da ótica o cadastro ainda não é concluído.
         mvc.perform(put("/api/v1/auth/profile").with(user(email)).with(csrf())
             .contentType(MediaType.APPLICATION_JSON).content(validCnpj))
+            .andExpect(status().isBadRequest());
+
+        String complete="""
+             {"fullName":"Usuário Novo","cpf":"52998224725","phone":"98999991234",
+              "birthDate":"1995-01-01","address":null,"opticCnpj":"11.222.333/0001-81",
+              "opticAddress":{"address":"Rua Grande, 100 - Centro, São Luís/MA - CEP 65020-250",
+                              "city":"São Luís","uf":"MA","ibge":"2111300"}}
+             """;
+        mvc.perform(put("/api/v1/auth/profile").with(user(email)).with(csrf())
+            .contentType(MediaType.APPLICATION_JSON).content(complete))
             .andExpect(status().isOk());
         String saved=jdbc.queryForObject("SELECT tax_document FROM optics WHERE id=?",
                 String.class,optic);
         assertThat(saved).isEqualTo("11222333000181");
+        // O calendário recebe cidade, UF, IBGE e fuso a partir do endereço, sem formulário técnico.
+        var calendar=jdbc.queryForMap("SELECT state_uf,municipality_ibge,municipality_name,time_zone "
+                +"FROM optic_business_calendar WHERE optic_id=?",optic);
+        assertThat(calendar.get("state_uf")).isEqualTo("MA");
+        assertThat(calendar.get("municipality_ibge")).isEqualTo("2111300");
+        assertThat(calendar.get("municipality_name")).isEqualTo("São Luís");
+        assertThat(calendar.get("time_zone")).isEqualTo("America/Fortaleza");
         String after=mvc.perform(get("/api/v1/auth/me").with(user(email)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(json.readTree(after).path("opticRegistrationRequired").asBoolean()).isFalse();

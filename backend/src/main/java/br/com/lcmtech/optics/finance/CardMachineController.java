@@ -1,5 +1,6 @@
 package br.com.lcmtech.optics.finance;
 
+import br.com.lcmtech.optics.shop.OpticClock;
 import br.com.lcmtech.optics.finance.domain.CardFees;
 import br.com.lcmtech.optics.security.OpticContext;
 import jakarta.servlet.http.HttpSession;
@@ -29,9 +30,11 @@ public class CardMachineController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
 
-    public CardMachineController(JdbcTemplate jdbc, OpticContext context) {
+    private final OpticClock clock;
+    public CardMachineController(JdbcTemplate jdbc, OpticContext context, OpticClock clock) {
         this.jdbc=jdbc;
         this.context=context;
+        this.clock=clock;
     }
 
     public record InstallmentFee(Integer installments, BigDecimal fee,
@@ -252,7 +255,7 @@ public class CardMachineController {
             throw new IllegalArgumentException("Não selecione maquininha para Pix ou dinheiro.");
         }
         return CardFees.calculate(req.amount(),method,req.installments()==0?1:req.installments(),
-                machine,req.passFee(),LocalDate.now(),req.settlementDays());
+                machine,req.passFee(),clock.today(context.optic(auth,session)),req.settlementDays());
     }
 
     /** Vendedores precisam escolher uma maquininha e simular taxas sem acessar o caixa inteiro. */

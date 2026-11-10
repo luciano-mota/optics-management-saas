@@ -91,4 +91,37 @@ class BusinessCalendarIntegrationTest {
         }
         throw new AssertionError("Dia não encontrado: "+date);
     }
+
+    @Autowired br.com.lcmtech.optics.shop.OpticClock clock;
+
+    @Test
+    void enderecoDaOticaDefineLocalizacaoEFusoSemCamposTecnicos() throws Exception {
+        String email=setup();
+        UUID optic=jdbc.queryForObject("SELECT m.optic_id FROM optic_memberships m "
+                +"JOIN accounts a ON a.id=m.account_id WHERE a.email=?",UUID.class,email);
+        mvc.perform(put("/api/v1/business-calendar/settings").with(user(email)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"openWeekdays\":[1,2,3,4,5]}"))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/v1/optic-profile/address").with(user(email)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"address":"Av. Paulista, 1000 - Bela Vista, São Paulo/SP - CEP 01310-100",
+                     "city":"São Paulo","uf":"SP","ibge":"3550308"}
+                    """))
+                .andExpect(status().isOk());
+        JsonNode settings=mapper.readTree(mvc.perform(get("/api/v1/business-calendar/settings")
+                .with(user(email))).andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8));
+        assertThat(settings.path("state_uf").asText()).isEqualTo("SP");
+        assertThat(settings.path("municipality_name").asText()).isEqualTo("São Paulo");
+        assertThat(settings.path("address").asText()).contains("Av. Paulista");
+        // Os dias de abertura escolhidos antes não se perdem ao mudar o endereço.
+        assertThat(settings.path("openWeekdays").toString()).isEqualTo("[1,2,3,4,5]");
+        assertThat(clock.zone(optic).getId()).isEqualTo("America/Sao_Paulo");
+        // Cidade de outra UF é recusada.
+        mvc.perform(put("/api/v1/optic-profile/address").with(user(email)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"address":"Rua X, 1","city":"São Luís","uf":"MA","ibge":"3550308"}
+                    """))
+                .andExpect(status().isBadRequest());
+    }
 }

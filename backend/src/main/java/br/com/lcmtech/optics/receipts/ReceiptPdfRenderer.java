@@ -39,7 +39,7 @@ public final class ReceiptPdfRenderer {
             var regular=new PDType1Font(Standard14Fonts.FontName.HELVETICA);
             var bold=new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
             try(var canvas=new PDPageContentStream(doc,page)) {
-                canvas.setNonStrokingColor(new Color(15,91,96));
+                canvas.setNonStrokingColor(new Color(23,21,58));
                 canvas.addRect(0,711,PDRectangle.A4.getWidth(),131);canvas.fill();
                 canvas.setNonStrokingColor(Color.WHITE);
                 line(canvas,bold,18,43,797,"RECIBO DE PAGAMENTO");
@@ -55,7 +55,7 @@ public final class ReceiptPdfRenderer {
                     } catch(Exception ignored) { /* Identidade em texto permanece válida. */ }
                 }
 
-                canvas.setNonStrokingColor(new Color(38,58,65));
+                canvas.setNonStrokingColor(new Color(36,35,61));
                 float y=681;
                 line(canvas,bold,12,44,y,"IDENTIFICACAO");y-=22;
                 line(canvas,regular,10,44,y,"Emitente: "+d.legalName());y-=20;
@@ -69,9 +69,9 @@ public final class ReceiptPdfRenderer {
                 line(canvas,regular,10,44,y,"Lentes: "+d.lens());y-=19;
                 line(canvas,regular,10,44,y,"Armacao: "+d.frame());y-=25;
 
-                canvas.setNonStrokingColor(new Color(238,247,245));
+                canvas.setNonStrokingColor(new Color(246,246,250));
                 canvas.addRect(39,y-70,517,93);canvas.fill();
-                canvas.setNonStrokingColor(new Color(25,72,74));
+                canvas.setNonStrokingColor(new Color(58,45,184));
                 line(canvas,bold,12,48,y+3,"VALORES DO PAGAMENTO");y-=22;
                 line(canvas,regular,10,48,y,"Forma: "+d.paymentMethod());y-=18;
                 line(canvas,bold,14,48,y,"Valor pago pelo cliente: "+money(d.paymentGross()));y-=18;
@@ -102,7 +102,7 @@ public final class ReceiptPdfRenderer {
                 y-=20;
                 line(canvas,regular,8,47,y,"Assinatura cadastrada e apenas representacao grafica, nao certificado ICP-Brasil.");
 
-                canvas.setNonStrokingColor(new Color(98,112,116));
+                canvas.setNonStrokingColor(new Color(107,106,133));
                 line(canvas,regular,8,44,58,"Documento de pagamento emitido pela otica. Nao substitui nota fiscal.");
                 line(canvas,regular,8,44,42,"Identificacao unica: "+d.id());
             }

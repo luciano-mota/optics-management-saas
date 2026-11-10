@@ -1,10 +1,10 @@
 package br.com.lcmtech.optics.customers;
 
+import br.com.lcmtech.optics.shop.OpticClock;
 import br.com.lcmtech.optics.customers.domain.ReturnReminderPolicy;
 import br.com.lcmtech.optics.security.OpticContext;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,11 +25,12 @@ import org.springframework.web.bind.annotation.*;
 public class RetentionController {
     private final JdbcTemplate jdbc;
     private final OpticContext access;
-    private static final ZoneId BUSINESS_TIMEZONE = ZoneId.of("America/Sao_Paulo");
 
-    public RetentionController(JdbcTemplate jdbc, OpticContext access) {
+    private final OpticClock clock;
+    public RetentionController(JdbcTemplate jdbc, OpticContext access, OpticClock clock) {
         this.jdbc = jdbc;
         this.access = access;
+        this.clock = clock;
     }
 
     public record Reminder(UUID saleId, UUID customerId, String customerName, String phone,
@@ -50,7 +51,7 @@ public class RetentionController {
             throw new IllegalArgumentException("O período deve ser de 0 a 365 dias.");
         }
         UUID optic = access.optic(auth, session);
-        LocalDate today = LocalDate.now(BUSINESS_TIMEZONE);
+        LocalDate today = clock.today(optic);
         // 15 dias retroativos para não perder um alerta durante folgas e feriados.
         LocalDate oldest = today.minusMonths(12).minusDays(16);
         List<Map<String, Object>> recent = jdbc.queryForList("""

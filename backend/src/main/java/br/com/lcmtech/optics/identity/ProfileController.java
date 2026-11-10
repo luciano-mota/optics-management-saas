@@ -1,6 +1,8 @@
 package br.com.lcmtech.optics.identity;
 
 import br.com.lcmtech.optics.security.OpticContext;
+import br.com.lcmtech.optics.shop.OpticLocationService;
+import br.com.lcmtech.optics.shop.OpticProfileController.AddressInput;
 import java.time.LocalDate;
 import java.time.Instant;
 import java.util.Map;
@@ -17,11 +19,13 @@ import org.springframework.web.bind.annotation.*;
 public class ProfileController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
-    public ProfileController(JdbcTemplate jdbc,OpticContext context) {
-        this.jdbc=jdbc;this.context=context;
+    private final OpticLocationService locations;
+    public ProfileController(JdbcTemplate jdbc,OpticContext context,OpticLocationService locations) {
+        this.jdbc=jdbc;this.context=context;this.locations=locations;
     }
+    /** opticAddress: endereço da ótica com CEP, exigido do Master enquanto não houver um salvo. */
     public record Profile(String fullName,String cpf,String phone,LocalDate birthDate,
-                          String address,String opticCnpj) {}
+                          String address,String opticCnpj,AddressInput opticAddress) {}
 
     @GetMapping
     public Map<String,Object> get(Authentication authentication) {
@@ -84,6 +88,11 @@ public class ProfileController {
                     VALUES(?,?,?,'OPTIC_CNPJ_REGISTERED','OPTIC',?)
                     """,UUID.randomUUID(),managedOptic,account,managedOptic);
             }
+            // O endereço da ótica alimenta o calendário (cidade, UF, fuso) automaticamente.
+            if(input.opticAddress()!=null)
+                locations.save(managedOptic,account,input.opticAddress().toLocation());
+            else if(!locations.hasAddress(managedOptic))
+                throw new IllegalArgumentException("Informe o endereço da ótica.");
         }
         jdbc.update("""
             UPDATE accounts SET full_name=?,cpf=?,phone=?,birth_date=?,address=?,
