@@ -6,6 +6,10 @@ spring:
     username: ${DB_USERNAME:optics}
     password: ${DB_PASSWORD:}
   mail:
+    host: ${SPRING_MAIL_HOST:${MAIL_HOST:smtp-relay.brevo.com}}
+    port: ${SPRING_MAIL_PORT:${MAIL_PORT:2525}}
+    username: ${SPRING_MAIL_USERNAME:${MAIL_USERNAME:${SMTP_USERNAME:}}}
+    password: ${SPRING_MAIL_PASSWORD:${MAIL_PASSWORD:${SMTP_PASSWORD:}}}
     default-encoding: UTF-8
     properties:
       mail:
@@ -35,6 +39,19 @@ server:
         http-only: true
         same-site: lax
         secure: ${COOKIE_SECURE:false}
+# Compatibilidade com as variáveis compartilhadas de PhysioEvo/Ecclesia
+# e com os nomes específicos do Optics usados nas primeiras versões da HML.
+optics:
+  mail:
+    from: ${OPTICS_MAIL_FROM:${MAIL_FROM:nao-responda@lcmtech.com.br}}
+  asaas:
+    api-key: ${OPTICS_ASAAS_API_KEY:${ASAAS_API_KEY:}}
+    webhook-token: ${OPTICS_ASAAS_WEBHOOK_TOKEN:${ASAAS_WEBHOOK_TOKEN:}}
+    base-url: ${OPTICS_ASAAS_BASE_URL:${ASAAS_BASE_URL:https://api-sandbox.asaas.com/v3}}
+  public-base-url: ${OPTICS_PUBLIC_BASE_URL:https://optics-management-hml.onrender.com}
+  signup:
+    enabled: ${OPTICS_SIGNUP_ENABLED:${SIGNUP_ENABLED:true}}
+  email-verification-required: ${OPTICS_EMAIL_VERIFICATION_REQUIRED:${EMAIL_VERIFICATION_REQUIRED:true}}
 management:
   health:
     mail:
