@@ -87,8 +87,18 @@ public class TeamController {
         if(data.fullName()==null||data.fullName().isBlank()||
                 data.phone()==null||data.phone().isBlank()||
                 data.birthDate()==null||data.birthDate().isBlank()||
-                data.cpf()==null||!data.cpf().replaceAll("\\D","").matches("\\d{11}"))
-            throw new IllegalArgumentException("Informe nome, telefone, nascimento e CPF.");
+                data.cpf()==null||!ProfileController.validCpf(data.cpf().replaceAll("\\D",""))||
+                data.phone().replaceAll("\\D","").length()<10||
+                data.phone().replaceAll("\\D","").length()>13)
+            throw new IllegalArgumentException("Informe nome, telefone com DDD, nascimento e CPF válido.");
+        try {
+            java.time.LocalDate birth=java.time.LocalDate.parse(data.birthDate());
+            if(birth.isAfter(java.time.LocalDate.now())||
+                birth.isBefore(java.time.LocalDate.of(1900,1,1)))
+                throw new IllegalArgumentException("Data de nascimento inválida.");
+        }catch(java.time.format.DateTimeParseException ex){
+            throw new IllegalArgumentException("Data de nascimento inválida.");
+        }
         Map<String,Object> invite=readInvite(data.token());
         String email=(String)invite.get("invited_email");
         Integer exists=jdbc.queryForObject("SELECT COUNT(*) FROM accounts WHERE lower(email)=lower(?)",
@@ -96,8 +106,8 @@ public class TeamController {
         if(exists!=null&&exists>0)
             throw new IllegalArgumentException("Esse e-mail já tem conta. Entre na conta e aceite o convite.");
         UUID account=UUID.randomUUID(),optic=(UUID)invite.get("optic_id");
-        jdbc.update("INSERT INTO accounts(id,email,password_hash,full_name,cpf,phone,address,birth_date,email_verified_at) "
-                + "VALUES(?,?,?,?,?,?,?,?::date,now())",account,email,
+        jdbc.update("INSERT INTO accounts(id,email,password_hash,full_name,cpf,phone,address,birth_date,email_verified_at,profile_completed_at) "
+                + "VALUES(?,?,?,?,?,?,?,?::date,now(),now())",account,email,
                 passwordEncoder.encode(data.password()),data.fullName().trim(),
                 data.cpf().replaceAll("\\D",""),data.phone(),data.address(),data.birthDate());
         jdbc.update("INSERT INTO optic_memberships(optic_id,account_id,role) VALUES(?,?,?)",optic,account,invite.get("requested_role"));
