@@ -159,3 +159,13 @@ td small,.mini-row small{font-size:11px;line-height:1.55;color:#8a9b9e;margin-to
  .machine-term{align-items:flex-start;flex-direction:column}
  .machine-term .field,.machine-term .checkline{flex:auto;width:100%}
 }
+
+/* Primeiro acesso obrigatório: a ficha pessoal fica em foco antes do painel. */
+.profile-onboarding-backdrop{min-height:100dvh;background:linear-gradient(135deg,#e9f7f2,#d2ece8);
+ display:flex;align-items:center;justify-content:center;padding:24px}
+.profile-onboarding{width:min(780px,100%);box-shadow:0 20px 60px #135f6124}
+.profile-onboarding .inline-panel{margin:15px 0 24px}
+.profile-onboarding-footer{margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.profile-onboarding-footer p{margin:0}
+@media(max-width:600px){.profile-onboarding-backdrop{padding:10px}
+ .profile-onboarding-footer{flex-direction:column;align-items:flex-start}}
