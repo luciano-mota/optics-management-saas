@@ -100,7 +100,8 @@ export function App(){
     <h2>Optics Management</h2><p>Organizando sua ótica...</p>
   </div>;
   if(!me)return <AccessScreen onSignedIn={()=>void load()} notify={notify} toast={toast}/>;
-  if(me.profileComplete===false||me.opticRegistrationRequired===true)return <MyProfile
+  if((!me.platformOperator||(me.shops?.length??0)>0)&&
+    (me.profileComplete===false||me.opticRegistrationRequired===true))return <MyProfile
     person={me.account} required requiredCnpj={me.opticRegistrationRequired===true}
     opticCnpj={me.opticCnpj||''} onSaved={()=>void load()}
     onLogout={()=>void perform(async()=>{
