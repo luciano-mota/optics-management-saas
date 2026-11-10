@@ -18,7 +18,6 @@ import { Reports } from './screens/Reports';
 import { Team } from './screens/Team';
 import { Site } from './screens/Site';
 import { Platform } from './screens/Platform';
-import { OwnerInviteRequest, OwnerInviteComplete } from './screens/OwnerAccess';
 import { Optometry } from './screens/Optometry';
 import { Birthdays, BirthdayWelcome } from './screens/Birthdays';
 import { Receipts } from './screens/Receipts';
@@ -50,7 +49,6 @@ export function App(){
   const invite=params.get('invite');
   const reset=params.get('reset');
   const verify=params.get('verify');
-  const ownerInvite=params.get('ownerInvite');
   const [me,setMe]=useState<any|null>(null);
   const [ready,setReady]=useState(false);
   const [view,setView]=useState('dashboard');
@@ -64,7 +62,7 @@ export function App(){
     try {setMe(await api('/auth/me'));} catch {setMe(null);}
     finally {setReady(true);}
   };
-  useEffect(()=>{if(!site&&!invite&&!reset&&!verify&&!ownerInvite)void load();},[site,invite,reset,verify,ownerInvite]);
+  useEffect(()=>{if(!site&&!invite&&!reset&&!verify)void load();},[site,invite,reset,verify]);
   useEffect(()=>{
     if(me?.platformOperator && !(me.shops||[]).length)setView('platform');
   },[me?.platformOperator]);
@@ -97,14 +95,14 @@ export function App(){
   if(invite)return <InviteAccept token={invite} notify={notify} toast={toast}/>;
   if(reset)return <AccountLinkAction kind="reset" token={reset} notify={notify} toast={toast}/>;
   if(verify)return <AccountLinkAction kind="verify" token={verify} notify={notify} toast={toast}/>;
-  if(ownerInvite)return <OwnerInviteComplete token={ownerInvite} notify={notify} toast={toast}/>;
   if(!ready)return <div className="center-message app-splash">
     <div className="brand-mark"><Glasses size={44}/></div>
     <h2>Optics Management</h2><p>Organizando sua ótica...</p>
   </div>;
   if(!me)return <AccessScreen onSignedIn={()=>void load()} notify={notify} toast={toast}/>;
-  if(me.profileComplete===false)return <MyProfile
-    person={me.account} required onSaved={()=>void load()}
+  if(me.profileComplete===false||me.opticRegistrationRequired===true)return <MyProfile
+    person={me.account} required requiredCnpj={me.opticRegistrationRequired===true}
+    opticCnpj={me.opticCnpj||''} onSaved={()=>void load()}
     onLogout={()=>void perform(async()=>{
       await api('/auth/logout',{method:'POST'});await csrf();setMe(null);
     },notify)}/>;
@@ -165,13 +163,16 @@ export function App(){
           {view==='profile'&&<MyProfile person={me.account} required={false}
             onSaved={()=>void load()} onLogout={()=>setView('dashboard')}/>}
           {isPlatform&&<Platform notify={notify}/>}
-          {view==='notices'&&<Notices notify={notify} onOpen={setView} alerts={alerts}/>}
+          {view==='notices'&&<Notices notify={notify} onOpen={setView} alerts={alerts}
+            homeVisitsEnabled={!!activeShop?.home_visits_enabled}/>}
           {view==='subscription'&&activeShop?.billing_mode!=='COMPLIMENTARY'&&
             <SubscriptionView notify={notify} shop={activeShop}/>}
 
         </div>}
     </main>
-    <footer className="footer"><span>Optics Management · LCM Dev Tech</span>
+    <footer className="footer"><span>Optics Management ·
+      <a href="https://lcmtech.com.br" target="_blank" rel="noopener noreferrer">
+        Desenvolvido por LCM DEV TECH</a></span>
       <span>Gestão simples para quem cuida do seu olhar</span></footer>
     {me.profileComplete!==false&&activeShop?.role==='MASTER'&&!monthlyReviewDismissed&&
       <MonthlyReview shopId={String(activeShop.id)} notify={notify}
@@ -238,20 +239,21 @@ async function requestNotification(notify:(message:string,error?:boolean)=>void)
   catch(error){notify(String(error),true);}
 }
 
-function Notices({notify,onOpen,alerts}: {notify:(msg:string,error?:boolean)=>void;
-  onOpen:(view:string)=>void; alerts:{newVisits:number;retentionDue:number;unreadNotices:number}|null}) {
+function Notices({notify,onOpen,alerts,homeVisitsEnabled}: {notify:(msg:string,error?:boolean)=>void;
+  onOpen:(view:string)=>void; homeVisitsEnabled:boolean;
+  alerts:{newVisits:number;retentionDue:number;unreadNotices:number}|null}) {
   const {data,refresh}=useRemote<any[]>('/auth/notifications');
   return <div className="screen-stack">
     <div className="section-title"><h2>Notificações da ótica</h2></div>
     <div className="surface">
       <h3>O que precisa de atenção?</h3>
       <div className="metric-grid">
-        {shop?.home_visits_enabled&&<div className="metric"><span>Novas visitas</span><strong>{alerts?.newVisits??'—'}</strong></div>}
+        {homeVisitsEnabled&&<div className="metric"><span>Novas visitas</span><strong>{alerts?.newVisits??'—'}</strong></div>}
         <div className="metric"><span>Clientes para lembrar</span><strong>{alerts?.retentionDue??'—'}</strong></div>
         <div className="metric"><span>Mensagens não lidas</span><strong>{alerts?.unreadNotices??'—'}</strong></div>
       </div>
       <div className="filter-bar">
-        {shop?.home_visits_enabled&&<button className="outline-action" onClick={()=>onOpen('visits')}>Ver visitas</button>}
+        {homeVisitsEnabled&&<button className="outline-action" onClick={()=>onOpen('visits')}>Ver visitas</button>}
         <button className="outline-action" onClick={()=>onOpen('retention')}>Ver lembretes</button>
       </div>
       <p className="helper">Os contadores são atualizados enquanto o painel está aberto.
@@ -271,10 +273,7 @@ function AccessScreen({onSignedIn,notify,toast}:{
   onSignedIn:()=>void;notify:(msg:string,error?:boolean)=>void;toast:Toast;
 }){
   const [mode,setMode]=useState<'login'|'signup'>('login');
-  const [ownerMode,setOwnerMode]=useState(false);
   const [forgot,setForgot]=useState(false);
-  if(ownerMode)return <OwnerInviteRequest notify={notify} toast={toast}
-    onBack={()=>setOwnerMode(false)}/>;
   if(forgot)return <div className="auth-layout"><div className="auth-box">
     <h1>Redefinir senha</h1>
     <p>Informe seu e-mail. Se houver uma conta e o serviço de e-mail estiver configurado,
@@ -337,8 +336,6 @@ function AccessScreen({onSignedIn,notify,toast}:{
       </form>
       <button className="text-action auth-switch" onClick={()=>setMode(mode==='login'?'signup':'login')}>
         {mode==='login'?'Ainda não tem conta? Experimente grátis.':'Já tem conta? Entrar.'}</button>
-      <div className="owner-access-action"><button className="outline-action" type="button"
-        onClick={()=>setOwnerMode(true)}>Sou responsável pela LCM Dev Tech</button></div>
       <p className="helper">Ambiente de homologação · Não utilize dados reais nesta etapa.</p>
     </div>
     <aside className="auth-aside"><House size={44}/><h2>Mais tempo para atender, menos tempo com planilhas.</h2>
@@ -378,6 +375,19 @@ function PublicSite({slug,notify,toast}:{
 }){
   const {data,loading}=useRemote<any>('/public/site/'+encodeURIComponent(slug));
   const [submitted,setSubmitted]=useState(false);
+  useEffect(()=>{
+    if(!data)return;
+    const previousTitle=document.title;
+    const favicon=document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    const previousIcon=favicon?.getAttribute('href');
+    document.title=data.trade_name;
+    if(favicon)favicon.href=data.has_logo?
+      '/api/v1/public/site/'+encodeURIComponent(slug)+'/logo':'/icon.svg';
+    return ()=>{
+      document.title=previousTitle;
+      if(favicon)favicon.href=previousIcon||'/icon.svg';
+    };
+  },[data?.trade_name,data?.has_logo,slug]);
   if(loading)return <div className="center-message">Abrindo página da ótica...</div>;
   if(!data)return <div className="center-message"><h1>Página indisponível</h1>
     <a href="/">Voltar ao Optics Management</a></div>;
@@ -395,9 +405,11 @@ function PublicSite({slug,notify,toast}:{
     <main className="public-container public-main">
       <section className="public-hero"><span className="eyebrow">Cuidar do seu olhar é nossa prioridade</span>
         <h1>{data.campaign_title}</h1><p>{data.campaign_description}</p>
-        <div className="welcome-pills"><span><House size={15}/> Atendimento no seu endereço</span>
-          <span><CalendarDays size={15}/> Escolha a melhor data</span></div></section>
-      <section className="public-form-card">
+        <div className="welcome-pills">
+          <span><Glasses size={15}/> Cuidado com seu olhar</span>
+          <span><ShieldCheck size={15}/> Atendimento personalizado</span>
+        </div></section>
+      {data.home_visits_enabled?<section className="public-form-card">
         <h2>Agende sua visita</h2>
         <p>Preencha os dados abaixo. Vamos entrar em contato para confirmar a disponibilidade.</p>
         {toast&&<div className={toast.error?'toast error':'toast'}>{toast.message}</div>}
@@ -431,8 +443,22 @@ function PublicSite({slug,notify,toast}:{
             Concordo em enviar meus dados e a receita à ótica para receber este atendimento.</label>
           <button className="primary-action wide" type="submit">Solicitar visita em casa</button>
         </form>}
-      </section>
-    </main><footer className="public-footer">Página de {data.trade_name} · Tecnologia Optics Management / LCM Dev Tech</footer>
+      </section>:<section className="public-form-card">
+        <h2>Entre em contato com nossa equipe</h2>
+        <p>Saiba mais sobre nossos produtos, armações, lentes e campanhas disponíveis.</p>
+        <div className="filter-bar">
+          {(data.whatsapp||data.contact_phone)&&<a className="primary-action" target="_blank"
+            rel="noopener noreferrer" href={'https://wa.me/'+
+              ((String(data.whatsapp||data.contact_phone).replace(/[^0-9]/g,'').startsWith('55')?
+              '':'55')+String(data.whatsapp||data.contact_phone).replace(/[^0-9]/g,''))}>
+            Conversar no WhatsApp</a>}
+          {data.contact_email&&<a className="outline-action"
+            href={'mailto:'+data.contact_email}>Enviar e-mail</a>}
+        </div>
+      </section>}
+    </main><footer className="public-footer">Página de {data.trade_name} ·
+      <a href="https://lcmtech.com.br" target="_blank" rel="noopener noreferrer">
+        Desenvolvido por LCM DEV TECH</a></footer>
   </div>;
 }
 
