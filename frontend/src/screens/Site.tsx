@@ -14,13 +14,13 @@ export function Site({notify}:ScreenProps){
   const link=window.location.origin+'/?site='+encodeURIComponent(data?.slug||'');
   return <div className="screen-stack">
     <div className="section-title"><div><h2>Site e campanhas</h2>
-      <p>Personalize sua página pública para receber pedidos de visita.</p></div></div>
+      <p>Personalize seu site institucional, sua vitrine e suas campanhas.</p></div></div>
     <div className="surface">
       {data==null?<div className="inline-panel">
         <span className="eyebrow">Recurso exclusivo liberado pela LCM Dev Tech</span>
         <h3>Seu site e suas campanhas ainda não estão habilitados</h3>
         <p>Você poderá criar uma página da sua ótica, personalizar a identidade visual,
-          divulgar campanhas e receber solicitações de atendimento em domicílio.
+          divulgar seus produtos e campanhas, além de facilitar o contato com seus clientes.
           A ativação é feita somente pela administração do Optics Management.</p>
         <p><strong>Para solicitar acesso:</strong> entre em contato com a equipe LCM Dev Tech.</p>
         <div className="filter-bar">
@@ -33,6 +33,11 @@ export function Site({notify}:ScreenProps){
       </div>:<>
         <div className="inline-panel"><strong>Seu site está habilitado</strong><p>
           <a href={link} target="_blank" rel="noreferrer">{link}</a></p></div>
+        {data.home_visits_enabled&&<div className="inline-panel">
+          <strong>Campanha especial: atendimento em domicílio</strong>
+          <p>Essa modalidade foi ativada especificamente para sua ótica pela LCM Dev Tech.
+            O site exibirá o formulário de solicitação de visita com receita anexada.</p>
+        </div>}
         <div className="inline-panel">
           <h4>Logo da ótica</h4>
           <p>Envie PNG ou JPG com até 2 MB. A paleta de cores será sugerida com base na logo e ajustada para leitura.</p>

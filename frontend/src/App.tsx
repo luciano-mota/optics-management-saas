@@ -32,15 +32,15 @@ const tiles:Tile[]=[
   {key:'birthdays',title:'Aniversariantes',description:'Saudações de aniversário com WhatsApp autorizado.',permission:'CUSTOMERS_READ',icon:CalendarDays,accent:'pink'},
   {key:'retention',title:'Clientes para lembrar',description:'Listas de 3, 6, 9 meses e 1 ano, com WhatsApp preparado.',permission:'CUSTOMERS_READ',icon:CalendarDays,accent:'purple'},
   {key:'optometry',title:'Consultas de vista',description:'Pacientes, clínicas parceiras e agendamento.',permission:'APPOINTMENTS_READ',icon:CalendarDays,accent:'blue'},
-  {key:'visits',title:'Visitas em domicílio',description:'Assuma pedidos, confirme visitas e feche vendas.',permission:'VISITS_READ',icon:MapPinned,accent:'orange'},
+  {key:'visits',title:'Visitas agendadas',description:'Acompanhe as solicitações de atendimento externo.',permission:'VISITS_READ',icon:MapPinned,accent:'orange'},
   {key:'receipts',title:'Recibos de vendas',description:'Comprovantes com logo e assinatura da ótica.',permission:'RECEIPTS_READ',icon:ClipboardCheck,accent:'green'},
   {key:'finance',title:'Meu financeiro',description:'Entradas, despesas, caixa e contas a receber.',permission:'FINANCE_READ',icon:Wallet,accent:'green'},
   {key:'catalog',title:'Lentes e armações',description:'Cadastre marcas e modelos com facilidade.',permission:'CATALOG_READ',icon:Glasses,accent:'pink'},
   {key:'machines',title:'Maquininhas',description:'Configure taxas de débito e crédito.',permission:'FINANCE_READ',icon:CreditCard,accent:'orange'},
-  {key:'reports',title:'Relatórios',description:'Resultados por funcionário, vendas e visitas.',permission:'REPORTS_READ',icon:ChartColumnIncreasing,accent:'purple'},
+  {key:'reports',title:'Relatórios',description:'Resultados da sua ótica, vendas e equipe.',permission:'REPORTS_READ',icon:ChartColumnIncreasing,accent:'purple'},
   {key:'calendar',title:'Calendário e feriados',description:'Confira os dias em que a ótica abre e planeje suas metas.',permission:'REPORTS_READ',icon:CalendarDays,accent:'orange'},
   {key:'team',title:'Minha equipe',description:'Envie convites e gerencie permissões.',permission:'USERS_MANAGE',icon:ShieldCheck,accent:'blue'},
-  {key:'site',title:'Meu site e campanhas',description:'Personalize sua página de visitas.',permission:'SITE_MANAGE',icon:Palette,accent:'mint'},
+  {key:'site',title:'Meu site e campanhas',description:'Personalize sua vitrine digital e campanhas.',permission:'SITE_MANAGE',icon:Palette,accent:'mint'},
 ];
 type Toast = {message:string;error:boolean}|null;
 
@@ -112,7 +112,8 @@ export function App(){
   const can=(permission:string)=>me.permissions?.includes(permission);
   // O cartão de site aparece para quem administra a ótica mesmo antes da liberação comercial.
   // A autorização real de edição/publicação permanece obrigatória no backend.
-  const modules=tiles.filter(tile=>can(tile.permission));
+  const modules=tiles.filter(tile=>can(tile.permission)&&
+    (tile.key!=='visits'||activeShop?.home_visits_enabled));
   const selected=modules.find(tile=>tile.key===view);
   const isPlatform=view==='platform'&&me.platformOperator;
   const countLabel=(count:any)=>count==null?'—':String(count);
@@ -206,7 +207,7 @@ function Dashboard({me,shop,modules,onOpen,countLabel,notify}:{
     <div className="metric-grid">
       {[['Vendas hoje',dashboard.data?.today],['Esta semana',dashboard.data?.week],
         ['Este mês',dashboard.data?.month],['Entregas pendentes',dashboard.data?.pending_delivery],
-        ['Visitas pendentes',dashboard.data?.pendingVisits]].map(([label,num])=>
+        ...(shop?.home_visits_enabled?[['Visitas pendentes',dashboard.data?.pendingVisits]]:[])].map(([label,num])=>
           <div className="metric" key={String(label)}><span>{label}</span><strong>{countLabel(num)}</strong></div>)}
     </div>
     <section className="action-section"><div className="section-heading">
@@ -245,12 +246,12 @@ function Notices({notify,onOpen,alerts}: {notify:(msg:string,error?:boolean)=>vo
     <div className="surface">
       <h3>O que precisa de atenção?</h3>
       <div className="metric-grid">
-        <div className="metric"><span>Novas visitas</span><strong>{alerts?.newVisits??'—'}</strong></div>
+        {shop?.home_visits_enabled&&<div className="metric"><span>Novas visitas</span><strong>{alerts?.newVisits??'—'}</strong></div>}
         <div className="metric"><span>Clientes para lembrar</span><strong>{alerts?.retentionDue??'—'}</strong></div>
         <div className="metric"><span>Mensagens não lidas</span><strong>{alerts?.unreadNotices??'—'}</strong></div>
       </div>
       <div className="filter-bar">
-        <button className="outline-action" onClick={()=>onOpen('visits')}>Ver visitas</button>
+        {shop?.home_visits_enabled&&<button className="outline-action" onClick={()=>onOpen('visits')}>Ver visitas</button>}
         <button className="outline-action" onClick={()=>onOpen('retention')}>Ver lembretes</button>
       </div>
       <p className="helper">Os contadores são atualizados enquanto o painel está aberto.
@@ -341,7 +342,7 @@ function AccessScreen({onSignedIn,notify,toast}:{
       <p className="helper">Ambiente de homologação · Não utilize dados reais nesta etapa.</p>
     </div>
     <aside className="auth-aside"><House size={44}/><h2>Mais tempo para atender, menos tempo com planilhas.</h2>
-      <p>Vendas, entregas, financeiro e visitas em domicílio. Tudo claro, no mesmo lugar.</p></aside>
+      <p>Vendas, entregas, clientes e financeiro. Tudo claro, no mesmo lugar.</p></aside>
   </div>;
 }
 

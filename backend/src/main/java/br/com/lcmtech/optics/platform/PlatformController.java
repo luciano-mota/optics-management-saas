@@ -23,7 +23,7 @@ public class PlatformController {
     public List<Map<String,Object>> optics(Authentication auth){
         context.requirePlatform(auth);
         return jdbc.queryForList("SELECT o.id,o.slug,o.trade_name,o.contact_email,"
-            +"o.whatsapp,o.contact_phone,o.address,o.site_enabled,o.active,"
+            +"o.whatsapp,o.contact_phone,o.address,o.tax_document,o.site_enabled,o.home_visits_enabled,o.active,"
             +"s.billing_mode,s.trial_started_at,s.trial_ends_at,s.monthly_price,"
             +"s.asaas_customer_id,s.asaas_subscription_id,o.created_at "
             +"FROM optics o JOIN optic_subscriptions s ON s.optic_id=o.id "
@@ -42,7 +42,7 @@ public class PlatformController {
     }
 
     public record ChangeOptic(String billingMode,BigDecimal monthlyPrice,
-                              Boolean siteEnabled,Boolean active){}
+                              Boolean siteEnabled,Boolean homeVisitsEnabled,Boolean active){}
     @PatchMapping("/optics/{id}")
     @Transactional
     public Map<String,Boolean> change(@PathVariable UUID id,@RequestBody ChangeOptic request,
@@ -52,6 +52,9 @@ public class PlatformController {
         if(exists==null||exists==0)throw new IllegalArgumentException("Ótica não encontrada.");
         if(request.siteEnabled()!=null)
             jdbc.update("UPDATE optics SET site_enabled=?,updated_at=now() WHERE id=?",request.siteEnabled(),id);
+        if(request.homeVisitsEnabled()!=null)
+            jdbc.update("UPDATE optics SET home_visits_enabled=?,updated_at=now() WHERE id=?",
+                    request.homeVisitsEnabled(),id);
         if(request.active()!=null)
             jdbc.update("UPDATE optics SET active=?,updated_at=now() WHERE id=?",request.active(),id);
         if(request.billingMode()!=null) {
