@@ -143,7 +143,7 @@ export function App(){
           {selected?.key==='optometry'&&<Optometry notify={notify} can={can}/>}
           {selected?.key==='finance'&&<Finance notify={notify} can={can}/>}
           {selected?.key==='machines'&&<Machines notify={notify} can={can}/>}
-          {selected?.key==='reports'&&<Reports notify={notify} can={can}/>}
+          {selected?.key==='reports'&&<Reports notify={notify} can={can} isMaster={activeShop?.role==='MASTER'}/>}
           {selected?.key==='calendar'&&<BusinessCalendar notify={notify} isMaster={activeShop?.role==='MASTER'}/>}
           {selected?.key==='team'&&<Team notify={notify} can={can}/>}
           {selected?.key==='site'&&<Site notify={notify} can={can}/>}
