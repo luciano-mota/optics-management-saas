@@ -132,3 +132,30 @@ td small,.mini-row small{font-size:11px;line-height:1.55;color:#8a9b9e;margin-to
  .calendar-actions>button{flex:1 1 100%}
  .calendar-day-list .mini-row{align-items:flex-start;flex-direction:column}
 }
+
+/* Cadastro de maquininhas inspirado no fluxo visual do PhysioEvo. */
+.machine-backdrop{position:fixed;inset:0;z-index:70;background:#102f33bb;display:grid;place-items:center;padding:15px}
+.machine-dialog{background:#fff;width:min(850px,100%);max-height:94dvh;overflow:auto;border-radius:21px;padding:26px;box-shadow:0 30px 90px #0e2b3060}
+.machine-dialog .section-title{margin-bottom:20px}
+.machine-dialog .section-title h2{font-size:24px}
+.machine-editor{display:flex;flex-direction:column;gap:20px}
+.machine-section{border:1px solid #d5e7e5;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:13px;min-width:0}
+.machine-section legend{font:800 16px Manrope,system-ui;padding:0 8px;color:#15595d}
+.machine-section h4{margin:8px 0 0;font:800 14px Manrope,system-ui}
+.machine-section .helper{margin:0}
+.machine-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end}
+.machine-terms{display:grid;gap:8px}
+.machine-term{display:flex;align-items:center;gap:12px;padding:12px;background:#f5faf9;border:1px solid #e0eae8;border-radius:11px;flex-wrap:wrap}
+.machine-term .field{flex:1 1 155px}
+.machine-term .checkline{flex:1 1 200px}
+.machine-term>select{min-width:85px;background:#fff;border:1px solid #cadfdf;padding:10px;border-radius:9px}
+.machine-rates{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.machine-editor table{min-width:420px}
+.machine-editor .calendar-actions{margin-top:2px}
+@media(max-width:600px){
+ .machine-dialog{padding:16px}
+ .machine-fields{grid-template-columns:1fr}
+ .machine-rates{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .machine-term{align-items:flex-start;flex-direction:column}
+ .machine-term .field,.machine-term .checkline{flex:auto;width:100%}
+}
