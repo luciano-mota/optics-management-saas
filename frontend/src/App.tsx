@@ -22,6 +22,7 @@ import { OwnerInviteRequest, OwnerInviteComplete } from './screens/OwnerAccess';
 import { Optometry } from './screens/Optometry';
 import { Birthdays, BirthdayWelcome } from './screens/Birthdays';
 import { Receipts } from './screens/Receipts';
+import { MyProfile } from './screens/MyProfile';
 import { getField, perform, useRemote } from './screens/common';
 
 type Tile = {key:string;title:string;description:string;permission:string;icon:typeof Glasses;accent:string};
@@ -102,10 +103,16 @@ export function App(){
     <h2>Optics Management</h2><p>Organizando sua ótica...</p>
   </div>;
   if(!me)return <AccessScreen onSignedIn={()=>void load()} notify={notify} toast={toast}/>;
+  if(me.profileComplete===false)return <MyProfile
+    person={me.account} required onSaved={()=>void load()}
+    onLogout={()=>void perform(async()=>{
+      await api('/auth/logout',{method:'POST'});await csrf();setMe(null);
+    },notify)}/>;
   const activeShop=me.shops?.find((shop:any)=>shop.id===me.activeOpticId);
   const can=(permission:string)=>me.permissions?.includes(permission);
-  const modules=tiles.filter(tile=>can(tile.permission)&&
-    (tile.key!=='site'||activeShop?.site_enabled));
+  // O cartão de site aparece para quem administra a ótica mesmo antes da liberação comercial.
+  // A autorização real de edição/publicação permanece obrigatória no backend.
+  const modules=tiles.filter(tile=>can(tile.permission));
   const selected=modules.find(tile=>tile.key===view);
   const isPlatform=view==='platform'&&me.platformOperator;
   const countLabel=(count:any)=>count==null?'—':String(count);
@@ -122,6 +129,7 @@ export function App(){
       </nav>
       <div className="header-actions">
         {me.platformOperator&&<button className="outline-action" onClick={()=>setView('platform')}>Painel LCM</button>}
+        <button className="outline-action" onClick={()=>setView('profile')}>Meu cadastro</button>
         <button className="icon-button" title="Notificações" aria-label="Notificações"
           onClick={()=>setView('notices')}><Bell size={19}/>
           {alerts&&(alerts.newVisits+alerts.retentionDue+alerts.unreadNotices)>0&&
@@ -153,6 +161,8 @@ export function App(){
           {selected?.key==='calendar'&&<BusinessCalendar notify={notify} isMaster={activeShop?.role==='MASTER'}/>}
           {selected?.key==='team'&&<Team notify={notify} can={can}/>}
           {selected?.key==='site'&&<Site notify={notify} can={can}/>}
+          {view==='profile'&&<MyProfile person={me.account} required={false}
+            onSaved={()=>void load()} onLogout={()=>setView('dashboard')}/>}
           {isPlatform&&<Platform notify={notify}/>}
           {view==='notices'&&<Notices notify={notify} onOpen={setView} alerts={alerts}/>}
           {view==='subscription'&&activeShop?.billing_mode!=='COMPLIMENTARY'&&
@@ -162,7 +172,7 @@ export function App(){
     </main>
     <footer className="footer"><span>Optics Management · LCM Dev Tech</span>
       <span>Gestão simples para quem cuida do seu olhar</span></footer>
-    {activeShop?.role==='MASTER'&&!monthlyReviewDismissed&&
+    {me.profileComplete!==false&&activeShop?.role==='MASTER'&&!monthlyReviewDismissed&&
       <MonthlyReview shopId={String(activeShop.id)} notify={notify}
         onDone={()=>setMonthlyReviewDismissed(true)}
         onCalendar={()=>setView('calendar')}/>}
@@ -205,7 +215,8 @@ function Dashboard({me,shop,modules,onOpen,countLabel,notify}:{
         onClick={()=>onOpen(tile.key)}>
         <span className={'tile-icon '+tile.accent}><tile.icon size={25}/></span>
         <span className="tile-title">{tile.title}</span>
-        <span className="tile-description">{tile.description}</span>
+        <span className="tile-description">{tile.key==='site'&&!shop?.site_enabled?
+          'Aguardando liberação da LCM Dev Tech. Saiba como habilitar.':tile.description}</span>
         <span className="tile-cta">Abrir área <ArrowRight size={16}/></span>
       </button>)}</div>
     </section>
@@ -260,9 +271,9 @@ function AccessScreen({onSignedIn,notify,toast}:{
 }){
   const [mode,setMode]=useState<'login'|'signup'>('login');
   const [ownerMode,setOwnerMode]=useState(false);
+  const [forgot,setForgot]=useState(false);
   if(ownerMode)return <OwnerInviteRequest notify={notify} toast={toast}
     onBack={()=>setOwnerMode(false)}/>;
-  const [forgot,setForgot]=useState(false);
   if(forgot)return <div className="auth-layout"><div className="auth-box">
     <h1>Redefinir senha</h1>
     <p>Informe seu e-mail. Se houver uma conta e o serviço de e-mail estiver configurado,
