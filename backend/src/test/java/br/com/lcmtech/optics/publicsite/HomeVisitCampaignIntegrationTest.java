@@ -36,7 +36,7 @@ class HomeVisitCampaignIntegrationTest {
         jdbc.update("INSERT INTO site_settings(optic_id) VALUES(?)",optic);
         var response=mvc.perform(get("/api/v1/public/site/"+slug))
                 .andExpect(status().isOk()).andReturn();
-        var publicSite=mapper.readTree(response.getResponse().getContentAsString());
+        var publicSite=mapper.readTree(response.getResponse().getContentAsByteArray());
         assertThat(publicSite.path("home_visits_enabled").asBoolean()).isFalse();
         assertThat(publicSite.path("campaign_title").asText())
                 .isEqualTo("Bem-vindo à nossa ótica");
@@ -50,7 +50,7 @@ class HomeVisitCampaignIntegrationTest {
 
         jdbc.update("UPDATE optics SET home_visits_enabled=true WHERE id=?",optic);
         publicSite=mapper.readTree(mvc.perform(get("/api/v1/public/site/"+slug))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
         assertThat(publicSite.path("home_visits_enabled").asBoolean()).isTrue();
     }
 }
