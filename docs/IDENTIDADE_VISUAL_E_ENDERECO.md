@@ -56,3 +56,14 @@ recibo, endereço da ótica e formulário de visita do site público).
 
 - Feriados **estaduais e municipais** ainda não têm fonte automática: o Master marca na tela de
   calendário. Próximo passo: catálogo de feriados estaduais com fonte legal por UF.
+
+## Equipe: administrador principal (10/11/2026)
+
+- Quem cria a ótica é o **administrador principal** (`optic_memberships.primary_master`, migration V17;
+  óticas existentes: o Master ativo mais antigo). Ele nunca é removido, rebaixado nem tem acessos
+  alterados por outra pessoa.
+- Somente o principal convida, promove, rebaixa ou remove outros administradores master.
+  Os demais administradores gerenciam gerentes, secretários(as) e vendedores(as).
+- Ninguém altera o próprio acesso. Administradores master têm acesso completo, por isso não há
+  "Gerenciar acessos" individuais para eles. Regras em `identity/domain/TeamGovernance`.
+- Master e operador LCM não informam endereço pessoal; apenas o endereço da ótica.
