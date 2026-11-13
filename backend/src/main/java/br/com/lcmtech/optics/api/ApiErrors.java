@@ -15,6 +15,11 @@ public class ApiErrors {
     public ResponseEntity<Map<String,String>> forbidden(AccessDeniedException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
     }
+    @ExceptionHandler(java.util.NoSuchElementException.class)
+    public ResponseEntity<Map<String,String>> notFound(java.util.NoSuchElementException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", e.getMessage() == null ? "Registro não encontrado." : e.getMessage()));
+    }
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class,
             DataIntegrityViolationException.class, MethodArgumentNotValidException.class})
     public ResponseEntity<Map<String,String>> invalid(Exception e) {

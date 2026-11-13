@@ -39,20 +39,6 @@ export async function api<T = any>(
   return response.json() as Promise<T>;
 }
 
-export async function downloadReport(file: 'csv' | 'xlsx' | 'pdf'): Promise<void> {
-  const response = await fetch('/api/v1/reports/sales.' + file, {
-    credentials: 'same-origin', cache: 'no-store',
-  });
-  if (!response.ok) throw new Error('Não foi possível gerar o relatório.');
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = 'optics-vendas.' + file;
-  anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 export async function fileAsBase64(file: File): Promise<string> {
   if (file.size > 4 * 1024 * 1024) throw new Error('O arquivo deve ter até 4 MB.');
   if (!['image/png', 'image/jpeg', 'image/webp', 'application/pdf'].includes(file.type))
