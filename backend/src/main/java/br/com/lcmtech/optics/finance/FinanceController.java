@@ -89,7 +89,9 @@ public class FinanceController {
                                       Authentication auth,HttpSession session) {
         context.require(auth,session,"FINANCE_WRITE");
         LocalDate date;
-        try {date=LocalDate.parse(body.get("settledOn"));}
+        String informed=body==null?null:body.get("settledOn");
+        if(informed==null||informed.isBlank()) date=clock.today(context.optic(auth,session)); // hoje na ótica
+        else try {date=LocalDate.parse(informed);}
         catch(Exception e){throw new IllegalArgumentException("Data de recebimento inválida.");}
         int count=jdbc.update("UPDATE finance_entries SET settled_on=? WHERE optic_id=? AND id=? "
                 +"AND settled_on IS NULL AND reversed_at IS NULL",

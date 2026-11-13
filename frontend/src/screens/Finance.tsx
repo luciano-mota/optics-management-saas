@@ -58,7 +58,7 @@ export function Finance({ notify }: ScreenProps) {
           <td>{!entry.settled_on&&!entry.reversed_at &&
             <button className="text-action" onClick={()=>void perform(
               ()=>api('/finance/'+entry.id+'/settle',{method:'PATCH',body:{
-                settledOn:new Date().toISOString().slice(0,10)}}),notify,reload)}>Confirmar pagamento</button>}
+                settledOn:null}}),notify,reload)}>Confirmar pagamento</button>}
             {entry.origin==='MANUAL'&&!entry.reversed_at && <button className="text-action danger"
               onClick={()=>void perform(()=>api('/finance/'+entry.id+'/reverse',{method:'PATCH'}),
               notify,reload)}>Estornar</button>}</td></tr>)}</tbody></table></div>}

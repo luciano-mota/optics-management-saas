@@ -104,4 +104,16 @@ class PrimaryMasterIntegrationTest {
             assertThat(row.path("self").asBoolean()).isEqualTo(email.equals(team.second()));
         }
     }
+
+    @Test
+    void conviteGeraLinkMesmoSemEmailConfigurado() throws Exception {
+        People team = setup();
+        var body = json.readTree(mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/api/v1/team/invites").with(user(team.primary())).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"nova@example.test\",\"role\":\"SELLER\",\"permissions\":[\"SALES_READ\"]}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        assertThat(body.path("inviteUrl").asText()).contains("?invite=");
+        assertThat(body.path("emailSent").asBoolean()).isFalse();
+    }
 }

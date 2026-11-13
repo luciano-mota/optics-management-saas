@@ -89,7 +89,7 @@ export function MyProfile({person,required,requiredCnpj=false,opticCnpj='',optic
       placeholder="000.000.000-00" required value={cpf} maxLength={14}
       onChange={e=>setCpf(cpfMask(e.target.value))}/></label>
     <label className="field">Data de nascimento<input type="date" required value={birth}
-      max={new Date().toISOString().slice(0,10)} onChange={e=>setBirth(e.target.value)}/></label>
+      max={new Date().toLocaleDateString('sv-SE')} onChange={e=>setBirth(e.target.value)}/></label>
     <label className="field">Telefone com DDD<input inputMode="tel" autoComplete="tel"
       required value={phone} placeholder="(98) 99999-9999"
       onChange={e=>setPhone(phoneMask(e.target.value))}/></label>

@@ -91,11 +91,12 @@ export function Team({notify,homeVisits=false,isPrimary=false}:ScreenProps&{home
       <form className="form-grid" onSubmit={event=>{
         event.preventDefault();const form=event.currentTarget;
         void perform(async()=>{
-          const result=await api<{inviteUrl:string}>('/team/invites',{method:'POST',body:{
+          const result=await api<{inviteUrl:string;emailSent:boolean;message:string}>('/team/invites',{method:'POST',body:{
             email:getField(form,'email'),role:inviteRole,
             permissions:inviteRole==='MASTER'?null:invitePermissions,
           }});
           setInviteLink(result.inviteUrl);
+          if(!result.emailSent)throw new Error(result.message);
         },notify,()=>{form.reset();setInviteRole('SELLER');setInvitePermissions(roleDefaults.SELLER);});
       }}>
         <FormField name="email" title="E-mail corporativo ou pessoal" type="email" required />
