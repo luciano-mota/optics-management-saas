@@ -47,18 +47,18 @@ public class ReportController {
     @GetMapping(value="/sales.csv",produces="text/csv;charset=UTF-8")
     public ResponseEntity<byte[]> csv(@RequestParam(required=false) LocalDate from,
           @RequestParam(required=false) LocalDate to,Authentication auth,HttpSession session) throws IOException{
-        return detailed.export("vendas","csv",from,to,null,null,null,auth,session);
+        return detailed.export("vendas","csv",DetailedReportController.Filters.period(from,to),auth,session);
     }
 
     @GetMapping(value="/sales.xlsx",produces=TabularReport.XLSX)
     public ResponseEntity<byte[]> xlsx(@RequestParam(required=false) LocalDate from,
            @RequestParam(required=false) LocalDate to,Authentication auth,HttpSession session) throws IOException{
-        return detailed.export("vendas","xlsx",from,to,null,null,null,auth,session);
+        return detailed.export("vendas","xlsx",DetailedReportController.Filters.period(from,to),auth,session);
     }
 
     @GetMapping(value="/sales.pdf",produces="application/pdf")
     public ResponseEntity<byte[]> pdf(@RequestParam(required=false) LocalDate from,
           @RequestParam(required=false) LocalDate to,Authentication auth,HttpSession session) throws IOException{
-        return detailed.export("vendas","pdf",from,to,null,null,null,auth,session);
+        return detailed.export("vendas","pdf",DetailedReportController.Filters.period(from,to),auth,session);
     }
 }

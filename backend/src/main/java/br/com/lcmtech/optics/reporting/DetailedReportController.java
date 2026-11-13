@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -54,12 +55,27 @@ public class DetailedReportController {
         this.clock = clock;
     }
 
-    /** Filtros comuns; os que não se aplicam ao relatório são ignorados. */
-    public record Filters(LocalDate from, LocalDate to, String status, UUID clinicId, UUID sellerId) {
+    /** Filtros da query string; os que não se aplicam ao relatório são ignorados. */
+    public record Filters(@DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                          String status, UUID clinicId, UUID sellerId, String frameBrand, String frameCategory,
+                          String lensBrand, String lensCategory, String paymentMethod, String origin, String customer) {
         public Filters {
+            if (status != null && status.isBlank()) status = null;
+        }
+
+        public static Filters period(LocalDate from, LocalDate to) {
+            return new Filters(from, to, null, null, null, null, null, null, null, null, null, null);
+        }
+
+        void validate() {
             if (from != null && to != null && from.isAfter(to))
                 throw new IllegalArgumentException("A data inicial deve ser anterior ou igual à data final.");
-            if (status != null && status.isBlank()) status = null;
+        }
+
+        SalesQuery.SalesFilter sales() {
+            return new SalesQuery.SalesFilter(from, to, status, sellerId, frameBrand, frameCategory, lensBrand,
+                    lensCategory, paymentMethod, origin, customer);
         }
 
         String period() {
@@ -74,14 +90,9 @@ public class DetailedReportController {
     record Result(TabularReport table, List<Map<String, Object>> groups) {}
 
     @GetMapping("/{kind}")
-    public Map<String, Object> preview(@PathVariable String kind,
-                                       @RequestParam(required = false) LocalDate from,
-                                       @RequestParam(required = false) LocalDate to,
-                                       @RequestParam(required = false) String status,
-                                       @RequestParam(required = false) UUID clinicId,
-                                       @RequestParam(required = false) UUID sellerId,
+    public Map<String, Object> preview(@PathVariable String kind, Filters filters,
                                        Authentication auth, HttpSession session) {
-        Result result = build(kind, new Filters(from, to, status, clinicId, sellerId), auth, session);
+        Result result = build(kind, filters, auth, session);
         TabularReport t = result.table();
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("title", t.title());
@@ -95,15 +106,33 @@ public class DetailedReportController {
         return body;
     }
 
+    /** Opções dos filtros da consulta de vendas (vendedoras, marcas e listas fechadas) da ótica da sessão. */
+    @GetMapping("/vendas/options")
+    public Map<String, Object> salesOptions(Authentication auth, HttpSession session) {
+        context.require(auth, session, "REPORTS_READ");
+        context.require(auth, session, "SALES_READ");
+        UUID optic = context.optic(auth, session);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sellers", jdbc.queryForList("""
+                SELECT a.id, a.full_name AS name FROM optic_memberships m JOIN accounts a ON a.id=m.account_id
+                WHERE m.optic_id=? AND (m.active OR EXISTS (SELECT 1 FROM sales s WHERE s.optic_id=m.optic_id
+                      AND s.seller_id=m.account_id))
+                ORDER BY a.full_name""", optic));
+        body.put("lensBrands", jdbc.queryForList("SELECT DISTINCT brand FROM catalog_items WHERE optic_id=? AND kind='LENS' "
+                + "ORDER BY brand", String.class, optic));
+        body.put("frameBrands", jdbc.queryForList("SELECT DISTINCT brand FROM catalog_items WHERE optic_id=? AND kind='FRAME' "
+                + "ORDER BY brand", String.class, optic));
+        body.put("lensCategories", br.com.lcmtech.optics.catalog.domain.CatalogCategory.LENS);
+        body.put("frameCategories", br.com.lcmtech.optics.catalog.domain.CatalogCategory.FRAME);
+        body.put("payments", PAYMENT);
+        body.put("statuses", SALE_STATUS);
+        body.put("origins", SalesQuery.ORIGIN);
+        return body;
+    }
+
     @GetMapping("/{kind}/export/{format}")
-    public ResponseEntity<byte[]> export(@PathVariable String kind, @PathVariable String format,
-                                         @RequestParam(required = false) LocalDate from,
-                                         @RequestParam(required = false) LocalDate to,
-                                         @RequestParam(required = false) String status,
-                                         @RequestParam(required = false) UUID clinicId,
-                                         @RequestParam(required = false) UUID sellerId,
+    public ResponseEntity<byte[]> export(@PathVariable String kind, @PathVariable String format, Filters filters,
                                          Authentication auth, HttpSession session) throws IOException {
-        Filters filters = new Filters(from, to, status, clinicId, sellerId);
         TabularReport t = build(kind, filters, auth, session).table();
         UUID optic = context.optic(auth, session);
         return switch (format) {
@@ -116,6 +145,7 @@ public class DetailedReportController {
 
     Result build(String kind, Filters f, Authentication auth, HttpSession session) {
         context.require(auth, session, "REPORTS_READ");
+        f.validate();
         UUID optic = context.optic(auth, session);
         return switch (kind) {
             case "vendas" -> {
@@ -140,23 +170,20 @@ public class DetailedReportController {
 
     // ---------------------------------------------------------------- vendas
 
-    /** Vendas do período. Taxas, líquido e totais em dinheiro só para quem vê o financeiro. */
+    /**
+     * Consulta de vendas com os filtros do dono (vendedora, marcas, tipos, pagamento, origem, cliente).
+     * Taxas, líquido e totais em dinheiro só para quem vê o financeiro.
+     */
     Result sales(UUID optic, Filters f, boolean finance) {
-        requireStatus(f.status(), SALE_STATUS);
-        List<Map<String, Object>> records = jdbc.queryForList("""
-                SELECT s.sold_on, c.full_name AS customer, a.full_name AS seller, l.brand AS lens, fr.brand AS frame,
-                       s.status, s.payment_method, s.installments, s.charged_amount, s.fee_amount, s.net_amount,
-                       (c.source_patient_id IS NOT NULL) AS from_patient
-                FROM sales s
-                JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id
-                JOIN accounts a ON a.id=s.seller_id
-                JOIN catalog_items l ON l.optic_id=s.optic_id AND l.id=s.lens_id
-                JOIN catalog_items fr ON fr.optic_id=s.optic_id AND fr.id=s.frame_id
-                WHERE s.optic_id=? AND (?::date IS NULL OR s.sold_on>=?::date) AND (?::date IS NULL OR s.sold_on<=?::date)
-                  AND (?::text IS NULL OR s.status=?::text) AND (?::uuid IS NULL OR s.seller_id=?::uuid)
-                ORDER BY s.sold_on DESC, s.created_at DESC LIMIT ?
-                """, optic, f.from(), f.from(), f.to(), f.to(), f.status(), f.status(),
-                f.sellerId(), f.sellerId(), MAX_ROWS);
+        SalesQuery.SalesFilter filter = f.sales();
+        filter.validate();
+        SalesQuery.Where where = SalesQuery.where(optic, filter);
+        List<Map<String, Object>> records = jdbc.queryForList(
+                "SELECT s.sold_on, c.full_name AS customer, a.full_name AS seller, l.brand AS lens, l.category AS lens_category,"
+                + " fr.brand AS frame, fr.category AS frame_category, s.status, s.payment_method, s.installments,"
+                + " s.charged_amount, s.fee_amount, s.net_amount, " + SalesQuery.ORIGIN_EXPR + " AS origin"
+                + SalesQuery.FROM + where.sql() + " ORDER BY s.sold_on DESC, s.created_at DESC LIMIT ?",
+                where.with(MAX_ROWS));
         List<String> headers = new ArrayList<>(List.of("Data", "Cliente", "Vendedor", "Lente", "Armação", "Situação",
                 "Pagamento", "Parcelas", "Origem", "Valor cobrado"));
         if (finance) headers.addAll(List.of("Taxas", "Líquido"));
@@ -167,11 +194,11 @@ public class DetailedReportController {
         for (Map<String, Object> r : records) {
             boolean isCancelled = "CANCELLED".equals(r.get("status"));
             List<String> row = new ArrayList<>(List.of(date(r.get("sold_on")), str(r.get("customer")),
-                    str(r.get("seller")), str(r.get("lens")), str(r.get("frame")),
+                    str(r.get("seller")), SalesQuery.lensLabel(r.get("lens"), r.get("lens_category")),
+                    SalesQuery.frameLabel(r.get("frame"), r.get("frame_category")),
                     SALE_STATUS.getOrDefault(str(r.get("status")), str(r.get("status"))),
                     PAYMENT.getOrDefault(str(r.get("payment_method")), str(r.get("payment_method"))),
-                    str(r.get("installments")),
-                    Boolean.TRUE.equals(r.get("from_patient")) ? "Paciente de consulta" : "Venda direta",
+                    str(r.get("installments")), SalesQuery.ORIGIN.getOrDefault(str(r.get("origin")), ""),
                     money(r.get("charged_amount"))));
             if (finance) {
                 row.add(money(r.get("fee_amount")));
@@ -193,13 +220,36 @@ public class DetailedReportController {
         }
         List<String> summary = new ArrayList<>();
         summary.add("Vendas válidas: " + valid + "   |   Canceladas: " + cancelled);
-        if (finance) summary.add("Valor cobrado: " + TabularReport.Money.brl(charged) + "   |   Taxas: "
-                + TabularReport.Money.brl(fees) + "   |   Líquido: " + TabularReport.Money.brl(net)
-                + "   (canceladas fora dos totais)");
+        if (finance) {
+            summary.add("Valor cobrado: " + TabularReport.Money.brl(charged) + "   |   Ticket médio: "
+                    + (valid == 0 ? "—" : TabularReport.Money.brl(charged.divide(BigDecimal.valueOf(valid), 2,
+                    java.math.RoundingMode.HALF_UP))) + "   |   Taxas: " + TabularReport.Money.brl(fees)
+                    + "   |   Líquido: " + TabularReport.Money.brl(net) + "   (canceladas fora dos totais)");
+        }
+        String filtersText = describe(filter);
+        if (!filtersText.isEmpty()) summary.add("Filtros: " + filtersText);
         return new Result(new TabularReport("Relatório de vendas", "Vendas", "optics-vendas", headers, rows, summary,
                 moneyColumns(headers, "Valor cobrado", "Taxas", "Líquido"),
-                widths(headers.size(), 7, 16, 12, 11, 11, 10, 8, 5, 10, 8, 7, 7)),
+                widths(headers.size(), 7, 14, 11, 13, 13, 10, 7, 5, 10, 8, 7, 7)),
                 new ArrayList<>(bySeller.values()));
+    }
+
+    /** Filtros aplicados, por extenso, para o rodapé do PDF e da planilha (auditoria). */
+    private String describe(SalesQuery.SalesFilter f) {
+        List<String> parts = new ArrayList<>();
+        if (f.sellerId() != null) parts.add("vendedor(a) " + jdbc.queryForList(
+                "SELECT full_name FROM accounts WHERE id=?", String.class, f.sellerId()).stream().findFirst().orElse("?"));
+        if (f.frameBrand() != null) parts.add("armação " + f.frameBrand());
+        if (f.frameCategory() != null) parts.add("categoria " + ("NONE".equals(f.frameCategory()) ? "não informada"
+                : SalesQuery.shortLabel(br.com.lcmtech.optics.catalog.domain.CatalogCategory.label("FRAME", f.frameCategory()))));
+        if (f.lensBrand() != null) parts.add("lente " + f.lensBrand());
+        if (f.lensCategory() != null) parts.add("tipo de lente " + ("NONE".equals(f.lensCategory()) ? "não informado"
+                : SalesQuery.shortLabel(br.com.lcmtech.optics.catalog.domain.CatalogCategory.label("LENS", f.lensCategory()))));
+        if (f.paymentMethod() != null) parts.add("pagamento " + PAYMENT.get(f.paymentMethod()));
+        if (f.status() != null) parts.add("situação " + SALE_STATUS.get(f.status()));
+        if (f.origin() != null) parts.add("origem " + SalesQuery.ORIGIN.get(f.origin()));
+        if (f.customer() != null) parts.add("cliente \"" + f.customer() + "\"");
+        return String.join(", ", parts);
     }
 
     // ---------------------------------------------------------------- consultas
