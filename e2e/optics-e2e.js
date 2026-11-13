@@ -399,12 +399,14 @@ async function signupOptic(label) {
   const dismissModals = async (target = page) => {
     await target.waitForLoadState('networkidle');
     // Fecha pelo nome: o último botão do aviso de aniversário é "Ver aniversariantes", que sai do painel.
-    for (let i = 0; i < 4; i++) {
+    // Avisos podem abrir um pouco depois: só termina após duas conferências seguidas sem aviso.
+    for (let i = 0, quiet = 0; i < 10 && quiet < 2; i++) {
+      await target.waitForTimeout(350);
       const modal = target.locator('.calendar-modal');
-      if (!(await modal.count())) break;
+      if (!(await modal.count())) { quiet++; continue; }
+      quiet = 0;
       const close = modal.getByRole('button', { name: /Fechar por hoje|Salvar meu planejamento|Revisar depois/ }).first();
       await (await close.count() ? close : modal.locator('button').last()).click();
-      await target.waitForTimeout(300);
     }
   };
   await dismissModals();

@@ -1,4 +1,5 @@
 import { useRef, useState, type PointerEvent } from 'react';
+import { firstName, whatsappUrl } from '../whatsapp';
 import { api, currency, date, fileAsBase64 } from '../api';
 import { getField, perform, useRemote, PhoneField } from './common';
 import { AddressFields } from './AddressFields';
@@ -13,12 +14,9 @@ type Payment={payment_id:string;settlement_id:string|null;receipt_id:string|null
 type Share={url:string;shareId:string;validUntil:string};
 
 function whatsLink(receipt:Receipt,url:string) {
-  const number=String(receipt.customer_phone||'').replace(/[^0-9]/g,'');
-  const phone=number.startsWith('55')?number:'55'+number;
-  return 'https://wa.me/'+phone+'?text='+encodeURIComponent(
-    'Olá, '+receipt.customer_name+'! Segue o link seguro do recibo de pagamento da sua compra na ótica: '+url+
-    ' (disponível por 24 horas). Obrigado pela preferência!'
-  );
+  return whatsappUrl(receipt.customer_phone,
+    'Olá, '+firstName(receipt.customer_name)+'! Segue o link seguro do recibo de pagamento da sua compra na ótica: '+url+
+    ' (disponível por 24 horas). Obrigado pela preferência!')??'#';
 }
 
 async function getPdf(id:string) {

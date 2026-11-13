@@ -46,7 +46,7 @@ public class SalesController {
                                           @RequestParam(defaultValue="") String frameBrand,
                                           Authentication auth,HttpSession session) {
         context.require(auth,session,"SALES_READ");
-        return jdbc.queryForList("SELECT s.id,s.customer_id,c.full_name AS customer_name,s.sold_on,"
+        return jdbc.queryForList("SELECT s.id,s.customer_id,c.full_name AS customer_name,c.phone AS customer_phone,s.sold_on,"
                 +"s.expected_delivery,s.status,s.replacement_months,s.gross_amount,s.charged_amount,"
                 +"s.fee_amount,s.net_amount,s.payment_method,s.installments,"
                 +"l.brand AS lens_brand, f.brand AS frame_brand,a.full_name AS seller_name,"

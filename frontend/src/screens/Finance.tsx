@@ -1,4 +1,6 @@
 import { Fragment, useState } from 'react';
+import { MessageCircle } from 'lucide-react';
+import { firstName, openWhatsapp } from '../whatsapp';
 import { api, currency, date } from '../api';
 import type { ScreenProps } from './common';
 import { FormField, getField, perform, useRemote } from './common';
@@ -69,6 +71,12 @@ export function Finance({ notify }: ScreenProps) {
               Registrar {income?'recebimento':'pagamento'}</button>}
             {paid>0||entry.reversed_at?<button className="text-action" onClick={()=>
               setOpened(expanded&&opened?.mode==='history'?null:{id:entry.id,mode:'history'})}>Histórico</button>:null}
+            {income&&entry.origin==='SALE'&&!entry.reversed_at&&open>0&&Number(entry.fee_amount)===0&&entry.customer_phone&&
+              <button className="text-action whatsapp-action" onClick={()=>openWhatsapp(entry.customer_phone,
+                'Olá, '+firstName(entry.customer_name)+'! Tudo bem? Passando para lembrar da parcela de '+currency(open)
+                +(entry.due_on?' com vencimento em '+date(entry.due_on):'')+' referente à sua compra na ótica. '
+                +'Se já pagou, desconsidere. Qualquer dúvida, estamos à disposição!',notify)}>
+                <MessageCircle size={14}/> Lembrar pelo WhatsApp</button>}
             {entry.origin==='MANUAL'&&!entry.reversed_at && <button className="text-action danger"
               onClick={()=>void perform(()=>api('/finance/'+entry.id+'/reverse',{method:'PATCH'}),
               notify,reload)}>Estornar lançamento</button>}</td></tr>

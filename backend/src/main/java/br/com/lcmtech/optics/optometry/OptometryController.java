@@ -22,8 +22,9 @@ import org.springframework.web.bind.annotation.*;
 public class OptometryController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
-    public OptometryController(JdbcTemplate jdbc,OpticContext context){
-        this.jdbc=jdbc;this.context=context;
+    private final br.com.lcmtech.optics.shop.OpticClock clock;
+    public OptometryController(JdbcTemplate jdbc,OpticContext context,br.com.lcmtech.optics.shop.OpticClock clock){
+        this.jdbc=jdbc;this.context=context;this.clock=clock;
     }
 
     /** reminderOptIn: o paciente autorizou receber lembrete de consulta por e-mail. */
@@ -160,6 +161,7 @@ public class OptometryController {
             Authentication auth,HttpSession session) {
         context.require(auth,session,"APPOINTMENTS_READ");
         UUID optic=context.optic(auth,session);
+        String zone=clock.zone(optic).getId(); // "o dia" no fuso da ótica, não um fuso fixo
         return jdbc.queryForList("""
             SELECT a.id,a.patient_id,a.clinic_id,a.starts_at,a.ends_at,a.status,a.notes,
                 p.full_name AS patient_name,p.phone AS patient_phone,
@@ -169,9 +171,9 @@ public class OptometryController {
             JOIN optical_partner_clinics cl ON cl.optic_id=a.optic_id AND cl.id=a.clinic_id
             JOIN accounts creator ON creator.id=a.created_by
             WHERE a.optic_id=? AND (?::date IS NULL
-                OR (a.starts_at AT TIME ZONE 'America/Fortaleza')::date=?::date)
+                OR (a.starts_at AT TIME ZONE ?)::date=?::date)
             ORDER BY a.starts_at DESC LIMIT 300
-            """,optic,day,day);
+            """,optic,day,zone,day);
     }
 
     @PostMapping("/appointments")

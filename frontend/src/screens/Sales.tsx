@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { MessageCircle } from 'lucide-react';
+import { firstName, openWhatsapp } from '../whatsapp';
 import { api, currency, date } from '../api';
 import type { ScreenProps } from './common';
 import { AddressFields } from './AddressFields';
@@ -216,9 +218,13 @@ export function Sales({ notify, can }: ScreenProps) {
           <td>{s.status==='AWAITING_PRODUCTION' ? <button className="text-action" onClick={() =>
             void perform(()=>api('/sales/'+s.id+'/status',{method:'PATCH',body:{status:'READY_FOR_DELIVERY'}}),
               notify,refresh)}>Marcar como pronto</button> :
-            s.status==='READY_FOR_DELIVERY' ? <button className="text-action" onClick={() =>
+            s.status==='READY_FOR_DELIVERY' ? <span className="cell-actions"><button className="text-action" onClick={() =>
               void perform(()=>api('/sales/'+s.id+'/status',{method:'PATCH',body:{status:'DELIVERED'}}),
-                notify,refresh)}>Confirmar entrega</button> : '—'}</td>
+                notify,refresh)}>Confirmar entrega</button>
+              {s.customer_phone&&<button className="text-action whatsapp-action" onClick={()=>openWhatsapp(s.customer_phone,
+                'Olá, '+firstName(s.customer_name)+'! Seus óculos já estão prontos. Pode vir buscar na ótica quando '
+                +'for melhor para você. Qualquer dúvida, é só chamar!',notify)}><MessageCircle size={14}/> Avisar que está pronto</button>}
+              </span> : '—'}</td>
           </tr>)}</tbody></table></div>}
     </div>
   </div>;

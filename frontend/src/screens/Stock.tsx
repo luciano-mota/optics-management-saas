@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { firstName, whatsappUrl } from '../whatsapp';
 import { AlertTriangle, MessageCircle } from 'lucide-react';
 import { api, currency, date } from '../api';
 import type { ScreenProps } from './common';
@@ -17,8 +18,7 @@ const KIND: Record<string, string> = { LENTES: 'Lentes (laboratório)', CONSERTO
 const SUPPLIER_KIND: Record<string, string> = { FORNECEDOR: 'Fornecedor', LABORATORIO: 'Laboratório', AMBOS: 'Fornecedor e laboratório' };
 
 function whatsapp(phone: string | null, text: string) {
-  const digits = String(phone || '').replace(/\D/g, '');
-  return 'https://wa.me/' + (digits.startsWith('55') ? digits : '55' + digits) + '?text=' + encodeURIComponent(text);
+  return whatsappUrl(phone, text) ?? '#';
 }
 
 function ServiceOrders({ notify, can }: ScreenProps) {
@@ -65,7 +65,7 @@ function ServiceOrders({ notify, can }: ScreenProps) {
           <button key={next} className="text-action" onClick={() => void perform(() => api('/service-orders/' + o.id + '/status',
             { method: 'PATCH', body: { status: next } }), notify, orders.refresh)}>{label}</button>)}
           {o.status === 'RECEBIDA' && o.customer_phone && <a className="text-action" target="_blank" rel="noreferrer"
-            href={whatsapp(o.customer_phone, 'Olá, ' + String(o.customer).split(' ')[0] + '! Seus óculos já estão prontos na ótica. '
+            href={whatsapp(o.customer_phone, 'Olá, ' + firstName(o.customer) + '! Seus óculos já estão prontos na ótica. '
               + 'Pode vir buscar quando quiser.')}><MessageCircle size={14} /> Avisar cliente</a>}
           {writable && !['ENTREGUE', 'CANCELADA'].includes(o.status) && <button className="text-action danger" onClick={() => {
             if (window.confirm('Cancelar a OS nº ' + o.number + '?')) void perform(() => api('/service-orders/' + o.id + '/status',

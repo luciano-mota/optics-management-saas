@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { firstName, whatsappUrl } from '../whatsapp';
 import { api, date } from '../api';
 import type { ScreenProps } from './common';
 import { perform, useRemote } from './common';
@@ -17,12 +18,11 @@ type Reminder = {
 };
 
 function whatsappLink(person: Reminder): string {
-  const digits = String(person.phone || '').replace(/[^0-9]/g, '');
-  const formatted = digits.startsWith('55') ? digits : '55' + digits;
+  const name = firstName(person.customerName);
   const message = person.milestoneMonths === 12 ?
-    'Olá, ' + person.customerName + '! Tudo bem? Já faz um ano desde a compra dos seus óculos. Se desejar, podemos ajudar a cuidar da sua visão. Conte com a nossa ótica!' :
-    'Olá, ' + person.customerName + '! Tudo bem? Já se passaram ' + person.milestoneMonths + ' meses desde sua última compra de óculos. Passando para desejar tudo de bom! Caso precise, estamos à disposição.';
-  return 'https://wa.me/' + formatted + '?text=' + encodeURIComponent(message);
+    'Olá, ' + name + '! Tudo bem? Já faz um ano desde a compra dos seus óculos. Se desejar, podemos ajudar a cuidar da sua visão. Conte com a nossa ótica!' :
+    'Olá, ' + name + '! Tudo bem? Já se passaram ' + person.milestoneMonths + ' meses desde sua última compra de óculos. Passando para desejar tudo de bom! Caso precise, estamos à disposição.';
+  return whatsappUrl(person.phone, message) ?? '#';
 }
 
 export function Retention({notify}:ScreenProps) {

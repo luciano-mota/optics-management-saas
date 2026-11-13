@@ -39,8 +39,11 @@ public class FinanceController {
         return jdbc.queryForList("SELECT e.id,e.direction,e.category,e.description,"
                 +"e.gross_amount,e.fee_amount,e.net_amount,e.occurred_on,e.due_on,e.settled_on,"
                 +"e.origin,e.sale_id,e.reversed_at, a.full_name AS responsible, "
-                +FinanceLedger.ACTIVE_PAID+" AS paid_amount, e.net_amount-"+FinanceLedger.ACTIVE_PAID+" AS open_amount "
+                +FinanceLedger.ACTIVE_PAID+" AS paid_amount, e.net_amount-"+FinanceLedger.ACTIVE_PAID+" AS open_amount, "
+                +"c.full_name AS customer_name, c.phone AS customer_phone "
                 +"FROM finance_entries e JOIN accounts a ON a.id=e.created_by "
+                +"LEFT JOIN sales s ON s.optic_id=e.optic_id AND s.id=e.sale_id "
+                +"LEFT JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id "
                 +"WHERE e.optic_id=? AND (?::date IS NULL OR e.occurred_on>=?::date)"
                 +" AND (?::date IS NULL OR e.occurred_on<=?::date)"
                 +" AND (?='' OR e.direction=?) ORDER BY e.occurred_on DESC,e.created_at DESC LIMIT 1000",

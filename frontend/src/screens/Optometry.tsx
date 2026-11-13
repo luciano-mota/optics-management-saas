@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { CalendarPlus } from 'lucide-react';
+import { firstName, openWhatsapp } from '../whatsapp';
+import { CalendarPlus, MessageCircle } from 'lucide-react';
 import { api, date } from '../api';
 import type { ScreenProps } from './common';
 import { AddressFields } from './AddressFields';
@@ -97,7 +98,13 @@ export function Optometry({notify,can}:ScreenProps) {
       {!appointments.data?.length?<p className="empty">Ainda não há consultas agendadas.</p>:
         <div className="list-cards">{appointments.data.map(a=><div className="mini-row" key={a.id}>
           <div><strong>{a.patient_name} · {a.clinic_name}</strong>
-            <small>{date(a.starts_at)} · {stage[a.status]||a.status}</small></div>
+            <small>{date(a.starts_at)} {new Date(a.starts_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+              {' · '}{stage[a.status]||a.status}</small>
+            {['SCHEDULED','CONFIRMED'].includes(a.status)&&a.patient_phone&&new Date(a.starts_at)>new Date()&&
+              <button className="text-action whatsapp-action" onClick={()=>openWhatsapp(a.patient_phone,
+                'Olá, '+firstName(a.patient_name)+'! Passando para lembrar da sua consulta de vista em '+date(a.starts_at)
+                +' às '+new Date(a.starts_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+', na '+a.clinic_name
+                +'. Podemos confirmar sua presença?',notify)}><MessageCircle size={14}/> Lembrar pelo WhatsApp</button>}</div>
           {can?.('APPOINTMENTS_MANAGE')&&['SCHEDULED','CONFIRMED'].includes(a.status)&&
           <div className="filter-bar">{[
             ...(a.status==='SCHEDULED'?['CONFIRMED']:[]),

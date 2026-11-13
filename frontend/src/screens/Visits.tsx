@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { firstName, openWhatsapp } from '../whatsapp';
 import { api, date } from '../api';
 import type { ScreenProps } from './common';
 import { FormField, getField, perform, useRemote } from './common';
@@ -23,10 +24,8 @@ export function Visits({notify}:ScreenProps) {
   }
   const refreshAll=()=>{refresh();setSelected(null);};
   function whatsapp(visit:any) {
-    const digits=String(visit.lead_phone).replace(/\D/g,'');
-    const number=digits.startsWith('55')?digits:'55'+digits;
-    const message='Olá, '+visit.lead_name+'! Sua solicitação de visita à ótica foi recebida. Podemos confirmar o horário de '+date(visit.appointment_at)+'?';
-    window.open('https://wa.me/'+number+'?text='+encodeURIComponent(message),'_blank','noopener,noreferrer');
+    openWhatsapp(visit.lead_phone,'Olá, '+firstName(visit.lead_name)+'! Sua solicitação de visita à ótica foi recebida. '
+      +'Podemos confirmar o horário de '+date(visit.appointment_at)+'?',notify);
   }
   return <div className="screen-stack">
     <div className="section-title"><div><h2>Visitas em domicílio</h2>

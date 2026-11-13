@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { firstName, whatsappUrl as buildWhatsappUrl } from '../whatsapp';
 import { api, date } from '../api';
 import { perform, useRemote } from './common';
 import type { ScreenProps } from './common';
@@ -11,11 +12,9 @@ type BirthdayStatus={showModal:boolean;today:string;birthdays:Birthday[]};
 type Notify=(text:string,error?:boolean)=>void;
 
 function whatsappUrl(entry:Birthday){
-  const raw=String(entry.phone||'').replace(/[^0-9]/g,'');
-  const phone=raw.startsWith('55')?raw:'55'+raw;
-  return 'https://wa.me/'+phone+'?text='+encodeURIComponent(
-    'Olá, '+entry.name+'! Feliz aniversário! 🎉 Que seu dia seja especial e cheio de alegria. São os votos de toda a nossa equipe da ótica!'
-  );
+  return buildWhatsappUrl(entry.phone,
+    'Olá, '+firstName(entry.name)+'! Feliz aniversário! 🎉 Que seu dia seja especial e cheio de alegria. São os votos de toda a nossa equipe da ótica!'
+  )??'#';
 }
 
 async function contact(entry:Birthday,notify:Notify,after:()=>void){

@@ -251,3 +251,9 @@ td.row-actions { display: table-cell; text-align: right; white-space: nowrap; }
 td.row-actions > * + * { margin-left: 12px; }
 .stacked-section { margin-top: 18px; }
 .device-settings h3.device-install-title { margin-top: 26px; }
+
+/* ---------- WhatsApp manual (mensagem pronta) ---------- */
+.whatsapp-action { display: inline-flex; align-items: center; gap: 5px; color: #128c4a; }
+.whatsapp-action:hover { color: #0b6b37; }
+.cell-actions { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.mini-row .whatsapp-action { margin-top: 4px; padding-left: 0; }
