@@ -72,11 +72,33 @@ public class MonthlySalesSummaryService {
             AND (e.reversed_at IS NULL OR e.reversed_at >= ?) AND
             """ + VALID_SALE;
 
+    /**
+     * Baixa (finance_settlements st) que vale no corte, pela data efetiva: paga até o corte e não estornada até o
+     * corte (data do estorno). Recebimento informado depois, com data anterior, entra na data em que aconteceu,
+     * como avisa o resumo. Parâmetros: corte, corte.
+     */
+    static final String SETTLEMENT_AS_OF = " st.paid_on<=? AND NOT (st.reversed_on IS NOT NULL AND st.reversed_on<=?) ";
+
+    /** Recebido de cada lançamento (alias e) na fotografia do corte: coluna rc.received. */
+    static final String RECEIVED_AS_OF = " CROSS JOIN LATERAL (SELECT coalesce(sum(st.amount),0) AS received "
+            + "FROM finance_settlements st WHERE st.optic_id=e.optic_id AND st.entry_id=e.id AND"
+            + SETTLEMENT_AS_OF + ") rc ";
+
     /** Período apurado: do dia 1 até o corte, no fuso da ótica, com o calendário de funcionamento. */
     public record Window(UUID optic,String opticName,int year,int month,LocalDate from,LocalDate asOf,
                          java.time.OffsetDateTime endExclusive,BusinessCalendarController.MonthPlan plan) {
         Object[] saleParams() {
             return new Object[]{optic,java.sql.Date.valueOf(from),java.sql.Date.valueOf(asOf),endExclusive,endExclusive};
+        }
+        Object[] settlementParams() {
+            return new Object[]{java.sql.Date.valueOf(asOf),java.sql.Date.valueOf(asOf)};
+        }
+        /** Parâmetros de RECEIVED_AS_OF seguidos dos de VALID_RECEIVABLE. */
+        Object[] receivedParams() {
+            Object[] a=settlementParams(),b=receivableParams();
+            Object[] all=java.util.Arrays.copyOf(a,a.length+b.length);
+            System.arraycopy(b,0,all,a.length,b.length);
+            return all;
         }
         Object[] receivableParams() {
             Object[] sale=saleParams();
@@ -121,19 +143,13 @@ public class MonthlySalesSummaryService {
                    COALESCE(SUM(s.charged_amount),0) AS charged,
                    COALESCE(SUM(s.fee_amount),0) AS fees
             FROM sales s WHERE """+VALID_SALE,w.saleParams());
-        Object[] receivable=w.receivableParams();
-        Object[] settlementParams=new Object[receivable.length+2];
-        settlementParams[0]=java.sql.Date.valueOf(asOf);settlementParams[1]=java.sql.Date.valueOf(asOf);
-        System.arraycopy(receivable,0,settlementParams,2,receivable.length);
+        // Recebido = soma das baixas que valem no corte (inclusive parciais); a receber = o saldo restante.
         var settlements=jdbc.queryForMap("""
-            SELECT
-              COALESCE(SUM(e.net_amount) FILTER
-                  (WHERE e.settled_on IS NOT NULL AND e.settled_on<=?),0) AS received,
-              COALESCE(SUM(e.net_amount) FILTER
-                  (WHERE e.settled_on IS NULL OR e.settled_on>?),0) AS pending
+            SELECT coalesce(sum(rc.received),0) AS received,
+                   coalesce(sum(e.net_amount-rc.received),0) AS pending
             FROM finance_entries e JOIN sales s
                  ON s.optic_id=e.optic_id AND s.id=e.sale_id
-            WHERE """+VALID_RECEIVABLE,settlementParams);
+            """+RECEIVED_AS_OF+" WHERE "+VALID_RECEIVABLE,w.receivedParams());
 
         BigDecimal gross=amount(sales,"gross");
         BigDecimal charged=amount(sales,"charged");

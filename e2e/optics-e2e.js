@@ -126,6 +126,16 @@ async function signupOptic(label) {
   check('Painel: vendas de hoje', Number(dash.today) === 2, JSON.stringify(dash));
   const fin = (await a.call('GET', '/finance/summary')).body;
   check('Financeiro: recebível do cartão separado do caixa', Number(fin.receivable) > 0, JSON.stringify(fin));
+  // Recebimento parcial (crediário): R$ 300 de R$ 1.000 deixa R$ 700 em aberto; estorno devolve o saldo.
+  const credit = (await a.call('POST', '/finance', { direction: 'INCOME', category: 'Crediário', description: 'Entrada parcelada',
+    amount: 1000, occurredOn: null, dueOn: null, settled: false })).body;
+  const part = await a.call('POST', '/finance/' + credit.id + '/settlements', { amount: 300, paidOn: null, note: 'Entrada' });
+  check('Financeiro: recebimento parcial deixa saldo', part.status === 200 && Number(part.body.open) === 700, JSON.stringify(part.body));
+  check('Financeiro: valor acima do saldo recusado', (await a.call('POST', '/finance/' + credit.id + '/settlements', { amount: 900 })).status === 400);
+  const rev = await a.call('POST', '/finance/settlements/' + part.body.settlementId + '/reverse', { reason: 'Teste' });
+  check('Financeiro: estorno do recebimento devolve o saldo', rev.status === 200 && Number(rev.body.open) === 1000, JSON.stringify(rev.body));
+  check('Financeiro: histórico guarda o estorno', ((await a.call('GET', '/finance/' + credit.id + '/settlements')).body || [])
+    .some(st => st.reversed_at && st.reversal_reason === 'Teste'));
 
   for (const st of ['READY_FOR_DELIVERY', 'DELIVERED'])
     check('Venda: status ' + st, (await a.call('PATCH', '/sales/' + salePix.body.id + '/status', { status: st })).status === 200);
@@ -288,6 +298,7 @@ async function signupOptic(label) {
   check('Isolamento: análise de vendas de B vazia', bRanking.rows.length === 0 && bRanking.count === 0);
   const bDetail = (await b.call('GET', '/reports/monthly-sales-summary/detail/vendas?' + ym)).body;
   check('Isolamento: detalhe do indicador de B vazio', bDetail.rows.length === 0);
+  check('Isolamento: B não baixa lançamento de A', (await b.call('POST', '/finance/' + credit.id + '/settlements', { amount: 10 })).status === 404);
   check('Isolamento: B não edita produto de A', (await b.call('PATCH', '/catalog/' + frame.id, { brand: 'X', category: 'GRAU' })).status === 404);
   const foreignClinic = await b.call('GET', '/reports/detailed/consultas?clinicId=' + clinic.body.id);
   check('Isolamento: filtro com clínica de A não traz nada', foreignClinic.status === 200 && foreignClinic.body.totalRows === 0);

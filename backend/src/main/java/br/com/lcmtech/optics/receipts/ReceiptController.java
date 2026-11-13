@@ -124,15 +124,19 @@ public class ReceiptController {
              Authentication auth,HttpSession session) {
         access.require(auth,session,"RECEIPTS_READ");
         UUID optic=access.optic(auth,session);
+        // Uma linha por recebimento (baixa); parcela ainda sem recebimento aparece sozinha, sem recibo possível.
         return jdbc.queryForList("""
-            SELECT e.id AS payment_id,e.gross_amount,e.net_amount,e.fee_amount,
-                e.due_on,e.settled_on,s.status,
-                r.id AS receipt_id,r.receipt_number
+            SELECT e.id AS payment_id,st.id AS settlement_id,e.gross_amount,e.net_amount,e.fee_amount,
+                e.due_on,st.paid_on AS settled_on,st.amount AS paid_amount,(st.reversed_at IS NOT NULL) AS settlement_reversed,
+                e.net_amount-(SELECT coalesce(sum(x.amount),0) FROM finance_settlements x WHERE x.optic_id=e.optic_id
+                    AND x.entry_id=e.id AND x.reversed_at IS NULL) AS open_amount,
+                s.status,r.id AS receipt_id,r.receipt_number
             FROM finance_entries e
             JOIN sales s ON s.optic_id=e.optic_id AND s.id=e.sale_id
-            LEFT JOIN sale_receipts r ON r.optic_id=e.optic_id AND r.finance_entry_id=e.id
+            LEFT JOIN finance_settlements st ON st.optic_id=e.optic_id AND st.entry_id=e.id
+            LEFT JOIN sale_receipts r ON r.optic_id=st.optic_id AND r.settlement_id=st.id
             WHERE e.optic_id=? AND e.sale_id=? AND e.origin='SALE'
-            ORDER BY e.due_on,e.created_at
+            ORDER BY e.due_on,e.created_at,st.paid_on,st.created_at
             """,optic,saleId);
     }
 
@@ -149,37 +153,58 @@ public class ReceiptController {
             """,optic);
     }
 
+    /** Atalho: recibo do recebimento mais recente da parcela (sem recibo ainda, ou o já emitido). */
     @PostMapping("/payments/{paymentId}/issue")
     @Transactional(rollbackFor=IOException.class)
     public Map<String,Object> issue(@PathVariable UUID paymentId,
             Authentication auth,HttpSession session) throws IOException {
         access.require(auth,session,"RECEIPTS_ISSUE");
+        UUID optic=access.optic(auth,session);
+        var latest=jdbc.queryForList("""
+                SELECT st.id FROM finance_settlements st
+                WHERE st.optic_id=? AND st.entry_id=? AND st.reversed_at IS NULL
+                ORDER BY (SELECT count(*) FROM sale_receipts r WHERE r.optic_id=st.optic_id AND r.settlement_id=st.id),
+                         st.paid_on DESC,st.created_at DESC LIMIT 1
+                """,UUID.class,optic,paymentId);
+        if(latest.isEmpty())
+            throw new IllegalArgumentException("Recibo disponível apenas para um pagamento liquidado e não estornado.");
+        return issueSettlement(latest.get(0),auth,session);
+    }
+
+    /** Recibo de um recebimento. Parcial: mostra o valor pago e o saldo em aberto, sem declarar quitação. */
+    @PostMapping("/settlements/{settlementId}/issue")
+    @Transactional(rollbackFor=IOException.class)
+    public Map<String,Object> issueSettlement(@PathVariable UUID settlementId,
+            Authentication auth,HttpSession session) throws IOException {
+        access.require(auth,session,"RECEIPTS_ISSUE");
         UUID optic=access.optic(auth,session),actor=access.accountId(auth);
+        // Já emitido: devolve o mesmo recibo (mesmo que o recebimento tenha sido estornado depois).
+        var previous=jdbc.queryForList("""
+                SELECT id,receipt_number FROM sale_receipts
+                WHERE optic_id=? AND settlement_id=?
+                """,optic,settlementId);
+        if(!previous.isEmpty())return Map.of("id",previous.get(0).get("id"),
+                "receiptNumber",previous.get(0).get("receipt_number"),"alreadyIssued",true);
         var payments=jdbc.queryForList("""
-                SELECT e.id,e.sale_id,e.gross_amount AS payment_gross,e.net_amount,
-                    e.fee_amount,e.settled_on,s.sold_on,s.status,s.payment_method,
+                SELECT e.id,e.sale_id,st.id AS settlement_id,st.amount AS paid_amount,st.paid_on AS settled_on,
+                    e.gross_amount,e.net_amount,e.fee_amount,s.sold_on,s.status,s.payment_method,
                     c.full_name AS customer_name,c.cpf AS customer_cpf,
                     l.brand AS lens_brand,f.brand AS frame_brand,
                     o.trade_name,o.legal_name,o.tax_document,o.address,o.contact_phone
-                FROM finance_entries e
+                FROM finance_settlements st
+                JOIN finance_entries e ON e.optic_id=st.optic_id AND e.id=st.entry_id
                 JOIN sales s ON s.optic_id=e.optic_id AND s.id=e.sale_id
                 JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id
                 JOIN catalog_items l ON l.optic_id=s.optic_id AND l.id=s.lens_id
                 JOIN catalog_items f ON f.optic_id=s.optic_id AND f.id=s.frame_id
                 JOIN optics o ON o.id=s.optic_id
-                WHERE e.optic_id=? AND e.id=? AND e.origin='SALE'
-                  AND e.direction='INCOME' AND e.settled_on IS NOT NULL
-                  AND e.reversed_at IS NULL AND s.status<>'CANCELLED'
-                FOR UPDATE OF e
-                """,optic,paymentId);
+                WHERE st.optic_id=? AND st.id=? AND st.reversed_at IS NULL AND e.origin='SALE'
+                  AND e.direction='INCOME' AND e.reversed_at IS NULL AND s.status<>'CANCELLED'
+                FOR UPDATE OF st
+                """,optic,settlementId);
         if(payments.isEmpty())
             throw new IllegalArgumentException("Recibo disponível apenas para um pagamento liquidado e não estornado.");
-        var previous=jdbc.queryForList("""
-                SELECT id,receipt_number FROM sale_receipts
-                WHERE optic_id=? AND finance_entry_id=?
-                """,optic,paymentId);
-        if(!previous.isEmpty())return Map.of("id",previous.get(0).get("id"),
-                "receiptNumber",previous.get(0).get("receipt_number"),"alreadyIssued",true);
+        UUID paymentId=(UUID)payments.get(0).get("id");
 
         Map<String,Object> entry=payments.get(0);
         String cnpj=digits((String)entry.get("tax_document"));
@@ -196,11 +221,18 @@ public class ReceiptController {
         long number=((Number)branding.get("next_receipt_number")).longValue();
         jdbc.update("UPDATE optic_receipt_identity SET next_receipt_number=next_receipt_number+1 "
                 +"WHERE optic_id=?",optic);
+        // Saldo da venda ainda em aberto (valor comercial): parcelas sem taxa pelo que falta, de cartão pelo total.
         BigDecimal pending=jdbc.queryForObject("""
-            SELECT coalesce(sum(gross_amount),0) FROM finance_entries
-            WHERE optic_id=? AND sale_id=? AND direction='INCOME'
-            AND origin='SALE' AND settled_on IS NULL AND reversed_at IS NULL
+            SELECT coalesce(sum(CASE WHEN e.fee_amount=0 THEN e.net_amount-p.paid
+                                     WHEN e.net_amount-p.paid>0 THEN e.gross_amount ELSE 0 END),0)
+            FROM finance_entries e CROSS JOIN LATERAL (SELECT coalesce(sum(x.amount),0) AS paid
+                FROM finance_settlements x WHERE x.optic_id=e.optic_id AND x.entry_id=e.id AND x.reversed_at IS NULL) p
+            WHERE e.optic_id=? AND e.sale_id=? AND e.direction='INCOME' AND e.origin='SALE' AND e.reversed_at IS NULL
             """,BigDecimal.class,optic,sale);
+        boolean card=((BigDecimal)entry.get("fee_amount")).signum()>0;
+        BigDecimal paidNet=(BigDecimal)entry.get("paid_amount");
+        BigDecimal paidGross=card?(BigDecimal)entry.get("gross_amount"):paidNet;
+        BigDecimal paidFee=card?(BigDecimal)entry.get("fee_amount"):BigDecimal.ZERO;
         var paid=((java.sql.Date)entry.get("settled_on")).toLocalDate();
         var sold=((java.sql.Date)entry.get("sold_on")).toLocalDate();
         var data=new ReceiptPdfRenderer.Details(receipt,number,
@@ -209,8 +241,7 @@ public class ReceiptController {
                 (String)entry.get("customer_name"),(String)entry.get("customer_cpf"),
                 (String)entry.get("lens_brand"),(String)entry.get("frame_brand"),
                 (String)entry.get("payment_method"),sold,paid,
-                (BigDecimal)entry.get("payment_gross"),(BigDecimal)entry.get("fee_amount"),
-                (BigDecimal)entry.get("net_amount"),pending,
+                paidGross,paidFee,paidNet,pending,
                 (String)branding.get("signer_name"),(String)branding.get("signer_role"),
                 (byte[])branding.get("logo"),(byte[])branding.get("signature"));
         byte[] pdf=ReceiptPdfRenderer.render(data);
@@ -223,13 +254,14 @@ public class ReceiptController {
         snapshot.put("cnpj",cnpj);
         snapshot.put("customer",data.customerName());
         snapshot.put("paymentGross",data.paymentGross());
+        snapshot.put("settlementId",settlementId.toString());
         snapshot.put("pendingGross",data.pending());
         snapshot.put("signedBy",data.signerName());
         jdbc.update("""
-            INSERT INTO sale_receipts(optic_id,id,receipt_number,sale_id,finance_entry_id,
+            INSERT INTO sale_receipts(optic_id,id,receipt_number,sale_id,finance_entry_id,settlement_id,
                 paid_on,payment_gross,pdf_bytes,snapshot,issued_by)
-            VALUES(?,?,?,?,?,?,?,?,?::jsonb,?)
-            """,optic,receipt,number,sale,paymentId,java.sql.Date.valueOf(paid),
+            VALUES(?,?,?,?,?,?,?,?,?,?::jsonb,?)
+            """,optic,receipt,number,sale,paymentId,settlementId,java.sql.Date.valueOf(paid),
                 data.paymentGross(),pdf,json.writeValueAsString(snapshot),actor);
         audit(optic,actor,"SALE_PAYMENT_RECEIPT_ISSUED",receipt);
         return Map.of("id",receipt,"receiptNumber",number,"alreadyIssued",false);

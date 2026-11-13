@@ -24,8 +24,9 @@ public class FinanceController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
     private final OpticClock clock;
-    public FinanceController(JdbcTemplate jdbc,OpticContext context,OpticClock clock) {
-        this.jdbc=jdbc; this.context=context; this.clock=clock;
+    private final FinanceLedger ledger;
+    public FinanceController(JdbcTemplate jdbc,OpticContext context,OpticClock clock,FinanceLedger ledger) {
+        this.jdbc=jdbc; this.context=context; this.clock=clock; this.ledger=ledger;
     }
 
     @GetMapping
@@ -37,7 +38,8 @@ public class FinanceController {
         UUID optic=context.optic(auth,session);
         return jdbc.queryForList("SELECT e.id,e.direction,e.category,e.description,"
                 +"e.gross_amount,e.fee_amount,e.net_amount,e.occurred_on,e.due_on,e.settled_on,"
-                +"e.origin,e.sale_id,e.reversed_at, a.full_name AS responsible "
+                +"e.origin,e.sale_id,e.reversed_at, a.full_name AS responsible, "
+                +FinanceLedger.ACTIVE_PAID+" AS paid_amount, e.net_amount-"+FinanceLedger.ACTIVE_PAID+" AS open_amount "
                 +"FROM finance_entries e JOIN accounts a ON a.id=e.created_by "
                 +"WHERE e.optic_id=? AND (?::date IS NULL OR e.occurred_on>=?::date)"
                 +" AND (?::date IS NULL OR e.occurred_on<=?::date)"
@@ -50,16 +52,22 @@ public class FinanceController {
         context.require(auth,session,"FINANCE_READ");
         UUID optic=context.optic(auth,session);
         LocalDate today=clock.today(optic);
-        return jdbc.queryForMap("SELECT "
-            +"coalesce(sum(net_amount) FILTER (WHERE direction='INCOME' AND settled_on IS NOT NULL AND "
-            +"reversed_at IS NULL AND settled_on>=date_trunc('month',?::date)::date),0) AS received_month,"
-            +"coalesce(sum(net_amount) FILTER (WHERE direction='EXPENSE' AND settled_on IS NOT NULL AND "
-            +"reversed_at IS NULL AND settled_on>=date_trunc('month',?::date)::date),0) AS spent_month,"
-            +"coalesce(sum(net_amount) FILTER (WHERE direction='INCOME' AND settled_on IS NULL "
-            +"AND reversed_at IS NULL),0) AS receivable,"
-            +"coalesce(sum(fee_amount) FILTER (WHERE direction='INCOME' AND reversed_at IS NULL "
-            +"AND occurred_on>=date_trunc('month',?::date)::date),0) AS card_fees_month "
-            +"FROM finance_entries WHERE optic_id=?",today,today,today,optic);
+        // Caixa do mês = baixas ativas do mês (parciais inclusive); a receber = saldo aberto dos lançamentos.
+        Map<String,Object> cash=jdbc.queryForMap("SELECT "
+            +"coalesce(sum(st.amount) FILTER (WHERE e.direction='INCOME'),0) AS received_month,"
+            +"coalesce(sum(st.amount) FILTER (WHERE e.direction='EXPENSE'),0) AS spent_month "
+            +"FROM finance_settlements st JOIN finance_entries e ON e.optic_id=st.optic_id AND e.id=st.entry_id "
+            +"WHERE st.optic_id=? AND st.reversed_at IS NULL AND e.reversed_at IS NULL "
+            +"AND st.paid_on>=date_trunc('month',?::date)::date AND st.paid_on<=?::date",optic,today,today);
+        Map<String,Object> open=jdbc.queryForMap("SELECT "
+            +"coalesce(sum(e.net_amount-"+FinanceLedger.ACTIVE_PAID+") FILTER (WHERE e.direction='INCOME'),0) AS receivable,"
+            +"coalesce(sum(e.net_amount-"+FinanceLedger.ACTIVE_PAID+") FILTER (WHERE e.direction='EXPENSE'),0) AS payable,"
+            +"coalesce(sum(e.fee_amount) FILTER (WHERE e.direction='INCOME' "
+            +"AND e.occurred_on>=date_trunc('month',?::date)::date),0) AS card_fees_month "
+            +"FROM finance_entries e WHERE e.optic_id=? AND e.reversed_at IS NULL",today,optic);
+        Map<String,Object> result=new java.util.LinkedHashMap<>(cash);
+        result.putAll(open);
+        return result;
     }
 
     public record ManualEntry(String direction,String category,String description,
@@ -83,21 +91,50 @@ public class FinanceController {
         return Map.of("id",id);
     }
 
+    /** Quita o saldo inteiro (atalho do botão "Recebido"). */
     @PatchMapping("/{id}/settle")
-    @Transactional
-    public Map<String,Boolean> settle(@PathVariable UUID id,@RequestBody Map<String,String> body,
+    public Map<String,Object> settle(@PathVariable UUID id,@RequestBody(required=false) Map<String,String> body,
                                       Authentication auth,HttpSession session) {
         context.require(auth,session,"FINANCE_WRITE");
-        LocalDate date;
-        String informed=body==null?null:body.get("settledOn");
-        if(informed==null||informed.isBlank()) date=clock.today(context.optic(auth,session)); // hoje na ótica
-        else try {date=LocalDate.parse(informed);}
-        catch(Exception e){throw new IllegalArgumentException("Data de recebimento inválida.");}
-        int count=jdbc.update("UPDATE finance_entries SET settled_on=? WHERE optic_id=? AND id=? "
-                +"AND settled_on IS NULL AND reversed_at IS NULL",
-                date,context.optic(auth,session),id);
-        if(count!=1)throw new IllegalArgumentException("Lançamento inexistente ou já liquidado.");
-        return Map.of("updated",true);
+        LocalDate date=parseDate(body==null?null:body.get("settledOn"),"Data de recebimento inválida.");
+        var r=ledger.settle(context.optic(auth,session),context.accountId(auth),id,null,date,null);
+        return Map.of("updated",true,"settlementId",r.settlementId(),"open",r.open());
+    }
+
+    public record SettlementInput(BigDecimal amount,LocalDate paidOn,String note){}
+
+    /** Registra um recebimento (ou pagamento) parcial ou total. */
+    @PostMapping("/{id}/settlements")
+    public Map<String,Object> addSettlement(@PathVariable UUID id,@RequestBody(required=false) SettlementInput body,
+                                            Authentication auth,HttpSession session) {
+        context.require(auth,session,"FINANCE_WRITE");
+        var r=ledger.settle(context.optic(auth,session),context.accountId(auth),id,
+                body==null?null:body.amount(),body==null?null:body.paidOn(),body==null?null:body.note());
+        return Map.of("settlementId",r.settlementId(),"paid",r.paid(),"open",r.open(),"settled",r.settled());
+    }
+
+    @GetMapping("/{id}/settlements")
+    public List<Map<String,Object>> settlements(@PathVariable UUID id,Authentication auth,HttpSession session) {
+        context.require(auth,session,"FINANCE_READ");
+        return ledger.history(context.optic(auth,session),id);
+    }
+
+    public record ReversalInput(LocalDate reversedOn,String reason){}
+
+    /** Estorna uma baixa com data efetiva; a baixa continua no histórico. */
+    @PostMapping("/settlements/{settlementId}/reverse")
+    public Map<String,Object> reverseSettlement(@PathVariable UUID settlementId,
+            @RequestBody(required=false) ReversalInput body,Authentication auth,HttpSession session) {
+        context.require(auth,session,"FINANCE_WRITE");
+        var r=ledger.reverse(context.optic(auth,session),context.accountId(auth),settlementId,
+                body==null?null:body.reversedOn(),body==null?null:body.reason());
+        return Map.of("reversed",true,"paid",r.paid(),"open",r.open());
+    }
+
+    private static LocalDate parseDate(String informed,String message){
+        if(informed==null||informed.isBlank())return null;
+        try {return LocalDate.parse(informed);}
+        catch(Exception e){throw new IllegalArgumentException(message);}
     }
 
     @PatchMapping("/{id}/reverse")
