@@ -1,6 +1,11 @@
 package br.com.lcmtech.optics.security;
 
+import br.com.lcmtech.optics.identity.mfa.MfaGateFilter;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.context.annotation.Bean;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -21,9 +26,11 @@ public class SecurityConfig {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, UserDetailsService users, LoginAttemptThrottle throttle) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, UserDetailsService users, LoginAttemptThrottle throttle,
+                                            JdbcTemplate jdbc) throws Exception {
         return http
                 .addFilterBefore(new LoginThrottleFilter(throttle), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new MfaGateFilter(), AuthorizationFilter.class)
                 .userDetailsService(users)
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
@@ -41,9 +48,16 @@ public class SecurityConfig {
                         .passwordParameter("password")
                         .successHandler((req, resp, authentication) -> {
                             throttle.succeeded(req);
+                            // Com verificação em duas etapas, a sessão fica pendente até o código (MfaGateFilter).
+                            List<UUID> pending = jdbc.query("SELECT id FROM accounts WHERE lower(email)=lower(?) "
+                                    + "AND mfa_enabled_at IS NOT NULL", (rs, n) -> (UUID) rs.getObject(1),
+                                    authentication.getName());
+                            if (!pending.isEmpty())
+                                req.getSession().setAttribute(MfaGateFilter.PENDING, pending.get(0).toString());
                             resp.setStatus(200);
                             resp.setContentType("application/json;charset=UTF-8");
-                            resp.getWriter().write("{\"authenticated\":true}");
+                            resp.getWriter().write(pending.isEmpty() ? "{\"authenticated\":true}"
+                                    : "{\"authenticated\":true,\"mfaRequired\":true}");
                         })
                         .failureHandler((req, resp, error) -> {
                             throttle.failed(req);
