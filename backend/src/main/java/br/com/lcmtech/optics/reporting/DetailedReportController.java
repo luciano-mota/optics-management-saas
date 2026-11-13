@@ -317,17 +317,18 @@ public class DetailedReportController {
         List<Map<String, Object>> records = jdbc.queryForList("""
                 SELECT r.receipt_number, (r.issued_at AT TIME ZONE ?)::date AS issued_on, r.paid_on,
                        coalesce(r.snapshot->>'customer', c.full_name) AS customer, r.payment_gross,
-                       a.full_name AS issuer, (e.reversed_at IS NOT NULL) AS reversed,
-                       (e.reversed_at AT TIME ZONE ?)::date AS reversed_on
+                       a.full_name AS issuer, (e.reversed_at IS NOT NULL OR st.reversed_at IS NOT NULL) AS reversed,
+                       coalesce(st.reversed_on, (e.reversed_at AT TIME ZONE ?)::date) AS reversed_on
                 FROM sale_receipts r
                 JOIN finance_entries e ON e.optic_id=r.optic_id AND e.id=r.finance_entry_id
+                LEFT JOIN finance_settlements st ON st.optic_id=r.optic_id AND st.id=r.settlement_id
                 JOIN sales s ON s.optic_id=r.optic_id AND s.id=r.sale_id
                 JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id
                 JOIN accounts a ON a.id=r.issued_by
                 WHERE r.optic_id=?
                   AND (?::date IS NULL OR (r.issued_at AT TIME ZONE ?)::date>=?::date)
                   AND (?::date IS NULL OR (r.issued_at AT TIME ZONE ?)::date<=?::date)
-                  AND (?::text IS NULL OR (?::text='REVERSED')=(e.reversed_at IS NOT NULL))
+                  AND (?::text IS NULL OR (?::text='REVERSED')=(e.reversed_at IS NOT NULL OR st.reversed_at IS NOT NULL))
                 ORDER BY r.receipt_number DESC LIMIT ?
                 """, zone, zone, optic, f.from(), zone, f.from(), f.to(), zone, f.to(), f.status(), f.status(),
                 MAX_ROWS);

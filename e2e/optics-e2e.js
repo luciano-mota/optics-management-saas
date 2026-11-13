@@ -94,6 +94,12 @@ async function signupOptic(label) {
     { brand: 'Ray-Ban', model: 'RB5154', category: 'SOLAR' })).status === 200);
   check('Catálogo: tipo de lente fora da lista recusado', (await a.call('POST', '/catalog',
     { kind: 'LENS', brand: 'X', category: 'SOLAR' })).status === 400);
+  // Estoque: a armação passa a ser controlada antes das vendas (5 unidades, mínimo 1).
+  const lab = (await a.call('POST', '/suppliers', { name: 'Laboratório Central', kind: 'LABORATORIO', phone: '(98) 3232-1010' })).body;
+  check('Fornecedor/laboratório cadastrado', !!lab.id, JSON.stringify(lab));
+  check('Estoque: controlar armação', (await a.call('PATCH', '/stock/items/' + frame.id, { trackStock: true, minStock: 1 })).status === 200);
+  const entry = await a.call('POST', '/stock/movements', { itemId: frame.id, kind: 'ENTRADA', quantity: 5, unitCost: 150, supplierId: lab.id });
+  check('Estoque: entrada de compra', entry.status === 200 && entry.body.quantity === 5, JSON.stringify(entry.body));
   const frames = (await a.call('GET', '/catalog?kind=FRAME')).body;
   check('Catálogo: categoria salva', frames[0] && frames[0].category === 'SOLAR', JSON.stringify(frames));
 
@@ -126,6 +132,16 @@ async function signupOptic(label) {
   check('Painel: vendas de hoje', Number(dash.today) === 2, JSON.stringify(dash));
   const fin = (await a.call('GET', '/finance/summary')).body;
   check('Financeiro: recebível do cartão separado do caixa', Number(fin.receivable) > 0, JSON.stringify(fin));
+  // Recebimento parcial (crediário): R$ 300 de R$ 1.000 deixa R$ 700 em aberto; estorno devolve o saldo.
+  const credit = (await a.call('POST', '/finance', { direction: 'INCOME', category: 'Crediário', description: 'Entrada parcelada',
+    amount: 1000, occurredOn: null, dueOn: null, settled: false })).body;
+  const part = await a.call('POST', '/finance/' + credit.id + '/settlements', { amount: 300, paidOn: null, note: 'Entrada' });
+  check('Financeiro: recebimento parcial deixa saldo', part.status === 200 && Number(part.body.open) === 700, JSON.stringify(part.body));
+  check('Financeiro: valor acima do saldo recusado', (await a.call('POST', '/finance/' + credit.id + '/settlements', { amount: 900 })).status === 400);
+  const rev = await a.call('POST', '/finance/settlements/' + part.body.settlementId + '/reverse', { reason: 'Teste' });
+  check('Financeiro: estorno do recebimento devolve o saldo', rev.status === 200 && Number(rev.body.open) === 1000, JSON.stringify(rev.body));
+  check('Financeiro: histórico guarda o estorno', ((await a.call('GET', '/finance/' + credit.id + '/settlements')).body || [])
+    .some(st => st.reversed_at && st.reversal_reason === 'Teste'));
 
   for (const st of ['READY_FOR_DELIVERY', 'DELIVERED'])
     check('Venda: status ' + st, (await a.call('PATCH', '/sales/' + salePix.body.id + '/status', { status: st })).status === 200);
@@ -191,6 +207,24 @@ async function signupOptic(label) {
     sale: { customerId: null, lensId: lens.id, frameId: frame.id, amount: 480, paymentMethod: 'DEBITO', cardMachineId: machineId, installments: 1,
       passFee: false, settlementDays: null, replacementMonths: 12, expectedDelivery: null, notes: '', idempotencyKey: 'e2e-p-' + Date.now() } });
   check('Consultas: paciente vira cliente na venda', conv.status === 200 && (await a.call('GET', '/customers')).body.length === 3, JSON.stringify(conv.body));
+
+  // ---------- Avisos automáticos e agenda da clínica ----------
+  const msgSettings = await a.call('PUT', '/messages/settings', { appointmentReminderEnabled: true, birthdayEmailEnabled: true,
+    appointmentTemplate: 'Olá, {nome}! Consulta {data} às {hora} na {clinica}.', birthdayTemplate: 'Parabéns, {nome}!' });
+  check('Avisos automáticos: configuração salva com versão', msgSettings.status === 200 && msgSettings.body.version === 1, JSON.stringify(msgSettings.body));
+  check('Avisos automáticos: campo inexistente recusado', (await a.call('PUT', '/messages/settings', { appointmentReminderEnabled: true,
+    birthdayEmailEnabled: false, appointmentTemplate: 'CPF {cpf}', birthdayTemplate: 'Oi' })).status === 400);
+  check('Paciente: autorização de lembrete por e-mail', (await a.call('PUT', '/optometry/patients/' + patient.body.id + '/reminder',
+    { email: 'paula@e2e.test', reminderOptIn: true })).body.reminderOptIn === true);
+  const feed = await a.call('POST', '/optometry/clinics/' + clinic.body.id + '/calendar-feed', {});
+  check('Agenda da clínica: link gerado', feed.status === 200 && /agenda\.ics$/.test(feed.body.url), JSON.stringify(feed.body));
+  const anon = await request.newContext({ baseURL: BASE });
+  const ics = await anon.get(feed.body.url.slice(feed.body.url.indexOf('/api/')));
+  const icsText = await ics.text();
+  check('Agenda da clínica: calendário com nome curto e sem dados pessoais', ics.status() === 200 && icsText.startsWith('BEGIN:VCALENDAR')
+    && icsText.includes('Consulta - Paula P.') && !icsText.includes(patientCpf) && !icsText.includes('98966665555'), icsText.slice(0, 300));
+  await a.call('POST', '/optometry/clinics/' + clinic.body.id + '/calendar-feed/revoke', {});
+  check('Agenda da clínica: link revogado deixa de abrir', (await anon.get(feed.body.url.slice(feed.body.url.indexOf('/api/')))).status() === 404);
 
   // ---------- Relatórios detalhados (vendas, consultas, recibos, pacientes) ----------
   for (const kind of ['vendas', 'consultas', 'recibos', 'pacientes']) {
@@ -268,6 +302,16 @@ async function signupOptic(label) {
     lensId: lens.id, frameId: frame.id, amount: 720, paymentMethod: 'PIX', cardMachineId: null, installments: 1, passFee: false,
     settlementDays: null, replacementMonths: 12, expectedDelivery: null, notes: '' });
   check('Visita: vira venda e cliente', vconv.status === 200, JSON.stringify(vconv.body));
+  // ---------- Estoque e ordens de serviço ----------
+  const stockNow = ((await a.call('GET', '/stock')).body || []).find(i => i.id === frame.id);
+  check('Estoque: cada venda baixa a armação e avisa o mínimo', stockNow && stockNow.quantity === 1 && stockNow.low === true, JSON.stringify(stockNow));
+  const os = await a.call('POST', '/service-orders', { kind: 'LENTES', saleId: saleCredit.body.sale?.id || saleCredit.body.id,
+    supplierId: lab.id, description: 'Multifocal OD -1,25 OE -1,50 antirreflexo', expectedOn: null, price: null });
+  check('OS: aberta com número', os.status === 200 && os.body.number === 1, JSON.stringify(os.body));
+  for (const st of ['ENVIADA', 'RECEBIDA'])
+    check('OS: ' + st, (await a.call('PATCH', '/service-orders/' + os.body.id + '/status', { status: st })).status === 200);
+  check('OS: não volta etapa', (await a.call('PATCH', '/service-orders/' + os.body.id + '/status', { status: 'ENVIADA' })).status === 400);
+  check('OS: histórico', ((await a.call('GET', '/service-orders/' + os.body.id + '/events')).body || []).length === 3);
   const perf = await a.call('GET', '/reports/performance');
   check('Relatório por funcionário/visitas', perf.status === 200, 'HTTP ' + perf.status);
 
@@ -288,6 +332,12 @@ async function signupOptic(label) {
   check('Isolamento: análise de vendas de B vazia', bRanking.rows.length === 0 && bRanking.count === 0);
   const bDetail = (await b.call('GET', '/reports/monthly-sales-summary/detail/vendas?' + ym)).body;
   check('Isolamento: detalhe do indicador de B vazio', bDetail.rows.length === 0);
+  check('Isolamento: B não vê OS de A', ((await b.call('GET', '/service-orders')).body || []).length === 0);
+  check('Isolamento: B não mexe no estoque de A', (await b.call('POST', '/stock/movements', { itemId: frame.id, kind: 'ENTRADA', quantity: 1 })).status === 404);
+  check('Isolamento: B não gera agenda de clínica de A', (await b.call('POST', '/optometry/clinics/' + clinic.body.id + '/calendar-feed', {})).status === 404);
+  check('Isolamento: B não altera lembrete de paciente de A', (await b.call('PUT', '/optometry/patients/' + patient.body.id + '/reminder',
+    { email: 'x@x.test', reminderOptIn: true })).status === 404);
+  check('Isolamento: B não baixa lançamento de A', (await b.call('POST', '/finance/' + credit.id + '/settlements', { amount: 10 })).status === 404);
   check('Isolamento: B não edita produto de A', (await b.call('PATCH', '/catalog/' + frame.id, { brand: 'X', category: 'GRAU' })).status === 404);
   const foreignClinic = await b.call('GET', '/reports/detailed/consultas?clinicId=' + clinic.body.id);
   check('Isolamento: filtro com clínica de A não traz nada', foreignClinic.status === 200 && foreignClinic.body.totalRows === 0);
@@ -296,6 +346,22 @@ async function signupOptic(label) {
   check('Isolamento: B não baixa receita de A', bFile.status >= 400, 'HTTP ' + bFile.status);
   check('Isolamento: B não acessa painel LCM', (await b.call('GET', '/platform/optics')).status === 403);
   check('Isolamento: B não lê visitas de A', ((await b.call('GET', '/visits')).body || []).length === 0);
+
+  // ---------- Avisos no aparelho (push) ----------
+  const vapid = (await a.call('GET', '/push/public-key')).body;
+  check('Push: chave pública do servidor', vapid && /^[A-Za-z0-9_-]{80,90}$/.test(vapid.publicKey), JSON.stringify(vapid));
+  const fakeKey = Buffer.concat([Buffer.from([4]), crypto.randomBytes(64)]);
+  const deviceKeys = crypto.createECDH('prime256v1'); deviceKeys.generateKeys();
+  const sub = { endpoint: 'https://fcm.googleapis.com/fcm/send/e2e-' + Date.now(),
+    keys: { p256dh: deviceKeys.getPublicKey().toString('base64url'), auth: crypto.randomBytes(16).toString('base64url') } };
+  check('Push: aparelho inscrito', (await a.call('POST', '/push/subscriptions', sub)).status === 200);
+  check('Push: status do aparelho', (await a.call('GET', '/push/status?endpoint=' + encodeURIComponent(sub.endpoint))).body.subscribed === true);
+  check('Push: endereço fora dos serviços de push recusado', (await a.call('POST', '/push/subscriptions',
+    { endpoint: 'https://evil.example.com/x', keys: sub.keys })).status === 400);
+  check('Push: chave inválida recusada', (await a.call('POST', '/push/subscriptions',
+    { endpoint: sub.endpoint, keys: { p256dh: fakeKey.toString('base64url').slice(0, 20), auth: 'x' } })).status === 400);
+  check('Push: B não vê o aparelho de A', (await b.call('GET', '/push/status?endpoint=' + encodeURIComponent(sub.endpoint))).body.subscribed === false);
+  check('Push: desativar', (await a.call('POST', '/push/subscriptions/remove', { endpoint: sub.endpoint })).body.subscribed === false);
 
   // ---------- Verificação em duas etapas (conta B) ----------
   const mfaStatus = (await b.call('GET', '/auth/mfa')).body;
@@ -333,12 +399,14 @@ async function signupOptic(label) {
   const dismissModals = async (target = page) => {
     await target.waitForLoadState('networkidle');
     // Fecha pelo nome: o último botão do aviso de aniversário é "Ver aniversariantes", que sai do painel.
-    for (let i = 0; i < 4; i++) {
+    // Avisos podem abrir um pouco depois: só termina após duas conferências seguidas sem aviso.
+    for (let i = 0, quiet = 0; i < 10 && quiet < 2; i++) {
+      await target.waitForTimeout(350);
       const modal = target.locator('.calendar-modal');
-      if (!(await modal.count())) break;
+      if (!(await modal.count())) { quiet++; continue; }
+      quiet = 0;
       const close = modal.getByRole('button', { name: /Fechar por hoje|Salvar meu planejamento|Revisar depois/ }).first();
       await (await close.count() ? close : modal.locator('button').last()).click();
-      await target.waitForTimeout(300);
     }
   };
   await dismissModals();

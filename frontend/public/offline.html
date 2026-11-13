@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#17153a" />
+  <title>Sem conexão · Optics Management</title>
+  <link rel="icon" href="/icon.svg" />
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f6f6fa; color: #17153a;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif; padding: 24px; box-sizing: border-box; }
+    main { max-width: 420px; text-align: center; background: #fff; border: 1px solid #e6e6ef; border-radius: 20px;
+      padding: 36px 28px; box-shadow: 0 12px 32px rgba(23, 21, 58, .08); }
+    img { width: 64px; height: 64px; }
+    h1 { font-size: 22px; margin: 18px 0 8px; }
+    p { color: #5d5b78; line-height: 1.55; margin: 0 0 22px; }
+    button { border: 0; border-radius: 12px; background: #5b4cf0; color: #fff; font: 700 15px inherit; padding: 12px 22px;
+      cursor: pointer; font-family: inherit; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="/icon.svg" alt="" />
+    <h1>Sem conexão com a internet</h1>
+    <p>O Optics Management precisa de internet para mostrar os dados da sua ótica. Por segurança, nenhum dado de
+      cliente fica guardado no aparelho. Assim que a conexão voltar, é só tentar de novo.</p>
+    <button type="button" onclick="location.reload()">Tentar de novo</button>
+  </main>
+</body>
+</html>

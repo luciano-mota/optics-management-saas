@@ -39,13 +39,17 @@ export function Customers({ notify }: ScreenProps) {
         void perform(() => api('/customers', { method: 'POST', body: {
           fullName: getField(form, 'fullName'), cpf: getField(form, 'cpf'),
           birthDate: getField(form, 'birthDate'), phone: getField(form, 'phone'),
-          address: getField(form, 'address'),
+          address: getField(form, 'address'), email: getField(form, 'email') || null,
+          emailOptIn: new FormData(form).get('emailOptIn') === 'on',
         } }), notify, () => { form.reset(); refresh(); });
       }}>
         <FormField name="fullName" title="Nome completo" required />
         <FormField name="cpf" title="CPF" required />
         <FormField name="birthDate" title="Data de nascimento" type="date" required />
         <PhoneField name="phone" title="WhatsApp ou telefone" />
+        <FormField name="email" title="E-mail (opcional)" type="email" />
+        <label className="checkline span-all"><input type="checkbox" name="emailOptIn" />
+          <span>O cliente autoriza receber mensagens da ótica por e-mail (ex.: parabéns no aniversário). Pode cancelar quando quiser.</span></label>
         <AddressFields required />
         <button className="primary-action form-action" type="submit">Salvar cliente</button>
       </form>

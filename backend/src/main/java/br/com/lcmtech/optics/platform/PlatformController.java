@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.*;
 public class PlatformController {
     private final JdbcTemplate jdbc;
     private final OpticContext context;
-    public PlatformController(JdbcTemplate jdbc,OpticContext context){
+    private final br.com.lcmtech.optics.push.PushService push;
+    public PlatformController(JdbcTemplate jdbc,OpticContext context,br.com.lcmtech.optics.push.PushService push){
+        this.push=push;
         this.jdbc=jdbc;this.context=context;
     }
 
@@ -84,6 +86,9 @@ public class PlatformController {
         UUID id=UUID.randomUUID();
         jdbc.update("INSERT INTO platform_notices(id,optic_id,subject,message,created_by) VALUES(?,?,?,?,?)",
                 id,request.opticId(),request.subject(),request.message(),context.accountId(auth));
+        push.notifyPlatformNotice(request.opticId(),new br.com.lcmtech.optics.push.PushService.Message(
+                "Mensagem da LCM DEV TECH",request.subject().length()>120?request.subject().substring(0,117)+"...":request.subject(),
+                "/","optics-notice-"+id));
         return Map.of("id",id);
     }
 

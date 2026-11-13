@@ -28,10 +28,12 @@ public class VisitNotifier {
     private final EmailDelivery mail;
     private final OpticClock clock;
     private final TaskExecutor executor;
+    private final br.com.lcmtech.optics.push.PushService push;
     @Value("${optics.public-base-url:https://optics-management-hml.onrender.com}") private String baseUrl;
 
     public VisitNotifier(JdbcTemplate jdbc, OpticContext context, EmailDelivery mail, OpticClock clock,
-                         TaskExecutor executor) {
+                         @org.springframework.beans.factory.annotation.Qualifier("applicationTaskExecutor") TaskExecutor executor, br.com.lcmtech.optics.push.PushService push) {
+        this.push = push;
         this.jdbc = jdbc;
         this.context = context;
         this.mail = mail;
@@ -41,6 +43,10 @@ public class VisitNotifier {
 
     /** Envio em segundo plano: o pedido do cliente no site não espera pelos e-mails. */
     public void newRequest(UUID optic, String opticName, Instant appointmentAt) {
+        // Push no aparelho de quem ativou (texto genérico, sem dados do cliente).
+        push.notifyOptic(optic, "VISITS_READ", new br.com.lcmtech.optics.push.PushService.Message(
+                "Novo pedido de visita", "A " + opticName + " recebeu um pedido de atendimento em domicílio pelo site.",
+                "/", "optics-visit-" + optic));
         if (!mail.available()) return;
         executor.execute(() -> {
             try {

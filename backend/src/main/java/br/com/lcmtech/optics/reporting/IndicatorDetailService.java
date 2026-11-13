@@ -102,47 +102,77 @@ public class IndicatorDetailService {
 
     // ------------------------------------------------------------ recebidos e a receber
 
+    /** Número da parcela entre todas as da venda (não só as que entram no filtro). */
+    private static final String PARCEL = """
+            (SELECT count(*) FROM finance_entries x WHERE x.optic_id=e.optic_id AND x.sale_id=e.sale_id
+               AND x.origin='SALE' AND x.direction='INCOME' AND (x.due_on, x.id) <= (e.due_on, e.id)) AS parcel,
+            (SELECT count(*) FROM finance_entries x WHERE x.optic_id=e.optic_id AND x.sale_id=e.sale_id
+               AND x.origin='SALE' AND x.direction='INCOME') AS parcels""";
+
+    /**
+     * Recebidos: cada baixa que vale no corte (inclusive parcial). A receber: o saldo de cada parcela no corte.
+     * Somas iguais a "Vendas líquidas" e "Vendas a receber" do resumo.
+     */
     private TabularReport receivables(MonthlySalesSummaryService.Window w, boolean settled) {
-        Object[] base = w.receivableParams();
-        Object[] params = new Object[base.length + 1];
-        params[0] = java.sql.Date.valueOf(w.asOf());
-        System.arraycopy(base, 0, params, 1, base.length);
-        String condition = settled ? "e.settled_on IS NOT NULL AND e.settled_on<=?"
-                : "NOT (e.settled_on IS NOT NULL AND e.settled_on<=?)";
-        List<Map<String, Object>> rows = jdbc.queryForList("""
-                SELECT e.settled_on, e.due_on, s.sold_on, c.full_name AS customer, s.payment_method, s.installments,
-                       m.name AS machine, e.gross_amount, e.fee_amount, e.net_amount,
-                       -- Numera entre todas as parcelas da venda, não só as que entram no filtro.
-                       (SELECT count(*) FROM finance_entries x WHERE x.optic_id=e.optic_id AND x.sale_id=e.sale_id
-                          AND x.origin='SALE' AND x.direction='INCOME'
-                          AND (x.due_on, x.id) <= (e.due_on, e.id)) AS parcel,
-                       (SELECT count(*) FROM finance_entries x WHERE x.optic_id=e.optic_id AND x.sale_id=e.sale_id
-                          AND x.origin='SALE' AND x.direction='INCOME') AS parcels
-                FROM finance_entries e
-                JOIN sales s ON s.optic_id=e.optic_id AND s.id=e.sale_id
-                JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id
-                LEFT JOIN card_machines m ON m.optic_id=s.optic_id AND m.id=s.card_machine_id
-                WHERE """ + " " + condition + " AND " + MonthlySalesSummaryService.VALID_RECEIVABLE
-                + " ORDER BY coalesce(e.settled_on,e.due_on), s.sold_on", params);
-        List<String> headers = List.of(settled ? "Recebido em" : "Previsto para", "Venda de", "Cliente", "Pagamento",
-                "Parcela", "Maquininha", "Bruto", "Taxa", "Líquido");
+        List<Map<String, Object>> rows;
+        if (settled) {
+            Object[] a = w.settlementParams(), b = w.receivableParams();
+            Object[] params = java.util.Arrays.copyOf(a, a.length + b.length);
+            System.arraycopy(b, 0, params, a.length, b.length);
+            rows = jdbc.queryForList("SELECT st.paid_on AS day, s.sold_on, c.full_name AS customer, s.payment_method,"
+                    + " m.name AS machine, e.gross_amount, e.fee_amount, e.net_amount, st.amount AS value, 0 AS received,"
+                    + PARCEL + """
+                     FROM finance_settlements st
+                    JOIN finance_entries e ON e.optic_id=st.optic_id AND e.id=st.entry_id
+                    JOIN sales s ON s.optic_id=e.optic_id AND s.id=e.sale_id
+                    JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id
+                    LEFT JOIN card_machines m ON m.optic_id=s.optic_id AND m.id=s.card_machine_id
+                    WHERE""" + MonthlySalesSummaryService.SETTLEMENT_AS_OF + " AND"
+                    + MonthlySalesSummaryService.VALID_RECEIVABLE + " ORDER BY st.paid_on, s.sold_on, st.created_at", params);
+        } else {
+            rows = jdbc.queryForList("SELECT e.due_on AS day, s.sold_on, c.full_name AS customer, s.payment_method,"
+                    + " m.name AS machine, e.gross_amount, e.fee_amount, e.net_amount, e.net_amount-rc.received AS value,"
+                    + " rc.received," + PARCEL + """
+                     FROM finance_entries e
+                    JOIN sales s ON s.optic_id=e.optic_id AND s.id=e.sale_id
+                    JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id
+                    LEFT JOIN card_machines m ON m.optic_id=s.optic_id AND m.id=s.card_machine_id
+                    """ + MonthlySalesSummaryService.RECEIVED_AS_OF + " WHERE" + MonthlySalesSummaryService.VALID_RECEIVABLE
+                    + " AND e.net_amount-rc.received>0 ORDER BY e.due_on, s.sold_on", w.receivedParams());
+        }
+        List<String> headers = settled
+                ? List.of("Recebido em", "Venda de", "Cliente", "Pagamento", "Parcela", "Maquininha", "Valor da parcela", "Líquido")
+                : List.of("Previsto para", "Venda de", "Cliente", "Pagamento", "Parcela", "Maquininha", "Bruto", "Taxa",
+                "Já recebido", "Líquido");
         List<List<String>> out = new ArrayList<>();
-        BigDecimal net = BigDecimal.ZERO;
+        BigDecimal total = BigDecimal.ZERO;
+        int partial = 0;
         for (Map<String, Object> r : rows) {
-            net = net.add((BigDecimal) r.get("net_amount"));
+            BigDecimal value = (BigDecimal) r.get("value");
+            total = total.add(value);
             long parcels = ((Number) r.get("parcels")).longValue();
-            out.add(List.of(date(settled ? r.get("settled_on") : r.get("due_on")), date(r.get("sold_on")),
-                    str(r.get("customer")), payment(r.get("payment_method")),
-                    parcels > 1 ? r.get("parcel") + "/" + parcels : "Única", str(r.get("machine")),
-                    money(r.get("gross_amount")), money(r.get("fee_amount")), money(r.get("net_amount"))));
+            String parcel = parcels > 1 ? r.get("parcel") + "/" + parcels : "Única";
+            if (settled) {
+                if (value.compareTo((BigDecimal) r.get("net_amount")) < 0) partial++;
+                out.add(List.of(date(r.get("day")), date(r.get("sold_on")), str(r.get("customer")),
+                        payment(r.get("payment_method")), parcel, str(r.get("machine")), money(r.get("net_amount")), money(value)));
+            } else {
+                if (((BigDecimal) r.get("received")).signum() > 0) partial++;
+                out.add(List.of(date(r.get("day")), date(r.get("sold_on")), str(r.get("customer")),
+                        payment(r.get("payment_method")), parcel, str(r.get("machine")), money(r.get("gross_amount")),
+                        money(r.get("fee_amount")), money(r.get("received")), money(value)));
+            }
         }
         String kind = settled ? "recebidos" : "a-receber";
-        String total = (settled ? "Total recebido (líquido): " : "Total a receber (líquido): ")
-                + TabularReport.Money.brl(net) + "   |   Lançamentos: " + rows.size();
-        List<String> summary = settled ? List.of(total, "Somente recebimentos das vendas deste mês, até a data de corte.")
-                : List.of(total, "Cartão de crédito e débito entram aqui até a data prevista de recebimento.");
+        String first = (settled ? "Total recebido (líquido): " : "Total a receber (líquido): ")
+                + TabularReport.Money.brl(total) + "   |   " + (settled ? "Recebimentos: " : "Parcelas em aberto: ") + rows.size()
+                + (partial > 0 ? "   |   " + (settled ? "Parciais: " : "Com recebimento parcial: ") + partial : "");
+        List<String> summary = settled
+                ? List.of(first, "Somente recebimentos das vendas deste mês até a data de corte; estornos entram na data em que foram feitos.")
+                : List.of(first, "Cartão de crédito e débito entram aqui até a data prevista de recebimento.");
         return new TabularReport(TITLES.get(kind), settled ? "Recebidos" : "A receber", file(w, kind), headers, out,
-                summary, flags(headers, "Bruto", "Taxa", "Líquido"), new int[]{8, 8, 18, 8, 6, 12, 8, 7, 8});
+                summary, flags(headers, "Valor da parcela", "Bruto", "Taxa", "Já recebido", "Líquido"),
+                settled ? new int[]{8, 8, 18, 8, 6, 12, 9, 9} : new int[]{8, 8, 16, 8, 6, 11, 8, 6, 8, 8});
     }
 
     // ------------------------------------------------------------ taxas

@@ -1,4 +1,5 @@
 import { useRef, useState, type PointerEvent } from 'react';
+import { firstName, whatsappUrl } from '../whatsapp';
 import { api, currency, date, fileAsBase64 } from '../api';
 import { getField, perform, useRemote, PhoneField } from './common';
 import { AddressFields } from './AddressFields';
@@ -7,18 +8,15 @@ import type { ScreenProps } from './common';
 type Receipt={id:string;receipt_number:number;sale_id:string;finance_entry_id:string;
   payment_gross:number;paid_on:string;issued_at:string;
   customer_name:string;customer_phone:string|null};
-type Payment={payment_id:string;receipt_id:string|null;receipt_number:number|null;
-  gross_amount:number;fee_amount:number;net_amount:number;settled_on:string|null;
-  due_on:string|null;status:string};
+type Payment={payment_id:string;settlement_id:string|null;receipt_id:string|null;receipt_number:number|null;
+  gross_amount:number;fee_amount:number;net_amount:number;settled_on:string|null;paid_amount:number|null;
+  settlement_reversed:boolean;open_amount:number;due_on:string|null;status:string};
 type Share={url:string;shareId:string;validUntil:string};
 
 function whatsLink(receipt:Receipt,url:string) {
-  const number=String(receipt.customer_phone||'').replace(/[^0-9]/g,'');
-  const phone=number.startsWith('55')?number:'55'+number;
-  return 'https://wa.me/'+phone+'?text='+encodeURIComponent(
-    'Olá, '+receipt.customer_name+'! Segue o link seguro do recibo de pagamento da sua compra na ótica: '+url+
-    ' (disponível por 24 horas). Obrigado pela preferência!'
-  );
+  return whatsappUrl(receipt.customer_phone,
+    'Olá, '+firstName(receipt.customer_name)+'! Segue o link seguro do recibo de pagamento da sua compra na ótica: '+url+
+    ' (disponível por 24 horas). Obrigado pela preferência!')??'#';
 }
 
 async function getPdf(id:string) {
@@ -40,20 +38,21 @@ function PaymentsForSale({saleId,notify,onIssued}:{
     <h4>Pagamentos e recibos desta venda</h4>
     {loading?<p className="helper">Buscando pagamentos...</p>:
       !data?.length?<p className="helper">Nenhum lançamento financeiro encontrado.</p>:
-      <div className="list-cards">{data.map(p=><div className="mini-row" key={p.payment_id}>
-        <div><strong>{currency(p.gross_amount)}</strong>
-          <small>{p.settled_on?'Recebido em '+date(p.settled_on):
-            'Pendente · vencimento '+date(p.due_on)}</small></div>
+      <div className="list-cards">{data.map(p=><div className="mini-row" key={p.settlement_id??p.payment_id}>
+        <div><strong>{currency(p.settlement_id?(Number(p.fee_amount)>0?p.gross_amount:p.paid_amount):p.gross_amount)}</strong>
+          <small>{!p.settlement_id?'Pendente · vencimento '+date(p.due_on):
+            p.settlement_reversed?'Recebimento estornado':
+            'Recebido em '+date(p.settled_on)+(Number(p.open_amount)>0?' · saldo da parcela '+currency(p.open_amount):'')}</small></div>
         {p.receipt_id?<button className="outline-action" onClick={()=>
           void getPdf(p.receipt_id!).catch(e=>notify(String(e),true))}>
           Baixar recibo Nº {p.receipt_number}</button>:
           <button className="primary-action"
-            disabled={!p.settled_on||p.status==='CANCELLED'}
+            disabled={!p.settlement_id||p.settlement_reversed||p.status==='CANCELLED'}
             onClick={()=>void perform(()=>api(
-              '/receipts/payments/'+p.payment_id+'/issue',{method:'POST'}),
+              '/receipts/settlements/'+p.settlement_id+'/issue',{method:'POST'}),
               notify,()=>{refresh();onIssued();})}>Emitir recibo de pagamento</button>}
       </div>)}</div>}
-    <p className="helper">Cada recibo comprova somente um pagamento efetivamente recebido. Parcelas não pagas não são apresentadas como quitadas.</p>
+    <p className="helper">Cada recibo comprova somente um pagamento efetivamente recebido. Pagamento parcial tem o próprio recibo, com o saldo em aberto; parcelas não pagas não são apresentadas como quitadas.</p>
   </div>;
 }
 

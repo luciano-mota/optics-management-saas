@@ -35,7 +35,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers("/api/v1/webhooks/asaas"))
+                        .ignoringRequestMatchers("/api/v1/webhooks/asaas", "/api/v1/public/messages/unsubscribe/**"))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health",
                                 "/api/v1/public/**", "/api/v1/webhooks/asaas", "/api/v1/auth/csrf", "/api/v1/auth/login").permitAll()

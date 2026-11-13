@@ -137,13 +137,16 @@ export function PrivacyPage() {
       <li>Identificar o cliente pelo CPF e evitar cadastros duplicados; emitir recibos.</li>
       <li>Avisar a equipe da ótica sobre novos pedidos (sem dados do cliente no e-mail) e enviar e-mails da conta
         (convites, confirmação de e-mail e redefinição de senha).</li>
+      <li>Enviar, só para quem autorizou na ótica, lembrete de consulta e mensagem de aniversário por e-mail. Todo e-mail
+        traz o link para deixar de receber.</li>
       <li>Segurança e prevenção de abuso (legítimo interesse).</li>
     </ul>
 
     <h2>Com quem compartilhamos</h2>
     <p>Não vendemos dados. Os dados são processados por prestadores de infraestrutura para operar o sistema e manter
       cópias de segurança (hospedagem e banco de dados), pelo serviço de envio de e-mails (Brevo) e, para a assinatura da
-      própria ótica, pelo Asaas, que recebe apenas os dados necessários à cobrança. A busca de endereço pelo CEP envia
+      própria ótica, pelo Asaas, que recebe apenas os dados necessários à cobrança. Quando a ótica gera o link de agenda para uma clínica parceira, a clínica vê o dia, o horário e o primeiro
+      nome com a inicial do paciente das consultas marcadas com ela, sem telefone, CPF ou e-mail. A busca de endereço pelo CEP envia
       somente o CEP a serviços públicos de consulta (ViaCEP e BrasilAPI). Mensagens de WhatsApp são abertas no aparelho
       de quem envia (link “wa.me”); a plataforma não usa inteligência artificial com dados de clientes.</p>
 
