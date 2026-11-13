@@ -25,6 +25,8 @@ import { Optometry } from './screens/Optometry';
 import { Birthdays, BirthdayWelcome } from './screens/Birthdays';
 import { Receipts } from './screens/Receipts';
 import { MyProfile } from './screens/MyProfile';
+import { DeviceSettings } from './screens/DeviceSettings';
+import { syncPush } from './pwa';
 import { MfaChallenge, MfaRecommendation, TwoFactorSettings } from './screens/TwoFactor';
 import { getField, perform, PhoneField, useRemote } from './screens/common';
 
@@ -83,6 +85,8 @@ export function App(){
     if(me?.platformOperator && !(me.shops||[]).length)setView('platform');
   },[me?.platformOperator]);
   useEffect(()=>{setMonthlyReviewDismissed(false);},[me?.activeOpticId]);
+  // Mesmo aparelho, outra pessoa entrou: os avisos passam a ir para quem está logado.
+  useEffect(()=>{if(me?.account?.id)void syncPush();},[me?.account?.id]);
   useEffect(()=>{
     if(!me?.activeOpticId)return;
     let mounted=true;
@@ -186,6 +190,7 @@ export function App(){
             showPersonalAddress={!me.platformOperator&&activeShop?.role!=='MASTER'}
             onSaved={()=>void load()} onLogout={()=>setView('dashboard')}/>}
           {view==='profile'&&<TwoFactorSettings notify={notify}/>}
+          {view==='profile'&&<DeviceSettings notify={notify}/>}
           {isPlatform&&<Platform notify={notify}/>}
           {view==='notices'&&<Notices notify={notify} onOpen={setView} alerts={alerts}
             homeVisitsEnabled={!!activeShop?.home_visits_enabled}/>}
@@ -241,13 +246,6 @@ function Dashboard({me,shop,modules,onOpen,countLabel}:{
       </button>;})}</div>
   </>;
 }
-async function requestNotification(notify:(message:string,error?:boolean)=>void) {
-  if(!('Notification' in window)){notify('Este navegador não oferece notificações.',true);return;}
-  try{const result=await Notification.requestPermission();
-    notify(result==='granted'?'Notificações autorizadas.':'Permissão não concedida.',result!=='granted');}
-  catch(error){notify(String(error),true);}
-}
-
 function Notices({notify,onOpen,alerts,homeVisitsEnabled}: {notify:(msg:string,error?:boolean)=>void;
   onOpen:(view:string)=>void; homeVisitsEnabled:boolean;
   alerts:{newVisits:number;retentionDue:number;unreadNotices:number}|null}) {
@@ -267,11 +265,7 @@ function Notices({notify,onOpen,alerts,homeVisitsEnabled}: {notify:(msg:string,e
       </div>
       <p className="helper">Os contadores são atualizados enquanto o painel está aberto.</p>
     </div>
-    <div className="surface"><h3>Avisos neste aparelho</h3>
-      <p className="helper">Permita que o navegador mostre um aviso quando chegar algo novo
-        enquanto o Optics estiver aberto.</p>
-      <button className="outline-action" onClick={()=>void requestNotification(notify)}>
-        <Bell size={16}/> Ativar avisos</button></div>
+    <DeviceSettings notify={notify}/>
     <div className="section-title"><h2>Mensagens da LCM DEV TECH</h2></div>
     <div className="surface">{!data?.length?<p className="empty">Não há mensagens por enquanto.</p>:
       <div className="list-cards">{data.map(n=><div className="mini-row" key={n.id}>

@@ -208,3 +208,9 @@
 .question small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
 @media (max-width: 640px) { .question-grid { grid-template-columns: 1fr; } }
 .day-chips + .filter-bar, .day-chips + .helper { margin-top: 12px; }
+
+/* ---------- Aparelho: avisos e instalação ---------- */
+.device-settings .primary-action, .device-settings .outline-action { display: inline-flex; align-items: center; gap: 8px; }
+.device-install-title { margin-top: 22px; }
+.device-row .filter-bar { margin-top: 4px; }
+.device-settings + .device-settings, .mfa-section + .device-settings { margin-top: 18px; }

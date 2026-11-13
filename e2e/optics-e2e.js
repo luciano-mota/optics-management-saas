@@ -297,6 +297,22 @@ async function signupOptic(label) {
   check('Isolamento: B não acessa painel LCM', (await b.call('GET', '/platform/optics')).status === 403);
   check('Isolamento: B não lê visitas de A', ((await b.call('GET', '/visits')).body || []).length === 0);
 
+  // ---------- Avisos no aparelho (push) ----------
+  const vapid = (await a.call('GET', '/push/public-key')).body;
+  check('Push: chave pública do servidor', vapid && /^[A-Za-z0-9_-]{80,90}$/.test(vapid.publicKey), JSON.stringify(vapid));
+  const fakeKey = Buffer.concat([Buffer.from([4]), crypto.randomBytes(64)]);
+  const deviceKeys = crypto.createECDH('prime256v1'); deviceKeys.generateKeys();
+  const sub = { endpoint: 'https://fcm.googleapis.com/fcm/send/e2e-' + Date.now(),
+    keys: { p256dh: deviceKeys.getPublicKey().toString('base64url'), auth: crypto.randomBytes(16).toString('base64url') } };
+  check('Push: aparelho inscrito', (await a.call('POST', '/push/subscriptions', sub)).status === 200);
+  check('Push: status do aparelho', (await a.call('GET', '/push/status?endpoint=' + encodeURIComponent(sub.endpoint))).body.subscribed === true);
+  check('Push: endereço fora dos serviços de push recusado', (await a.call('POST', '/push/subscriptions',
+    { endpoint: 'https://evil.example.com/x', keys: sub.keys })).status === 400);
+  check('Push: chave inválida recusada', (await a.call('POST', '/push/subscriptions',
+    { endpoint: sub.endpoint, keys: { p256dh: fakeKey.toString('base64url').slice(0, 20), auth: 'x' } })).status === 400);
+  check('Push: B não vê o aparelho de A', (await b.call('GET', '/push/status?endpoint=' + encodeURIComponent(sub.endpoint))).body.subscribed === false);
+  check('Push: desativar', (await a.call('POST', '/push/subscriptions/remove', { endpoint: sub.endpoint })).body.subscribed === false);
+
   // ---------- Verificação em duas etapas (conta B) ----------
   const mfaStatus = (await b.call('GET', '/auth/mfa')).body;
   check('MFA: recomendada ao Master e ainda desativada', mfaStatus.recommended === true && mfaStatus.enabled === false, JSON.stringify(mfaStatus));
