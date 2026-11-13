@@ -64,7 +64,7 @@ public class TeamController {
     public record Invite(String email,String role,List<String> permissions){}
     @PostMapping("/team/invites")
     @Transactional
-    public Map<String,String> invite(@RequestBody Invite data,Authentication auth,HttpSession session) {
+    public Map<String,Object> invite(@RequestBody Invite data,Authentication auth,HttpSession session) {
         context.requireMaster(auth,session);
         if(data.email()==null||!data.email().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
             throw new IllegalArgumentException("E-mail inválido.");
@@ -72,8 +72,6 @@ public class TeamController {
         TeamGovernance.requireInvite(member(currentOptic,context.accountId(auth)),data.role());
         if(data.permissions()!=null && !ALL_PERMISSIONS.containsAll(data.permissions()))
             throw new IllegalArgumentException("O convite contém permissões inválidas.");
-        if(!mail.available())
-            throw new IllegalStateException("O envio de convites por e-mail ainda não foi configurado.");
         UUID optic=context.optic(auth,session),account=context.accountId(auth),id=UUID.randomUUID();
         byte[] bytes=new byte[32];random.nextBytes(bytes);
         String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -84,12 +82,23 @@ public class TeamController {
                 data.email().trim().toLowerCase(Locale.ROOT),data.role(),hash,account,
                 data.permissions()==null?"":String.join(",",data.permissions()),
                 data.permissions()!=null);
-        mail.send(data.email().trim(),"Convite Optics Management",
-                "Olá! Você recebeu acesso à equipe da ótica. Para completar seu cadastro, "
-                +"use o link em até 72 horas:\n\n"+baseUrl+"/?invite="+token);
-        // Permissões selecionadas são aplicadas somente após aceite válido de convite.
-        return Map.of("inviteUrl",baseUrl.replaceAll("/+$","")+"/?invite="+token,
-                "message","Convite enviado por e-mail. Validade: 72 horas.");
+        String link=baseUrl.replaceAll("/+$","")+"/?invite="+token;
+        // Sem e-mail configurado (ou se o envio falhar), o convite continua válido: o link aparece
+        // na tela para o administrador enviar pelo WhatsApp. Permissões só valem após o aceite.
+        boolean sent=false;
+        if(mail.available()) {
+            try {
+                mail.send(data.email().trim(),"Convite Optics Management",
+                        "Olá! Você recebeu acesso à equipe da ótica. Para completar seu cadastro, "
+                        +"use o link em até 72 horas:\n\n"+link);
+                sent=true;
+            } catch(RuntimeException failure) {
+                sent=false;
+            }
+        }
+        return Map.of("inviteUrl",link,"emailSent",sent,
+                "message",sent?"Convite enviado por e-mail. Validade: 72 horas."
+                        :"Não foi possível enviar o e-mail. Copie o link e envie ao funcionário. Validade: 72 horas.");
     }
 
     public record Accept(String token,String fullName,String password,String cpf,String phone,String address,

@@ -21,10 +21,12 @@ import org.springframework.stereotype.Service;
 public class MonthlySalesSummaryService {
     private final JdbcTemplate jdbc;
     private final BusinessCalendarController calendar;
+    private final br.com.lcmtech.optics.shop.OpticClock clock;
     private static final BigDecimal ZERO = new BigDecimal("0.00");
 
-    public MonthlySalesSummaryService(JdbcTemplate jdbc,BusinessCalendarController calendar) {
-        this.jdbc=jdbc;this.calendar=calendar;
+    public MonthlySalesSummaryService(JdbcTemplate jdbc,BusinessCalendarController calendar,
+                                      br.com.lcmtech.optics.shop.OpticClock clock) {
+        this.jdbc=jdbc;this.calendar=calendar;this.clock=clock;
     }
 
     public record Summary(
@@ -52,6 +54,9 @@ public class MonthlySalesSummaryService {
         if(year<2000||year>2199||month<1||month>12)
             throw new IllegalArgumentException("Mês ou ano inválido.");
         YearMonth period=YearMonth.of(year,month);
+        // Navegador em outro fuso pode pedir "amanhã": o fechamento vai até hoje na ótica.
+        LocalDate today=clock.today(optic);
+        if(asOf!=null&&asOf.isAfter(today)&&!YearMonth.from(today).isBefore(period))asOf=today;
         if(asOf==null||!period.equals(YearMonth.from(asOf)))
             throw new IllegalArgumentException("A data de corte deve pertencer ao mês consultado.");
         String name=jdbc.queryForObject("SELECT trade_name FROM optics WHERE id=?",
