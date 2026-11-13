@@ -1,4 +1,5 @@
-import { downloadReport, currency, api } from '../api';
+import { currency, api } from '../api';
+import { DetailedReports } from './DetailedReports';
 import { useEffect, useState } from 'react';
 import type { ScreenProps } from './common';
 import { perform, useRemote } from './common';
@@ -27,7 +28,7 @@ async function downloadMonthly(file:'pdf'|'xlsx'|'csv',year:number,month:number,
   link.click();window.setTimeout(()=>URL.revokeObjectURL(objectUrl),3000);
 }
 
-export function Reports({notify,isMaster}:ScreenProps&{isMaster:boolean}) {
+export function Reports({notify,can,isMaster}:ScreenProps&{isMaster:boolean}) {
   const {data}=useRemote<any>('/reports/performance');
   const now=new Date();
   const [year,setYear]=useState(now.getFullYear());
@@ -107,12 +108,7 @@ export function Reports({notify,isMaster}:ScreenProps&{isMaster:boolean}) {
         <p className="helper">O resumo considera vendas do período e recebimentos dessas vendas até o corte. Receitas de meses anteriores não são misturadas. Baixas informadas retroativamente exigem conferência.</p>
        </>}
     </div>
-    <div className="surface"><h3>Exportar vendas</h3>
-      <p className="helper">Relatório por ótica com situação, cliente, produtos, valor bruto, taxas e líquido.</p>
-      <div className="filter-bar">{(['pdf','xlsx','csv'] as const).map(file=>
-        <button className="outline-action" key={file} onClick={()=>void downloadReport(file)
-          .catch(error=>notify(String(error),true))}>Baixar {file.toUpperCase()}</button>)}</div>
-    </div>
+    <DetailedReports notify={notify} can={can}/>
     <div className="surface"><h3>Vendas por funcionário</h3>
       {!data?.salesByEmployee?.length?<p className="empty">Ainda sem dados.</p>:
       <div className="table-wrap"><table><thead><tr><th>Funcionário</th><th>Vendas</th><th>Valor bruto</th></tr></thead>

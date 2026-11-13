@@ -134,3 +134,4 @@
 @media (max-width: 640px) {
   .list-editor-row .form-grid, .choice-grid { grid-template-columns: 1fr; }
 }
+.table-wrap + .table-wrap { margin-top: 14px; }

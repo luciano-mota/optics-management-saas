@@ -153,6 +153,21 @@ async function signupOptic(label) {
       passFee: false, settlementDays: null, replacementMonths: 12, expectedDelivery: null, notes: '', idempotencyKey: 'e2e-p-' + Date.now() } });
   check('Consultas: paciente vira cliente na venda', conv.status === 200 && (await a.call('GET', '/customers')).body.length === 3, JSON.stringify(conv.body));
 
+  // ---------- Relatórios detalhados (vendas, consultas, recibos, pacientes) ----------
+  for (const kind of ['vendas', 'consultas', 'recibos', 'pacientes']) {
+    const r = await a.call('GET', '/reports/detailed/' + kind);
+    check('Relatório detalhado: ' + kind, r.status === 200 && r.body.totalRows > 0, 'HTTP ' + r.status + ' ' + JSON.stringify(r.body).slice(0, 200));
+    for (const f of ['csv', 'xlsx', 'pdf']) {
+      const x = await a.call('GET', '/reports/detailed/' + kind + '/export/' + f);
+      check('Exportação ' + kind + ' .' + f, x.status === 200 && x.body.length > 50, 'HTTP ' + x.status);
+    }
+  }
+  const patientsReport = (await a.call('GET', '/reports/detailed/pacientes')).body;
+  check('Relatório de pacientes: sem CPF e com compra', !JSON.stringify(patientsReport.headers).includes('CPF')
+    && JSON.stringify(patientsReport.rows).includes('Sim'), JSON.stringify(patientsReport).slice(0, 300));
+  const byClinic = (await a.call('GET', '/reports/detailed/consultas?clinicId=' + clinic.body.id)).body;
+  check('Relatório de consultas por clínica', byClinic.groups && byClinic.groups.length === 1, JSON.stringify(byClinic.groups));
+
   for (const p of ['/retention', '/retention/summary', '/birthdays/status', '/birthdays', '/finance', '/team', '/subscription', '/auth/alerts', '/optic-profile'])
     { const r = await a.call('GET', p); check('GET ' + p, r.status === 200, 'HTTP ' + r.status); }
   const invite = await a.call('POST', '/team/invites', { email: 'func' + Date.now() + '@e2e.test', role: 'SELLER', permissions: ['SALES_READ'] });
@@ -198,6 +213,12 @@ async function signupOptic(label) {
   check('Isolamento: B não altera venda de A', (await b.call('PATCH', '/sales/' + saleCredit.body.sale?.id + '/status', { status: 'CANCELLED' })).status >= 400);
   const bSales = (await b.call('GET', '/sales')).body;
   check('Isolamento: B não vê vendas de A', Array.isArray(bSales) && bSales.length === 0);
+  for (const kind of ['vendas', 'consultas', 'recibos', 'pacientes']) {
+    const r = await b.call('GET', '/reports/detailed/' + kind);
+    check('Isolamento: relatório de ' + kind + ' de B vazio', r.status === 200 && r.body.totalRows === 0, JSON.stringify(r.body).slice(0, 200));
+  }
+  const foreignClinic = await b.call('GET', '/reports/detailed/consultas?clinicId=' + clinic.body.id);
+  check('Isolamento: filtro com clínica de A não traz nada', foreignClinic.status === 200 && foreignClinic.body.totalRows === 0);
   const files = (await a.call('GET', '/attachments/customers/' + customer.body.id)).body;
   const bFile = await b.call('GET', '/attachments/' + files[0].id + '/download');
   check('Isolamento: B não baixa receita de A', bFile.status >= 400, 'HTTP ' + bFile.status);
@@ -217,11 +238,20 @@ async function signupOptic(label) {
   await page.fill('input[name=password]', 'SenhaSegura2026');
   await page.getByRole('button', { name: 'Entrar no sistema' }).click();
   await page.waitForSelector('.greeting');
-  for (let i = 0; i < 4; i++) { const btn = page.locator('.calendar-modal button').last(); if (await btn.count()) { await btn.click(); await page.waitForTimeout(300); } else break; }
+  // Avisos de aniversário e calendário abrem depois do carregamento; fecha qualquer um antes de clicar.
+  const dismissModals = async () => {
+    await page.waitForLoadState('networkidle');
+    for (let i = 0; i < 4; i++) {
+      const btn = page.locator('.calendar-modal button').last();
+      if (await btn.count()) { await btn.click(); await page.waitForTimeout(300); } else break;
+    }
+  };
+  await dismissModals();
   const tiles = await page.locator('.tile').evaluateAll(els => els.map(e => [...e.classList].find(c => c.startsWith('accent-'))));
   check('Painel: blocos exibidos', tiles.length >= 13, tiles.join(','));
   for (const accent of tiles) {
     const before = errors.length;
+    await dismissModals();
     await page.locator('.tile.' + accent).click();
     await page.waitForTimeout(900);
     await page.screenshot({ path: OUT + '/e2e-' + accent + '.png', fullPage: true });
