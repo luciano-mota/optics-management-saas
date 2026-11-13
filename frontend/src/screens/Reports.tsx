@@ -1,10 +1,11 @@
 import { currency, api } from '../api';
 import { DetailedReports } from './DetailedReports';
+import { IndicatorDetail } from './IndicatorDetail';
 import { useEffect, useState } from 'react';
 import type { ScreenProps } from './common';
 import { perform, useRemote } from './common';
 
-type Indicator={key:string;name:string;value:number|null;money:boolean};
+type Indicator={key:string;name:string;value:number|null;money:boolean;detail:string};
 type Monthly={summary:{
   year:number;month:number;asOf:string;opticName:string;goalConfigured:boolean;
   monthlyGoal:number|null;totalOpenDays:number;workedDays:number;
@@ -36,13 +37,14 @@ export function Reports({notify,can,isMaster}:ScreenProps&{isMaster:boolean}) {
   const [asOf,setAsOf]=useState([now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),
     String(now.getDate()).padStart(2,'0')].join('-'));
   const [goal,setGoal]=useState('');
+  const [opened,setOpened]=useState<Indicator|null>(null);
   const q=new URLSearchParams({year:String(year),month:String(month),asOf});
   const report=useRemote<Monthly>('/reports/monthly-sales-summary?'+q.toString());
   useEffect(()=>{
     setGoal(report.data?.summary.monthlyGoal==null?'':String(report.data.summary.monthlyGoal));
   },[report.data?.summary.monthlyGoal,report.data?.summary.year,report.data?.summary.month]);
   function changePeriod(nextYear:number,nextMonth:number){
-    setYear(nextYear);setMonth(nextMonth);
+    setYear(nextYear);setMonth(nextMonth);setOpened(null);
     const end=new Date(nextYear,nextMonth,0);
     const cutoff=end>new Date()?new Date():end;
     setAsOf([cutoff.getFullYear(),String(cutoff.getMonth()+1).padStart(2,'0'),
@@ -90,11 +92,17 @@ export function Reports({notify,can,isMaster}:ScreenProps&{isMaster:boolean}) {
           <div className="metric"><span>Dias de funcionamento restantes</span>
             <strong>{report.data.summary.remainingDays}</strong></div>
         </div>
-        <div className="table-wrap"><table><thead><tr><th>Indicador</th><th>Resultado</th></tr></thead>
-        <tbody>{report.data.indicators.map(item=><tr key={item.key}>
-          <td>{item.name}</td><td><strong>{item.value==null?'—':
-            item.money?currency(item.value):item.value}</strong></td>
+        <p className="helper">Toque em um indicador para ver a lista que forma o número.</p>
+        <div className="table-wrap"><table className="indicator-table"><thead><tr><th>Indicador</th><th>Resultado</th><th aria-label="Detalhe"/></tr></thead>
+        <tbody>{report.data.indicators.map(item=><tr key={item.key}
+          className={opened?.key===item.key?'selected':undefined}
+          onClick={()=>setOpened(opened?.key===item.key?null:item)}>
+          <td><button type="button" className="link-button" aria-expanded={opened?.key===item.key}>{item.name}</button></td>
+          <td><strong>{item.value==null?'—':item.money?currency(item.value):item.value}</strong></td>
+          <td className="row-chevron" aria-hidden="true">›</td>
         </tr>)}</tbody></table></div>
+        {opened&&<IndicatorDetail key={opened.key+asOf} kind={opened.detail} indicator={opened.name}
+          year={year} month={month} asOf={asOf} notify={notify} onClose={()=>setOpened(null)}/>}
         {report.data.summary.warnings.map((warning,i)=><p className="calendar-warning"
           key={i}>{warning}</p>)}
         <div className="filter-bar">

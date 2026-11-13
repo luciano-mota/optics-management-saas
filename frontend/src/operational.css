@@ -154,3 +154,15 @@
   .mfa-reminder { flex-wrap: wrap; }
 }
 .mfa-section { margin-top: 18px; }
+
+/* ---------- Detalhe dos indicadores ---------- */
+.indicator-table tbody tr { cursor: pointer; }
+.indicator-table tbody tr:hover, .indicator-table tbody tr.selected { background: var(--surface-2); }
+.indicator-table .row-chevron { width: 28px; color: var(--muted); font-size: 20px; text-align: right; }
+.link-button { background: none; border: 0; padding: 0; font: inherit; color: var(--primary-ink); cursor: pointer; text-align: left; }
+.link-button:hover { text-decoration: underline; }
+.indicator-detail { margin-top: 16px; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px;
+  background: var(--surface); box-shadow: var(--shadow); }
+.indicator-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.indicator-detail-head h3 { margin: 2px 0 6px; }
+.muted-row td { color: var(--muted); }

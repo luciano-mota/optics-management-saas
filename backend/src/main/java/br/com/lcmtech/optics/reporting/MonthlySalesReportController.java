@@ -39,11 +39,12 @@ public class MonthlySalesReportController {
     private final OpticContext access;
     private final MonthlySalesSummaryService engine;
     private final JdbcTemplate jdbc;
+    private final IndicatorDetailService details;
     private static final Locale PT=Locale.forLanguageTag("pt-BR");
 
     public MonthlySalesReportController(OpticContext access,MonthlySalesSummaryService engine,
-            JdbcTemplate jdbc) {
-        this.access=access;this.engine=engine;this.jdbc=jdbc;
+            JdbcTemplate jdbc,IndicatorDetailService details) {
+        this.access=access;this.engine=engine;this.jdbc=jdbc;this.details=details;
     }
 
     private record Context(UUID optic,MonthlySalesSummaryService.Summary data) {}
@@ -60,6 +61,36 @@ public class MonthlySalesReportController {
             @RequestParam LocalDate asOf,Authentication auth,HttpSession session) {
         var result=load(auth,session,year,month,asOf).data();
         return Map.of("summary",result,"indicators",engine.metrics(result));
+    }
+
+    /** A lista que forma um indicador (soma igual ao número do resumo). */
+    @GetMapping("/monthly-sales-summary/detail/{kind}")
+    public Map<String,Object> detail(@PathVariable String kind,@RequestParam int year,@RequestParam int month,
+            @RequestParam LocalDate asOf,Authentication auth,HttpSession session) {
+        access.require(auth,session,"REPORTS_READ");
+        access.require(auth,session,"FINANCE_READ");
+        TabularReport t=details.detail(access.optic(auth,session),year,month,asOf,kind);
+        return Map.of("title",t.title(),"headers",t.headers(),"money",t.money(),"rows",t.rows(),
+                "summary",t.summary());
+    }
+
+    @GetMapping("/monthly-sales-summary/detail/{kind}/export/{format}")
+    public ResponseEntity<byte[]> detailExport(@PathVariable String kind,@PathVariable String format,
+            @RequestParam int year,@RequestParam int month,@RequestParam LocalDate asOf,
+            Authentication auth,HttpSession session) throws IOException {
+        access.require(auth,session,"REPORTS_READ");
+        access.require(auth,session,"FINANCE_READ");
+        UUID optic=access.optic(auth,session);
+        TabularReport t=details.detail(optic,year,month,asOf,kind);
+        String shop=jdbc.queryForObject("SELECT trade_name FROM optics WHERE id=?",String.class,optic);
+        String period=String.format("%02d/%d - corte em %s",month,year,
+                asOf.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        return switch(format){
+            case "csv" -> attachment(t.csv(),"text/csv;charset=UTF-8",t.fileBase()+".csv");
+            case "xlsx" -> attachment(t.xlsx(),TabularReport.XLSX,t.fileBase()+".xlsx");
+            case "pdf" -> attachment(t.pdf(shop,period),"application/pdf",t.fileBase()+".pdf");
+            default -> throw new IllegalArgumentException("Formato inválido. Use pdf, xlsx ou csv.");
+        };
     }
 
     private static String display(BigDecimal amount,boolean money) {

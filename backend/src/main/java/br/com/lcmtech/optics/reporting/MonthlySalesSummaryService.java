@@ -50,7 +50,44 @@ public class MonthlySalesSummaryService {
         return divisor>0?number.divide(BigDecimal.valueOf(divisor),2,RoundingMode.HALF_UP):null;
     }
 
-    public Summary compute(UUID optic,int year,int month,LocalDate asOf) {
+    /**
+     * Venda válida na fotografia do corte: do mês, cadastrada até o corte e não cancelada até o corte.
+     * A data de criação impede que venda lançada retroativamente depois do fechamento entre no histórico.
+     * Parâmetros, nesta ordem: ótica, início do mês, data de corte, fim exclusivo, fim exclusivo.
+     */
+    static final String VALID_SALE = " " + """
+            s.optic_id=? AND s.sold_on BETWEEN ? AND ? AND s.created_at < ?
+            AND NOT EXISTS (
+                SELECT 1 FROM sale_events ev WHERE ev.optic_id=s.optic_id
+                AND ev.sale_id=s.id AND ev.next_status='CANCELLED'
+                AND ev.occurred_at < ?)
+            """;
+
+    /**
+     * Recebível (finance_entries e JOIN sales s) de venda válida, lançado até o corte e não estornado até o corte.
+     * Parâmetros: fim exclusivo, fim exclusivo, seguidos dos de {@link #VALID_SALE}.
+     */
+    static final String VALID_RECEIVABLE = " " + """
+            e.origin='SALE' AND e.direction='INCOME' AND e.created_at < ?
+            AND (e.reversed_at IS NULL OR e.reversed_at >= ?) AND
+            """ + VALID_SALE;
+
+    /** Período apurado: do dia 1 até o corte, no fuso da ótica, com o calendário de funcionamento. */
+    public record Window(UUID optic,String opticName,int year,int month,LocalDate from,LocalDate asOf,
+                         java.time.OffsetDateTime endExclusive,BusinessCalendarController.MonthPlan plan) {
+        Object[] saleParams() {
+            return new Object[]{optic,java.sql.Date.valueOf(from),java.sql.Date.valueOf(asOf),endExclusive,endExclusive};
+        }
+        Object[] receivableParams() {
+            Object[] sale=saleParams();
+            Object[] all=new Object[sale.length+2];
+            all[0]=endExclusive;all[1]=endExclusive;
+            System.arraycopy(sale,0,all,2,sale.length);
+            return all;
+        }
+    }
+
+    public Window window(UUID optic,int year,int month,LocalDate asOf) {
         if(year<2000||year>2199||month<1||month>12)
             throw new IllegalArgumentException("Mês ou ano inválido.");
         YearMonth period=YearMonth.of(year,month);
@@ -67,26 +104,27 @@ public class MonthlySalesSummaryService {
             throw new IllegalArgumentException("Não é possível apurar vendas em uma data futura.");
         java.time.OffsetDateTime endExclusive=asOf.plusDays(1)
                 .atStartOfDay(shopZone).toOffsetDateTime();
+        return new Window(optic,name,year,month,period.atDay(1),asOf,endExclusive,plan);
+    }
+
+    public Summary compute(UUID optic,int year,int month,LocalDate asOf) {
+        Window w=window(optic,year,month,asOf);
+        var plan=w.plan();
+        java.time.ZoneId shopZone=java.time.ZoneId.of(plan.timeZone());
+        asOf=w.asOf();
+        String name=w.opticName();
         List<String> warnings=new ArrayList<>(plan.warnings());
 
-        // A data de criação impede que venda cadastrada retroativamente depois do
-        // fechamento seja incluída na fotografia histórica. Cancelamentos são
-        // avaliados por evento na data, não somente pelo status atual da venda.
         var sales=jdbc.queryForMap("""
             SELECT COUNT(*) AS sale_count,
                    COALESCE(SUM(s.gross_amount),0) AS gross,
                    COALESCE(SUM(s.charged_amount),0) AS charged,
                    COALESCE(SUM(s.fee_amount),0) AS fees
-            FROM sales s
-            WHERE s.optic_id=? AND s.sold_on BETWEEN ? AND ?
-                AND s.created_at < ?
-                AND NOT EXISTS (
-                    SELECT 1 FROM sale_events ev WHERE ev.optic_id=s.optic_id
-                    AND ev.sale_id=s.id AND ev.next_status='CANCELLED'
-                    AND ev.occurred_at < ?
-                )
-            """,optic,java.sql.Date.valueOf(period.atDay(1)),
-                java.sql.Date.valueOf(asOf),endExclusive,endExclusive);
+            FROM sales s WHERE """+VALID_SALE,w.saleParams());
+        Object[] receivable=w.receivableParams();
+        Object[] settlementParams=new Object[receivable.length+2];
+        settlementParams[0]=java.sql.Date.valueOf(asOf);settlementParams[1]=java.sql.Date.valueOf(asOf);
+        System.arraycopy(receivable,0,settlementParams,2,receivable.length);
         var settlements=jdbc.queryForMap("""
             SELECT
               COALESCE(SUM(e.net_amount) FILTER
@@ -95,19 +133,7 @@ public class MonthlySalesSummaryService {
                   (WHERE e.settled_on IS NULL OR e.settled_on>?),0) AS pending
             FROM finance_entries e JOIN sales s
                  ON s.optic_id=e.optic_id AND s.id=e.sale_id
-            WHERE e.optic_id=? AND e.origin='SALE' AND e.direction='INCOME'
-                AND e.created_at < ?
-                AND s.sold_on BETWEEN ? AND ? AND s.created_at < ?
-                AND (e.reversed_at IS NULL OR e.reversed_at >= ?)
-                AND NOT EXISTS (
-                    SELECT 1 FROM sale_events ev WHERE ev.optic_id=s.optic_id
-                    AND ev.sale_id=s.id AND ev.next_status='CANCELLED'
-                    AND ev.occurred_at < ?
-                )
-            """,java.sql.Date.valueOf(asOf),java.sql.Date.valueOf(asOf),
-                optic,endExclusive,
-                java.sql.Date.valueOf(period.atDay(1)),java.sql.Date.valueOf(asOf),
-                endExclusive,endExclusive,endExclusive);
+            WHERE """+VALID_RECEIVABLE,settlementParams);
 
         BigDecimal gross=amount(sales,"gross");
         BigDecimal charged=amount(sales,"charged");
@@ -149,7 +175,12 @@ public class MonthlySalesSummaryService {
                 required,gross,fees,difference,List.copyOf(warnings));
     }
 
-    public record Metric(String key,String name,BigDecimal value,boolean money) {}
+    /** @param detail relatório que abre a lista por trás do número (ver IndicatorDetailService) */
+    public record Metric(String key,String name,BigDecimal value,boolean money,String detail) {
+        Metric(String key,String name,BigDecimal value,boolean money) {
+            this(key,name,value,money,IndicatorDetailService.detailOf(key));
+        }
+    }
 
     /** Ordem idêntica ao relatório da ótica piloto, com 14 linhas. */
     public List<Metric> metrics(Summary s) {
