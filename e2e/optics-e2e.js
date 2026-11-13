@@ -1,5 +1,6 @@
 // Teste ponta a ponta do Optics Management: API real (sessão + CSRF) e passada visual nas telas.
 const { request, chromium } = require('playwright');
+const crypto = require('crypto');
 const BASE = process.env.BASE || 'http://localhost:8080';
 const UI = process.env.UI || 'http://localhost:5173';
 const OUT = process.argv[2];
@@ -16,6 +17,20 @@ function cpf() {
 }
 const pdf = Buffer.from('%PDF-1.4\n% receita de teste\n').toString('base64');
 const today = new Date().toISOString().slice(0, 10);
+
+/** Código TOTP (RFC 6238) como o aplicativo autenticador geraria. */
+function totp(secret, offset = 0) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const c of secret.replace(/\s/g, '')) bits += alphabet.indexOf(c).toString(2).padStart(5, '0');
+  const bytes = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) bytes.push(parseInt(bits.slice(i, i + 8), 2));
+  const msg = Buffer.alloc(8); msg.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000) + offset));
+  const h = crypto.createHmac('sha1', Buffer.from(bytes)).update(msg).digest();
+  const o = h[h.length - 1] & 15;
+  const n = ((h[o] & 127) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3];
+  return String(n % 1000000).padStart(6, '0');
+}
 
 class Client {
   constructor(name) { this.name = name; }
@@ -225,6 +240,25 @@ async function signupOptic(label) {
   check('Isolamento: B não acessa painel LCM', (await b.call('GET', '/platform/optics')).status === 403);
   check('Isolamento: B não lê visitas de A', ((await b.call('GET', '/visits')).body || []).length === 0);
 
+  // ---------- Verificação em duas etapas (conta B) ----------
+  const mfaStatus = (await b.call('GET', '/auth/mfa')).body;
+  check('MFA: recomendada ao Master e ainda desativada', mfaStatus.recommended === true && mfaStatus.enabled === false, JSON.stringify(mfaStatus));
+  const mfaSetup = (await b.call('POST', '/auth/mfa/setup')).body;
+  check('MFA: QR Code e chave para o aplicativo', /^otpauth:\/\/totp\//.test(mfaSetup.otpauthUri) && mfaSetup.qrCode.startsWith('data:image/svg'));
+  const mfaOn = await b.call('POST', '/auth/mfa/enable', { code: totp(mfaSetup.secret) });
+  check('MFA: ativação com o código do aplicativo', mfaOn.status === 200 && mfaOn.body.recoveryCodes.length === 10, JSON.stringify(mfaOn.body));
+  const recovery = mfaOn.body.recoveryCodes || [];
+  const b2 = await new Client('Beta2').init();
+  const login2 = await b2.call('POST', '/auth/login', { email: b.email, password: 'SenhaSegura2026' }, true); await b2.csrf();
+  check('MFA: login pede o código', login2.status === 200 && login2.body && login2.body.mfaRequired === true, JSON.stringify(login2.body));
+  check('MFA: painel bloqueado até o código', (await b2.call('GET', '/auth/me')).status === 401 && (await b2.call('GET', '/customers')).status === 401);
+  check('MFA: código errado recusado', (await b2.call('POST', '/auth/mfa/verify', { code: '000000' })).status === 400);
+  check('MFA: código de recuperação libera o login', (await b2.call('POST', '/auth/mfa/verify', { code: recovery[0] })).status === 200);
+  check('MFA: painel liberado após o código', (await b2.call('GET', '/auth/me')).status === 200);
+  check('MFA: código de recuperação não vale duas vezes', await (async () => {
+    const b3 = await new Client('Beta3').init(); await b3.login(b.email, 'SenhaSegura2026');
+    return (await b3.call('POST', '/auth/mfa/verify', { code: recovery[0] })).status === 400; })());
+
   // ---------- Passada visual em todas as telas ----------
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
@@ -239,14 +273,15 @@ async function signupOptic(label) {
   await page.getByRole('button', { name: 'Entrar no sistema' }).click();
   await page.waitForSelector('.greeting');
   // Avisos de aniversário e calendário abrem depois do carregamento; fecha qualquer um antes de clicar.
-  const dismissModals = async () => {
-    await page.waitForLoadState('networkidle');
+  const dismissModals = async (target = page) => {
+    await target.waitForLoadState('networkidle');
     for (let i = 0; i < 4; i++) {
-      const btn = page.locator('.calendar-modal button').last();
-      if (await btn.count()) { await btn.click(); await page.waitForTimeout(300); } else break;
+      const btn = target.locator('.calendar-modal button').last();
+      if (await btn.count()) { await btn.click(); await target.waitForTimeout(300); } else break;
     }
   };
   await dismissModals();
+  check('Painel: lembrete de verificação em duas etapas para o Master', await page.locator('.mfa-reminder').count() === 1);
   const tiles = await page.locator('.tile').evaluateAll(els => els.map(e => [...e.classList].find(c => c.startsWith('accent-'))));
   check('Painel: blocos exibidos', tiles.length >= 13, tiles.join(','));
   for (const accent of tiles) {
@@ -259,6 +294,33 @@ async function signupOptic(label) {
     await page.locator('.back-link').first().click();
     await page.waitForSelector('.greeting');
   }
+  await dismissModals();
+  await page.getByRole('button', { name: 'Meus dados' }).click();
+  await page.getByRole('button', { name: 'Ativar verificação em duas etapas' }).click();
+  await page.waitForSelector('.mfa-setup img');
+  await page.locator('#mfa-title').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: OUT + '/e2e-mfa-ativacao.png', fullPage: true });
+  check('MFA no navegador: ativação mostra QR Code', await page.locator('.mfa-setup img').count() === 1);
+  // Login em duas etapas pelo navegador (conta B) e a seção em Minha conta.
+  const mfaCtx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const mp = await mfaCtx.newPage();
+  mp.on('pageerror', e => errors.push('mfa: ' + e.message));
+  await mp.goto(UI);
+  await mp.fill('input[name=email]', b.email);
+  await mp.fill('input[name=password]', 'SenhaSegura2026');
+  await mp.getByRole('button', { name: 'Entrar no sistema' }).click();
+  await mp.waitForSelector('text=Confirme que é você');
+  await mp.screenshot({ path: OUT + '/e2e-mfa-desafio.png' });
+  await mp.fill('input[autocomplete=one-time-code]', recovery[1] || '');
+  await mp.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await mp.waitForSelector('.greeting');
+  await dismissModals(mp);
+  check('MFA no navegador: código de recuperação abre o painel', await mp.locator('.mfa-reminder').count() === 0);
+  await mp.getByRole('button', { name: 'Meus dados' }).click();
+  await mp.waitForSelector('#mfa-title');
+  await mp.screenshot({ path: OUT + '/e2e-mfa-conta.png', fullPage: true });
+  check('MFA no navegador: Minha conta mostra ativa', (await mp.locator('.mfa-state.on').textContent() || '').includes('Ativa'));
+  await mfaCtx.close();
   const pubPage = await ctx.newPage();
   pubPage.on('pageerror', e => errors.push('site: ' + e.message));
   await pubPage.goto(UI + '/?site=' + settings.slug);

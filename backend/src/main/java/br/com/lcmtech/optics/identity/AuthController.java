@@ -20,9 +20,11 @@ public class AuthController {
     private final JdbcTemplate jdbc;
     private final RetentionController retention;
     private final OpticLocationService locations;
+    private final br.com.lcmtech.optics.identity.mfa.MfaService mfa;
     public AuthController(OpticContext context, JdbcTemplate jdbc,RetentionController retention,
-                          OpticLocationService locations) {
+                          OpticLocationService locations, br.com.lcmtech.optics.identity.mfa.MfaService mfa) {
         this.context = context; this.jdbc = jdbc; this.retention = retention; this.locations = locations;
+        this.mfa = mfa;
     }
     @GetMapping("/csrf")
     public Map<String,String> csrf(CsrfToken token) { return Map.of("token",token.getToken()); }
@@ -62,7 +64,8 @@ public class AuthController {
                 "profileComplete",Boolean.TRUE.equals(profileComplete),
                 "opticRegistrationRequired",opticRegistrationRequired,
                 "opticCnpj",cnpj,
-                "opticAddress",opticAddress);
+                "opticAddress",opticAddress,
+                "mfa",mfa.status(account));
     }
 
     public record SelectOptic(UUID opticId) {}

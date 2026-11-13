@@ -158,7 +158,8 @@ export function PrivacyPage() {
 
     <h2>Segurança</h2>
     <p>Conexão HTTPS, senhas protegidas por hash, sessão com proteção contra falsificação de requisições, limite de
-      tentativas de login, separação total entre óticas e controle de acesso por função dentro de cada ótica.</p>
+      tentativas de login, verificação em duas etapas (código do celular) para quem ativar, separação total entre óticas e
+      controle de acesso por função dentro de cada ótica.</p>
 
     <h2>Seus direitos</h2>
     <p>Você pode pedir confirmação, acesso, correção, portabilidade, anonimização ou exclusão dos seus dados e informações

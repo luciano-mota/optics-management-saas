@@ -135,3 +135,22 @@
   .list-editor-row .form-grid, .choice-grid { grid-template-columns: 1fr; }
 }
 .table-wrap + .table-wrap { margin-top: 14px; }
+
+/* ---------- Verificação em duas etapas ---------- */
+.mfa-setup { display: grid; grid-template-columns: 184px minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 8px; }
+.mfa-setup img { width: 184px; height: 184px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; padding: 6px; }
+.mfa-steps { margin: 0 0 14px; padding-left: 20px; color: var(--muted); line-height: 1.7; }
+.mfa-secret, .recovery-codes code { font: 600 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; color: var(--ink); word-break: break-all; }
+.recovery-codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 12px 0 16px; }
+.recovery-codes code { padding: 8px 10px; text-align: center; }
+.mfa-state { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 4px 0 12px; }
+.mfa-state.on { color: #0f766e; }
+.mfa-reminder { display: flex; align-items: center; gap: 14px; margin: 0 0 20px; padding: 14px 18px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); color: var(--primary-ink); }
+.mfa-reminder p { margin: 0; flex: 1; color: var(--ink); }
+@media (max-width: 640px) {
+  .mfa-setup { grid-template-columns: 1fr; justify-items: start; }
+  .mfa-reminder { flex-wrap: wrap; }
+}
+.mfa-section { margin-top: 18px; }

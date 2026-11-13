@@ -25,6 +25,7 @@ import { Optometry } from './screens/Optometry';
 import { Birthdays, BirthdayWelcome } from './screens/Birthdays';
 import { Receipts } from './screens/Receipts';
 import { MyProfile } from './screens/MyProfile';
+import { MfaChallenge, MfaRecommendation, TwoFactorSettings } from './screens/TwoFactor';
 import { getField, perform, PhoneField, useRemote } from './screens/common';
 
 type Tile={key:string;title:string;description:string;permission:string;icon:typeof Glasses;accent:string};
@@ -55,6 +56,7 @@ export function App(){
   const verify=params.get('verify');
   const [me,setMe]=useState<any|null>(null);
   const [ready,setReady]=useState(false);
+  const [mfaPending,setMfaPending]=useState(false);
   const [view,setView]=useState('dashboard');
   const [toast,setToast]=useState<Toast>(null);
   const [monthlyReviewDismissed,setMonthlyReviewDismissed]=useState(false);
@@ -67,7 +69,13 @@ export function App(){
     return ()=>window.clearTimeout(timer);
   },[toast]);
   const load=async()=>{
-    try {setMe(await api('/auth/me'));} catch {setMe(null);}
+    try {setMe(await api('/auth/me'));setMfaPending(false);}
+    catch {
+      setMe(null);
+      // Senha certa, mas a conta usa verificação em duas etapas: falta o código.
+      try {setMfaPending((await api<{pending:boolean}>('/auth/mfa/challenge')).pending);}
+      catch {setMfaPending(false);}
+    }
     finally {setReady(true);}
   };
   useEffect(()=>{if(!site&&!invite&&!reset&&!verify&&!params.has('termos')&&!params.has('privacidade'))void load();},[site,invite,reset,verify]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -109,6 +117,9 @@ export function App(){
     <BrandMark size={72}/>
     <h2>Optics Management</h2><p>Preparando sua ótica...</p>
   </div>;
+  if(!me&&mfaPending)return <MfaChallenge onDone={()=>void csrf().then(load)}
+    onCancel={()=>void api('/auth/logout',{method:'POST'}).catch(()=>undefined)
+      .finally(()=>{setMfaPending(false);void csrf();})}/>;
   if(!me)return <AccessScreen onSignedIn={()=>void load()} notify={notify} toast={toast}/>;
   if((!me.platformOperator||(me.shops?.length??0)>0)&&
     (me.profileComplete===false||me.opticRegistrationRequired===true))return <MyProfile
@@ -174,6 +185,7 @@ export function App(){
           {view==='profile'&&<MyProfile person={me.account} required={false}
             showPersonalAddress={!me.platformOperator&&activeShop?.role!=='MASTER'}
             onSaved={()=>void load()} onLogout={()=>setView('dashboard')}/>}
+          {view==='profile'&&<TwoFactorSettings notify={notify}/>}
           {isPlatform&&<Platform notify={notify}/>}
           {view==='notices'&&<Notices notify={notify} onOpen={setView} alerts={alerts}
             homeVisitsEnabled={!!activeShop?.home_visits_enabled}/>}
@@ -211,6 +223,7 @@ function Dashboard({me,shop,modules,onOpen,countLabel}:{
         {shop.billing_mode==='TRIAL'?'Teste grátis até '+date(shop.trial_ends_at):'Plano mensal'}
         <button type="button" onClick={()=>onOpen('subscription')}>Assinatura</button></span>}
     </section>
+    {me.mfa?.recommended&&!me.mfa?.enabled&&<MfaRecommendation onOpen={()=>onOpen('profile')}/>}
     {shop&&<div className="metric-grid">
       {[['Vendas hoje',dashboard.data?.today],['Na semana',dashboard.data?.week],
         ['No mês',dashboard.data?.month],['Entregas pendentes',dashboard.data?.pending_delivery],
