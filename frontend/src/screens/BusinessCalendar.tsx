@@ -132,8 +132,8 @@ export function BusinessCalendar({notify,isMaster}:ScreenProps&{isMaster:boolean
           <button className="primary-action" type="submit">Salvar endereço</button>
         </div>
       </form>}
-      <p className="helper">Os feriados nacionais já aparecem no calendário. Feriados do estado e da cidade
-        podem ser marcados por você abaixo, em cada dia.</p>
+      <p className="helper">Os feriados nacionais e os do seu estado já aparecem no calendário. Feriados da
+        cidade podem ser marcados por você abaixo, em cada dia.</p>
     </div>
     <div className="surface">
       <h3>Dias em que a loja abre</h3>

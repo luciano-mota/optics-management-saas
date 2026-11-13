@@ -124,4 +124,18 @@ class BusinessCalendarIntegrationTest {
                     """))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void feriadoEstadualDaUfDaOticaEntraNoCalendario() throws Exception {
+        String email=setup(); // ótica no Maranhão
+        JsonNode plan=mapper.readTree(mvc.perform(get("/api/v1/business-calendar/month")
+                .param("year","2026").param("month","7").with(user(email)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));
+        JsonNode adesao=day(plan,"2026-07-28");
+        assertThat(adesao.path("willOpen").asBoolean()).isFalse();
+        assertThat(adesao.path("holidays").get(0).path("scope").asText()).isEqualTo("STATE");
+        assertThat(adesao.path("holidays").get(0).path("name").asText()).contains("Maranhão");
+        // 09/07 é feriado só em São Paulo: no Maranhão a loja abre normalmente.
+        assertThat(day(plan,"2026-07-09").path("willOpen").asBoolean()).isTrue();
+    }
 }

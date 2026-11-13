@@ -134,6 +134,10 @@ public class BusinessCalendarController {
         for(var entry:FederalHolidayCatalog.national(year).entrySet())
             known.computeIfAbsent(entry.getKey(), key->new ArrayList<>())
                     .add(new Holiday(entry.getValue(),"NATIONAL","Lei federal",FEDERAL_SOURCE,true));
+        // Feriados estaduais de data fixa da UF da ótica (o Master pode abrir a loja no dia).
+        for(var entry:StateHolidayCatalog.forState(uf,year).entrySet())
+            known.computeIfAbsent(entry.getKey(), key->new ArrayList<>())
+                    .add(new Holiday(entry.getValue(),"STATE","Lei estadual",null,true));
         String query="""
             SELECT holiday_date,name,scope,source_name,source_url,verified_at
             FROM regional_holidays
@@ -174,7 +178,9 @@ public class BusinessCalendarController {
                 WHERE calendar_year=? AND success=true AND region_key IN (?,?)
                 """,Integer.class,year,"UF:"+uf,"MUN:"+(city==null?"":city));
             syncCount=count==null?0:count;
-            if(syncCount<2) warnings.add("Confira os feriados do seu estado e da sua cidade e marque os dias em que a loja não abre.");
+            if(syncCount<2) warnings.add(StateHolidayCatalog.covers(uf)
+                    ? "Os feriados do seu estado já aparecem no calendário. Confira os feriados da sua cidade e marque os dias em que a loja não abre."
+                    : "Confira os feriados do seu estado e da sua cidade e marque os dias em que a loja não abre.");
         }
         boolean localVerified=uf!=null&&city!=null&&syncCount==2;
         List<CalendarDay> days=new ArrayList<>();

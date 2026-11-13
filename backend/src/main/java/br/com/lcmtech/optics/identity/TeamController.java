@@ -92,10 +92,13 @@ public class TeamController {
                 "message","Convite enviado por e-mail. Validade: 72 horas.");
     }
 
-    public record Accept(String token,String fullName,String password,String cpf,String phone,String address,String birthDate){}
+    public record Accept(String token,String fullName,String password,String cpf,String phone,String address,
+                         String birthDate,boolean acceptedTerms){}
     @PostMapping("/public/accept-invite")
     @Transactional
     public Map<String,Boolean> accept(@RequestBody Accept data) {
+        if(!data.acceptedTerms())
+            throw new IllegalArgumentException("Aceite os termos de uso e a política de privacidade para continuar.");
         SignupController.validatePassword(data.password());
         if(data.fullName()==null||data.fullName().isBlank()||
                 data.phone()==null||data.phone().isBlank()||
@@ -119,10 +122,10 @@ public class TeamController {
         if(exists!=null&&exists>0)
             throw new IllegalArgumentException("Esse e-mail já tem conta. Entre na conta e aceite o convite.");
         UUID account=UUID.randomUUID(),optic=(UUID)invite.get("optic_id");
-        jdbc.update("INSERT INTO accounts(id,email,password_hash,full_name,cpf,phone,address,birth_date,email_verified_at,profile_completed_at) "
-                + "VALUES(?,?,?,?,?,?,?,?::date,now(),now())",account,email,
-                passwordEncoder.encode(data.password()),data.fullName().trim(),
-                data.cpf().replaceAll("\\D",""),data.phone(),data.address(),data.birthDate());
+        jdbc.update("INSERT INTO accounts(id,email,password_hash,full_name,cpf,phone,address,birth_date,email_verified_at,"
+                + "profile_completed_at,terms_accepted_at,terms_version) VALUES(?,?,?,?,?,?,?,?::date,now(),now(),now(),?)",
+                account,email,passwordEncoder.encode(data.password()),data.fullName().trim(),
+                data.cpf().replaceAll("\\D",""),data.phone(),data.address(),data.birthDate(),SignupController.TERMS_VERSION);
         jdbc.update("INSERT INTO optic_memberships(optic_id,account_id,role) VALUES(?,?,?)",optic,account,invite.get("requested_role"));
         applyPermissions(invite,optic,account);
         jdbc.update("UPDATE member_invitations SET accepted_at=now() WHERE id=? AND accepted_at IS NULL",invite.get("id"));

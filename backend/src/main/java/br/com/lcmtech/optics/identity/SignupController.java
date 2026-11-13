@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/public")
 public class SignupController {
+    /** Versão vigente dos termos de uso e da política de privacidade (igual à do frontend, Legal.tsx). */
+    public static final String TERMS_VERSION="2026-11-10";
     private final JdbcTemplate jdbc;
     private final PasswordEncoder encoder;
     private final AccountActions actions;
@@ -40,9 +42,10 @@ public class SignupController {
         if(slug.isEmpty()) slug="otica";
         slug=slug.substring(0,Math.min(50,slug.length()))+"-"+UUID.randomUUID().toString().substring(0,8);
         UUID account=UUID.randomUUID(),optic=UUID.randomUUID();
-        jdbc.update("INSERT INTO accounts(id,email,password_hash,full_name,email_verified_at) VALUES(?,?,?,?,?)",
+        jdbc.update("INSERT INTO accounts(id,email,password_hash,full_name,email_verified_at,terms_accepted_at,terms_version) "
+                +"VALUES(?,?,?,?,?,now(),?)",
                 account,email,encoder.encode(data.password()),data.fullName().trim(),
-                emailVerificationRequired?null:java.sql.Timestamp.from(java.time.Instant.now()));
+                emailVerificationRequired?null:java.sql.Timestamp.from(java.time.Instant.now()),TERMS_VERSION);
         jdbc.update("INSERT INTO optics(id,slug,trade_name,contact_email,whatsapp) VALUES(?,?,?,?,?)",
                 optic,slug,data.opticName().trim(),email,data.whatsapp());
         // Quem cria a ótica é o Master principal: nunca pode ser removido por outro administrador.
