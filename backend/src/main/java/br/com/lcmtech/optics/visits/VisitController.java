@@ -89,7 +89,7 @@ public class VisitController {
                                UUID lensId,UUID frameId,java.math.BigDecimal amount,
                                String paymentMethod,UUID cardMachineId,int installments,
                                boolean passFee,Integer settlementDays,int replacementMonths,
-                               LocalDate expectedDelivery,String notes){}
+                               LocalDate expectedDelivery,String notes,Integer warrantyMonths){}
     @PostMapping("/{id}/convert")
     @Transactional
     public Map<String,Object> convert(@PathVariable UUID id,@RequestBody ConvertVisit req,
@@ -125,7 +125,7 @@ public class VisitController {
         Map<String,Object> result=sales.create(
                 new SalesController.NewSale(customer,req.lensId(),req.frameId(),req.amount(),req.paymentMethod(),
                     req.cardMachineId(),req.installments(),req.passFee(),req.settlementDays(),
-                    req.replacementMonths(),clock.today(optic),req.expectedDelivery(),req.notes(),"VISIT-"+id),
+                    req.replacementMonths(),clock.today(optic),req.expectedDelivery(),req.notes(),"VISIT-"+id,req.warrantyMonths()),
                     auth,session);
         UUID sale=(UUID)result.get("id");
         jdbc.update("UPDATE home_visits SET status='CONVERTED',customer_id=?,sale_id=?,"

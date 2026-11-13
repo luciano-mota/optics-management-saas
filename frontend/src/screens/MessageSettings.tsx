@@ -25,7 +25,7 @@ export function MessageSettings({ notify }: { notify: (m: string, error?: boolea
   }, [settings.data]);
   const s = settings.data;
   if (!s || !form) return null;
-  return <div className="surface">
+  return <div className="surface stacked-section">
     <h3><Mail size={18} className="inline-icon" /> Avisos automáticos por e-mail</h3>
     <p className="helper">O sistema envia sozinho, só para quem autorizou no cadastro, e todo e-mail tem o link para a pessoa
       deixar de receber. Nunca vai CPF nem receita.</p>

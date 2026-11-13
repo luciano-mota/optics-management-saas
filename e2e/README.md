@@ -7,7 +7,10 @@ maquininha, clientes com receita, vendas Pix/crédito/débito, entrega, recibo e
 operador, pedido de visita pelo site, conversão da visita, relatórios detalhados (vendas, consultas,
 recibos e pacientes), detalhe de cada indicador das Vendas Atualizadas (soma igual ao resumo), consulta de
 vendas com filtros (marca, tipo de lente, pagamento, origem), análise de vendas com clique levando às vendas,
-relatórios por perguntas no navegador, verificação em duas etapas (ativação, login com código, código de recuperação de uso
+relatórios por perguntas no navegador,
+notificações push (inscrição, recusa de serviço desconhecido), recebimento parcial com estorno, avisos automáticos
+por e-mail e agenda iCal da clínica (sem dados pessoais, revogável), estoque com baixa automática na venda,
+ordens de serviço do laboratório, verificação em duas etapas (ativação, login com código, código de recuperação de uso
 único), isolamento entre óticas e todas as telas.
 
 O limite de cadastros por IP (5 por hora) faz a segunda rodada seguida falhar no cadastro: reinicie o backend

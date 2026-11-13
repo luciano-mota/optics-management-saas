@@ -187,7 +187,7 @@ public class ReceiptController {
                 "receiptNumber",previous.get(0).get("receipt_number"),"alreadyIssued",true);
         var payments=jdbc.queryForList("""
                 SELECT e.id,e.sale_id,st.id AS settlement_id,st.amount AS paid_amount,st.paid_on AS settled_on,
-                    e.gross_amount,e.net_amount,e.fee_amount,s.sold_on,s.status,s.payment_method,
+                    e.gross_amount,e.net_amount,e.fee_amount,s.sold_on,s.status,s.payment_method,s.warranty_months,
                     c.full_name AS customer_name,c.cpf AS customer_cpf,
                     l.brand AS lens_brand,f.brand AS frame_brand,
                     o.trade_name,o.legal_name,o.tax_document,o.address,o.contact_phone
@@ -243,7 +243,9 @@ public class ReceiptController {
                 (String)entry.get("payment_method"),sold,paid,
                 paidGross,paidFee,paidNet,pending,
                 (String)branding.get("signer_name"),(String)branding.get("signer_role"),
-                (byte[])branding.get("logo"),(byte[])branding.get("signature"));
+                (byte[])branding.get("logo"),(byte[])branding.get("signature"),
+                entry.get("warranty_months")!=null&&((Number)entry.get("warranty_months")).intValue()>0
+                    ?sold.plusMonths(((Number)entry.get("warranty_months")).intValue()):null);
         byte[] pdf=ReceiptPdfRenderer.render(data);
         Map<String,Object> snapshot=new LinkedHashMap<>();
         snapshot.put("receiptNumber",number);

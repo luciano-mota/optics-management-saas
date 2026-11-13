@@ -138,6 +138,7 @@ h1, h2, h3, h4 { color: var(--ink); letter-spacing: -.02em; }
 .accent-indigo  { --tile-fg: #4f46e5; --tile-bg: #eeeefe; }
 .accent-red     { --tile-fg: #dc2626; --tile-bg: #fdecec; }
 .accent-sky     { --tile-fg: #0284c7; --tile-bg: #e6f4fc; }
+.accent-rose    { --tile-fg: #e11d48; --tile-bg: #fdecf0; }
 .accent-prism   { --tile-fg: #fff; --tile-bg: var(--prism); }
 
 /* ---------- Superfícies e títulos ---------- */

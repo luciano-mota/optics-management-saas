@@ -237,3 +237,17 @@ tr.detail-row > td { background: var(--surface-2); padding: 14px; }
 .copy-row { display: flex; gap: 8px; margin: 8px 0; }
 .copy-row input { flex: 1; min-width: 0; font: 13px ui-monospace, monospace; border: 1px solid var(--border-strong);
   border-radius: 10px; padding: 10px; background: var(--surface); }
+
+/* ---------- Estoque e serviços ---------- */
+.tab-body { margin-top: 16px; }
+.os-filter { margin: 18px 0 10px; }
+small.late { color: #b42318; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+tr.low-row td { background: #fff8eb; }
+.stock-forms { display: grid; gap: 18px; margin-top: 18px; }
+.stock-forms h4 { margin: 0; }
+.row-actions a.text-action { display: inline-flex; align-items: center; gap: 4px; }
+/* Coluna de ações em tabela continua sendo célula (linhas alinhadas); os botões ficam lado a lado. */
+td.row-actions { display: table-cell; text-align: right; white-space: nowrap; }
+td.row-actions > * + * { margin-left: 12px; }
+.stacked-section { margin-top: 18px; }
+.device-settings h3.device-install-title { margin-top: 26px; }

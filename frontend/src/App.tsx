@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowLeft, Bell, BellRing, Cake, CalendarDays, ChartColumnIncreasing,
+  ArrowLeft, Bell, BellRing, Boxes, Cake, CalendarDays, ChartColumnIncreasing,
   CircleUserRound, CreditCard, Eye, Glasses, Globe, LogOut, MapPinned,
   ReceiptText, ShieldCheck, ShoppingBag, UserCog, UsersRound, Wallet, X,
 } from 'lucide-react';
@@ -25,6 +25,7 @@ import { Optometry } from './screens/Optometry';
 import { Birthdays, BirthdayWelcome } from './screens/Birthdays';
 import { Receipts } from './screens/Receipts';
 import { MyProfile } from './screens/MyProfile';
+import { Stock } from './screens/Stock';
 import { DeviceSettings } from './screens/DeviceSettings';
 import { MessageSettings } from './screens/MessageSettings';
 import { syncPush } from './pwa';
@@ -43,6 +44,7 @@ const tiles:Tile[]=[
   {key:'receipts',title:'Recibos',description:'Comprovantes com a sua marca.',permission:'RECEIPTS_READ',icon:ReceiptText,accent:'accent-teal'},
   {key:'finance',title:'Financeiro',description:'Entradas, despesas e a receber.',permission:'FINANCE_READ',icon:Wallet,accent:'accent-lime'},
   {key:'catalog',title:'Lentes e armações',description:'Marcas e modelos.',permission:'CATALOG_READ',icon:Glasses,accent:'accent-fuchsia'},
+  {key:'stock',title:'Estoque e serviços',description:'Laboratório, consertos e estoque.',permission:'CATALOG_READ',icon:Boxes,accent:'accent-rose'},
   {key:'machines',title:'Maquininhas',description:'Taxas de débito e crédito.',permission:'FINANCE_READ',icon:CreditCard,accent:'accent-amber'},
   {key:'reports',title:'Relatórios',description:'Vendas, metas e equipe.',permission:'REPORTS_READ',icon:ChartColumnIncreasing,accent:'accent-indigo'},
   {key:'calendar',title:'Calendário',description:'Dias de abertura e feriados.',permission:'REPORTS_READ',icon:CalendarDays,accent:'accent-red'},
@@ -177,6 +179,7 @@ export function App(){
           {selected?.key==='retention'&&<Retention notify={notify} can={can}/>}
           {selected?.key==='birthdays'&&<Birthdays notify={notify} can={can}/>}
           {selected?.key==='catalog'&&<Catalog notify={notify} can={can}/>}
+          {selected?.key==='stock'&&<Stock notify={notify} can={can}/>}
           {selected?.key==='visits'&&<Visits notify={notify} can={can}/>}
           {selected?.key==='optometry'&&<Optometry notify={notify} can={can}/>}
           {selected?.key==='finance'&&<Finance notify={notify} can={can}/>}

@@ -94,6 +94,12 @@ async function signupOptic(label) {
     { brand: 'Ray-Ban', model: 'RB5154', category: 'SOLAR' })).status === 200);
   check('Catálogo: tipo de lente fora da lista recusado', (await a.call('POST', '/catalog',
     { kind: 'LENS', brand: 'X', category: 'SOLAR' })).status === 400);
+  // Estoque: a armação passa a ser controlada antes das vendas (5 unidades, mínimo 1).
+  const lab = (await a.call('POST', '/suppliers', { name: 'Laboratório Central', kind: 'LABORATORIO', phone: '(98) 3232-1010' })).body;
+  check('Fornecedor/laboratório cadastrado', !!lab.id, JSON.stringify(lab));
+  check('Estoque: controlar armação', (await a.call('PATCH', '/stock/items/' + frame.id, { trackStock: true, minStock: 1 })).status === 200);
+  const entry = await a.call('POST', '/stock/movements', { itemId: frame.id, kind: 'ENTRADA', quantity: 5, unitCost: 150, supplierId: lab.id });
+  check('Estoque: entrada de compra', entry.status === 200 && entry.body.quantity === 5, JSON.stringify(entry.body));
   const frames = (await a.call('GET', '/catalog?kind=FRAME')).body;
   check('Catálogo: categoria salva', frames[0] && frames[0].category === 'SOLAR', JSON.stringify(frames));
 
@@ -296,6 +302,16 @@ async function signupOptic(label) {
     lensId: lens.id, frameId: frame.id, amount: 720, paymentMethod: 'PIX', cardMachineId: null, installments: 1, passFee: false,
     settlementDays: null, replacementMonths: 12, expectedDelivery: null, notes: '' });
   check('Visita: vira venda e cliente', vconv.status === 200, JSON.stringify(vconv.body));
+  // ---------- Estoque e ordens de serviço ----------
+  const stockNow = ((await a.call('GET', '/stock')).body || []).find(i => i.id === frame.id);
+  check('Estoque: cada venda baixa a armação e avisa o mínimo', stockNow && stockNow.quantity === 1 && stockNow.low === true, JSON.stringify(stockNow));
+  const os = await a.call('POST', '/service-orders', { kind: 'LENTES', saleId: saleCredit.body.sale?.id || saleCredit.body.id,
+    supplierId: lab.id, description: 'Multifocal OD -1,25 OE -1,50 antirreflexo', expectedOn: null, price: null });
+  check('OS: aberta com número', os.status === 200 && os.body.number === 1, JSON.stringify(os.body));
+  for (const st of ['ENVIADA', 'RECEBIDA'])
+    check('OS: ' + st, (await a.call('PATCH', '/service-orders/' + os.body.id + '/status', { status: st })).status === 200);
+  check('OS: não volta etapa', (await a.call('PATCH', '/service-orders/' + os.body.id + '/status', { status: 'ENVIADA' })).status === 400);
+  check('OS: histórico', ((await a.call('GET', '/service-orders/' + os.body.id + '/events')).body || []).length === 3);
   const perf = await a.call('GET', '/reports/performance');
   check('Relatório por funcionário/visitas', perf.status === 200, 'HTTP ' + perf.status);
 
@@ -316,6 +332,8 @@ async function signupOptic(label) {
   check('Isolamento: análise de vendas de B vazia', bRanking.rows.length === 0 && bRanking.count === 0);
   const bDetail = (await b.call('GET', '/reports/monthly-sales-summary/detail/vendas?' + ym)).body;
   check('Isolamento: detalhe do indicador de B vazio', bDetail.rows.length === 0);
+  check('Isolamento: B não vê OS de A', ((await b.call('GET', '/service-orders')).body || []).length === 0);
+  check('Isolamento: B não mexe no estoque de A', (await b.call('POST', '/stock/movements', { itemId: frame.id, kind: 'ENTRADA', quantity: 1 })).status === 404);
   check('Isolamento: B não gera agenda de clínica de A', (await b.call('POST', '/optometry/clinics/' + clinic.body.id + '/calendar-feed', {})).status === 404);
   check('Isolamento: B não altera lembrete de paciente de A', (await b.call('PUT', '/optometry/patients/' + patient.body.id + '/reminder',
     { email: 'x@x.test', reminderOptIn: true })).status === 404);

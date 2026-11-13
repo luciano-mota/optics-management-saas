@@ -105,6 +105,7 @@ export function Sales({ notify, can }: ScreenProps) {
           passFee,settlementDays:method==='CREDITO'&&installments===1?
             settlementDays??chosenMachine?.creditDays??null:null,
           replacementMonths:Number(getField(form,'replacementMonths') || 12),
+          warrantyMonths:getField(form,'warrantyMonths')===''?null:Number(getField(form,'warrantyMonths')),
           expectedDelivery:getField(form,'expectedDelivery') || null,
           notes:getField(form,'notes'),idempotencyKey:crypto.randomUUID(),
         };
@@ -190,6 +191,9 @@ export function Sales({ notify, can }: ScreenProps) {
           <option value="6">A cada 6 meses</option><option value="12">A cada 1 ano</option>
         </select></label>
         <FormField name="expectedDelivery" title="Previsão de entrega" type="date" />
+        <label className="field">Garantia<select name="warrantyMonths" defaultValue="3">
+          <option value="">Não informar</option><option value="0">Sem garantia</option><option value="3">3 meses</option>
+          <option value="6">6 meses</option><option value="12">1 ano</option></select></label>
         <FormField name="notes" title="Observações" />
         <button className="primary-action form-action" type="submit">Confirmar venda</button>
       </form>
@@ -208,7 +212,7 @@ export function Sales({ notify, can }: ScreenProps) {
           <td><strong>{s.customer_name}</strong><small>{s.seller_name}</small></td>
           <td>{s.lens_brand} / {s.frame_brand}</td>
           <td>{currency(s.charged_amount)}<small>Líquido: {currency(s.net_amount)}</small></td>
-          <td>{date(s.sold_on)}</td><td>{statusLabel[s.status] || s.status}</td>
+          <td>{date(s.sold_on)}{s.warranty_until&&<small>Garantia até {date(s.warranty_until)}</small>}</td><td>{statusLabel[s.status] || s.status}</td>
           <td>{s.status==='AWAITING_PRODUCTION' ? <button className="text-action" onClick={() =>
             void perform(()=>api('/sales/'+s.id+'/status',{method:'PATCH',body:{status:'READY_FOR_DELIVERY'}}),
               notify,refresh)}>Marcar como pronto</button> :

@@ -26,7 +26,7 @@ public final class ReceiptPdfRenderer {
             String address,String contactPhone,String customerName,String customerCpf,
             String lens,String frame,String paymentMethod,LocalDate soldOn,LocalDate paidOn,
             BigDecimal paymentGross,BigDecimal fee,BigDecimal net,BigDecimal pending,
-            String signerName,String signerRole,byte[] logo,byte[] signature) {}
+            String signerName,String signerRole,byte[] logo,byte[] signature,LocalDate warrantyUntil) {}
 
     private static String money(BigDecimal value) {
         return NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"))
@@ -67,7 +67,12 @@ public final class ReceiptPdfRenderer {
                 line(canvas,regular,10,44,y,"CPF: "+maskCpf(d.customerCpf()));y-=19;
                 line(canvas,regular,10,44,y,"Data da venda: "+d.soldOn());y-=19;
                 line(canvas,regular,10,44,y,"Lentes: "+d.lens());y-=19;
-                line(canvas,regular,10,44,y,"Armacao: "+d.frame());y-=25;
+                line(canvas,regular,10,44,y,"Armacao: "+d.frame());y-=19;
+                if(d.warrantyUntil()!=null){
+                    line(canvas,regular,10,44,y,"Garantia ate: "+d.warrantyUntil().format(
+                            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));y-=19;
+                }
+                y-=6;
 
                 canvas.setNonStrokingColor(new Color(246,246,250));
                 canvas.addRect(39,y-70,517,93);canvas.fill();

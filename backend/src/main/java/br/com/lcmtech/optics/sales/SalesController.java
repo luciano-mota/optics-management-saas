@@ -32,10 +32,12 @@ public class SalesController {
     private final CustomerController customers;
     private final CardMachineController machineRegistry;
     private final OpticClock clock;
+    private final br.com.lcmtech.optics.stock.StockService stock;
     public SalesController(JdbcTemplate jdbc,OpticContext context,CustomerController customers,
-                           CardMachineController machineRegistry,OpticClock clock) {
+                           CardMachineController machineRegistry,OpticClock clock,
+                           br.com.lcmtech.optics.stock.StockService stock) {
         this.jdbc=jdbc;this.context=context;this.customers=customers;
-        this.machineRegistry=machineRegistry;this.clock=clock;
+        this.machineRegistry=machineRegistry;this.clock=clock;this.stock=stock;
     }
 
     @GetMapping
@@ -48,7 +50,8 @@ public class SalesController {
                 +"s.expected_delivery,s.status,s.replacement_months,s.gross_amount,s.charged_amount,"
                 +"s.fee_amount,s.net_amount,s.payment_method,s.installments,"
                 +"l.brand AS lens_brand, f.brand AS frame_brand,a.full_name AS seller_name,"
-                +"s.created_at,s.delivered_at "
+                +"s.created_at,s.delivered_at,s.warranty_months,"
+                +"CASE WHEN s.warranty_months>0 THEN (s.sold_on+make_interval(months=>s.warranty_months))::date END AS warranty_until "
                 +"FROM sales s JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id "
                 +"JOIN catalog_items l ON l.optic_id=s.optic_id AND l.id=s.lens_id "
                 +"JOIN catalog_items f ON f.optic_id=s.optic_id AND f.id=s.frame_id "
@@ -85,7 +88,7 @@ public class SalesController {
            BigDecimal amount,String paymentMethod,UUID cardMachineId,
            int installments,boolean passFee,Integer settlementDays,
            int replacementMonths,LocalDate soldOn,LocalDate expectedDelivery,
-           String notes,String idempotencyKey){}
+           String notes,String idempotencyKey,Integer warrantyMonths){}
 
     /**
      * Cliente e venda na mesma transação: um erro na venda desfaz também o
@@ -151,7 +154,7 @@ public class SalesController {
         Map<String,Object> result=create(new NewSale(customer,sale.lensId(),sale.frameId(),
                 sale.amount(),sale.paymentMethod(),sale.cardMachineId(),sale.installments(),
                 sale.passFee(),sale.settlementDays(),sale.replacementMonths(),
-                sale.soldOn(),sale.expectedDelivery(),sale.notes(),sale.idempotencyKey()),
+                sale.soldOn(),sale.expectedDelivery(),sale.notes(),sale.idempotencyKey(),sale.warrantyMonths()),
                 auth,session);
         jdbc.update("INSERT INTO audit_events(id,optic_id,actor_account_id,"
                 +"event_type,entity_type,entity_id) "
@@ -183,7 +186,7 @@ public class SalesController {
                 sale.amount(), sale.paymentMethod(), sale.cardMachineId(),
                 sale.installments(), sale.passFee(), sale.settlementDays(),
                 sale.replacementMonths(), sale.soldOn(), sale.expectedDelivery(),
-                sale.notes(), sale.idempotencyKey()), auth, session);
+                sale.notes(), sale.idempotencyKey(), sale.warrantyMonths()), auth, session);
     }
 
     @PostMapping
@@ -197,6 +200,8 @@ public class SalesController {
             throw new IllegalArgumentException("O valor da venda deve ser positivo.");
         if(request.replacementMonths()!=6&&request.replacementMonths()!=12)
             throw new IllegalArgumentException("Escolha 6 ou 12 meses para troca dos óculos.");
+        if(request.warrantyMonths()!=null&&(request.warrantyMonths()<0||request.warrantyMonths()>60))
+            throw new IllegalArgumentException("Garantia deve ser de 0 a 60 meses.");
         if(request.idempotencyKey()!=null&&!request.idempotencyKey().isBlank()) {
             List<UUID> prior=jdbc.query("SELECT id FROM sales WHERE optic_id=? AND idempotency_key=?",
                     (rs,n)->(UUID)rs.getObject(1),optic,request.idempotencyKey());
@@ -216,12 +221,14 @@ public class SalesController {
         UUID id=UUID.randomUUID();
         jdbc.update("INSERT INTO sales(optic_id,id,customer_id,seller_id,lens_id,frame_id,sold_on,"
                 +"expected_delivery,replacement_months,gross_amount,fee_amount,charged_amount,net_amount,"
-                +"payment_method,installments,card_machine_id,notes,idempotency_key) "
-                +"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                +"payment_method,installments,card_machine_id,notes,idempotency_key,warranty_months) "
+                +"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 optic,id,request.customerId(),seller,request.lensId(),request.frameId(),soldOn,
                 request.expectedDelivery(),request.replacementMonths(),request.amount(),
                 total.feeAmount(),total.chargedAmount(),total.netAmount(),method.name(),
-                installments,request.cardMachineId(),request.notes(),request.idempotencyKey());
+                installments,request.cardMachineId(),request.notes(),request.idempotencyKey(),request.warrantyMonths());
+        // Estoque: baixa automática da lente e da armação que controlam estoque.
+        stock.saleOut(optic,id,seller,request.lensId(),request.frameId());
         if(total.receivables().isEmpty()) {
             insertFinance(optic,id,seller,soldOn,soldOn,soldOn,
                     total.chargedAmount(),total.feeAmount(),total.netAmount());
@@ -283,9 +290,11 @@ public class SalesController {
                 target.name(),target.name(),target.name(),actor,optic,id);
         jdbc.update("INSERT INTO sale_events(id,optic_id,sale_id,actor_id,previous_status,next_status) "
                 +"VALUES(?,?,?,?,?,?)",UUID.randomUUID(),optic,id,actor,existing,target.name());
-        if(target==SaleStatus.CANCELLED)
+        if(target==SaleStatus.CANCELLED) {
             jdbc.update("UPDATE finance_entries SET reversed_at=now() WHERE optic_id=? "
                     +"AND sale_id=? AND reversed_at IS NULL",optic,id);
+            stock.saleReturn(optic,id,actor);
+        }
         return Map.of("updated",true,"status",target.name());
     }
 }
