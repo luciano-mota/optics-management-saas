@@ -30,6 +30,9 @@ export function Sales({ notify, can }: ScreenProps) {
 
   const customers = useRemote<any[]>('/customers');
   const catalog = useRemote<any[]>('/catalog');
+  const categories = useRemote<Record<string,Record<string,string>>>('/catalog/categories');
+  const productLabel=(c:any)=>[c.brand,c.model].filter(Boolean).join(' ')+
+    (c.category?' · '+(categories.data?.[c.kind]?.[c.category]?.replace(/ \(.*\)$/,'')??c.category):'');
   const machines = useRemote<any[]>('/machines');
   const chosenMachine=machines.data?.find(m=>m.id===machineId);
   const allowedInstallments=chosenMachine?.installmentFees?.length?
@@ -131,11 +134,11 @@ export function Sales({ notify, can }: ScreenProps) {
         </select></label>}
         <label className="field">Marca/tipo de lente<select name="lensId" required defaultValue="">
           <option value="" disabled>Selecione a lente</option>{catalog.data?.filter(c => c.kind==='LENS'&&c.active).map(c =>
-            <option key={c.id} value={c.id}>{c.brand} {c.model || ''}</option>)}
+            <option key={c.id} value={c.id}>{productLabel(c)}</option>)}
         </select></label>
         <label className="field">Armação<select name="frameId" required defaultValue="">
           <option value="" disabled>Selecione a armação</option>{catalog.data?.filter(c => c.kind==='FRAME'&&c.active).map(c =>
-            <option key={c.id} value={c.id}>{c.brand} {c.model || ''}</option>)}
+            <option key={c.id} value={c.id}>{productLabel(c)}</option>)}
         </select></label>
         <label className="field">Valor (R$)<input name="amount" type="number" step="0.01"
           required placeholder="Ex.: 350.00" value={saleAmount}

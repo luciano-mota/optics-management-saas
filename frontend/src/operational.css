@@ -154,3 +154,57 @@
   .mfa-reminder { flex-wrap: wrap; }
 }
 .mfa-section { margin-top: 18px; }
+
+/* ---------- Detalhe dos indicadores ---------- */
+.indicator-table tbody tr { cursor: pointer; }
+.indicator-table tbody tr:hover, .indicator-table tbody tr.selected { background: var(--surface-2); }
+.indicator-table .row-chevron { width: 28px; color: var(--muted); font-size: 20px; text-align: right; }
+.link-button { background: none; border: 0; padding: 0; font: inherit; color: var(--primary-ink); cursor: pointer; text-align: left; }
+.link-button:hover { text-decoration: underline; }
+.indicator-detail { margin-top: 16px; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px;
+  background: var(--surface); box-shadow: var(--shadow); }
+.indicator-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.indicator-detail-head h3 { margin: 2px 0 6px; }
+.muted-row td { color: var(--muted); }
+
+/* ---------- Lentes e armações ---------- */
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.catalog-edit { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: end;
+  padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.catalog-edit .filter-bar { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 640px) { .catalog-edit { grid-template-columns: 1fr; } }
+.filter-more { align-self: flex-end; display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- Análise de vendas ---------- */
+.ranking { display: grid; gap: 8px; margin: 14px 0; }
+.ranking-row { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: center; width: 100%;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface);
+  text-align: left; font: inherit; color: inherit; cursor: pointer; transition: border-color .15s, background .15s; }
+.ranking-row:hover, .ranking-row:focus-visible { border-color: var(--primary); background: var(--surface-2); }
+.ranking-pos { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
+  font-size: 13px; background: var(--surface-2); color: var(--primary-ink); }
+.ranking-main { display: grid; gap: 6px; min-width: 0; }
+.ranking-title { display: flex; justify-content: space-between; gap: 12px; }
+.ranking-title strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ranking-title span { font-weight: 700; white-space: nowrap; }
+.ranking-bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.ranking-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #6C5CFF, #22D3EE); }
+.ranking-meta { color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.variation { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; font-size: 12.5px; }
+.variation.up { color: #0f766e; }
+.variation.down { color: #b42318; }
+.variation.neutral { color: var(--muted); font-weight: 600; }
+.metric-variation .variation { font-size: 22px; }
+.metric small { color: var(--muted); font-size: 12px; }
+
+/* ---------- Relatórios por perguntas ---------- */
+.question-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 12px; }
+.question { --tile-fg: var(--primary); --tile-bg: var(--primary-soft); display: flex; gap: 12px; align-items: center;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface);
+  text-align: left; font: inherit; color: var(--ink); cursor: pointer; transition: border-color .15s, transform .15s, box-shadow .15s; }
+.question:hover, .question:focus-visible { border-color: var(--tile-fg); box-shadow: var(--shadow); transform: translateY(-1px); }
+.question .tile-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--tile-bg); color: var(--tile-fg); }
+.question strong { display: block; font-size: 14.5px; }
+.question small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+@media (max-width: 640px) { .question-grid { grid-template-columns: 1fr; } }
+.day-chips + .filter-bar, .day-chips + .helper { margin-top: 12px; }

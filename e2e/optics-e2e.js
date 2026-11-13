@@ -87,9 +87,15 @@ async function signupOptic(label) {
   check('Calendário: feriado estadual do MA fecha a loja', d2807 && d2807.willOpen === false);
   check('Calendário: salvar dias de abertura', (await a.call('PUT', '/business-calendar/settings', { openWeekdays: [1, 2, 3, 4, 5, 6] })).status === 200);
 
-  const lens = (await a.call('POST', '/catalog', { kind: 'LENS', brand: 'Essilor', model: 'Varilux' })).body;
+  const lens = (await a.call('POST', '/catalog', { kind: 'LENS', brand: 'Essilor', model: 'Varilux', category: 'MULTIFOCAL' })).body;
   const frame = (await a.call('POST', '/catalog', { kind: 'FRAME', brand: 'Ray-Ban', model: 'RB5154' })).body;
   check('Catálogo: lente e armação', !!lens.id && !!frame.id, JSON.stringify([lens, frame]));
+  check('Catálogo: completar categoria da armação', (await a.call('PATCH', '/catalog/' + frame.id,
+    { brand: 'Ray-Ban', model: 'RB5154', category: 'SOLAR' })).status === 200);
+  check('Catálogo: tipo de lente fora da lista recusado', (await a.call('POST', '/catalog',
+    { kind: 'LENS', brand: 'X', category: 'SOLAR' })).status === 400);
+  const frames = (await a.call('GET', '/catalog?kind=FRAME')).body;
+  check('Catálogo: categoria salva', frames[0] && frames[0].category === 'SOLAR', JSON.stringify(frames));
 
   const machine = await a.call('POST', '/machines', { name: 'Stone', debitFee: 1.49, creditFee: 3.19, fixedFee: 0,
     debitDays: 1, creditDays: 30, anticipated: false,
@@ -151,6 +157,24 @@ async function signupOptic(label) {
   const sumPdf = await a.call('GET', '/reports/monthly-sales-summary.pdf?year=' + today.slice(0, 4) + '&month=' + Number(today.slice(5, 7)) + '&asOf=' + today);
   check('Vendas Atualizadas em PDF', sumPdf.status === 200, 'HTTP ' + sumPdf.status);
 
+  // ---------- Detalhe de cada indicador: a soma da lista é o número do resumo ----------
+  const s14 = summary.body.summary;
+  const ym = 'year=' + s14.year + '&month=' + s14.month + '&asOf=' + s14.asOf;
+  const sumCol = (rep, header) => { const i = rep.headers.indexOf(header);
+    return rep.rows.reduce((t, r) => t + (r[i] === '' ? 0 : Number(r[i])), 0); };
+  for (const [kind, header, key] of [['vendas', 'Valor da venda', 'totalSales'], ['recebidos', 'Líquido', 'netReceived'],
+    ['a-receber', 'Líquido', 'toReceive'], ['taxas', 'Taxa', 'bankFees']]) {
+    const d = await a.call('GET', '/reports/monthly-sales-summary/detail/' + kind + '?' + ym);
+    check('Detalhe do indicador ' + kind + ' soma igual ao resumo', d.status === 200 &&
+      Math.abs(sumCol(d.body, header) - Number(s14[key])) < 0.005, 'HTTP ' + d.status + ' ' + (d.body && sumCol(d.body, header)) + ' x ' + s14[key]);
+  }
+  for (const kind of ['dias', 'metas']) {
+    const d = await a.call('GET', '/reports/monthly-sales-summary/detail/' + kind + '?' + ym);
+    check('Detalhe do indicador ' + kind, d.status === 200 && d.body.rows.length >= 28, 'HTTP ' + d.status);
+  }
+  const detailPdf = await a.call('GET', '/reports/monthly-sales-summary/detail/a-receber/export/pdf?' + ym);
+  check('Detalhe do indicador em PDF', detailPdf.status === 200 && detailPdf.type.includes('pdf'));
+
   const clinic = await a.call('POST', '/optometry/clinics', { name: 'Clínica Olhar', phone: '(98) 3333-4444', address: 'Rua X, 1 - Centro, São Luís/MA' });
   const patientCpf = cpf();
   const patient = await a.call('POST', '/optometry/patients', { fullName: 'Paula Paciente', cpf: patientCpf, birthDate: '1979-07-01',
@@ -182,6 +206,32 @@ async function signupOptic(label) {
     && JSON.stringify(patientsReport.rows).includes('Sim'), JSON.stringify(patientsReport).slice(0, 300));
   const byClinic = (await a.call('GET', '/reports/detailed/consultas?clinicId=' + clinic.body.id)).body;
   check('Relatório de consultas por clínica', byClinic.groups && byClinic.groups.length === 1, JSON.stringify(byClinic.groups));
+
+  // ---------- Consulta de vendas com filtros e análise de vendas ----------
+  const salesOptions = (await a.call('GET', '/reports/detailed/vendas/options')).body;
+  check('Consulta de vendas: opções com marcas e vendedoras', salesOptions.frameBrands.includes('Ray-Ban')
+    && salesOptions.lensBrands.includes('Essilor') && salesOptions.sellers.length >= 1, JSON.stringify(salesOptions).slice(0, 200));
+  const allSales = (await a.call('GET', '/reports/detailed/vendas')).body;
+  const byFrame = (await a.call('GET', '/reports/detailed/vendas?frameBrand=Ray-Ban')).body;
+  check('Consulta de vendas: filtro por marca da armação', byFrame.totalRows === allSales.totalRows && allSales.totalRows >= 3);
+  const byLensType = (await a.call('GET', '/reports/detailed/vendas?lensCategory=MULTIFOCAL')).body;
+  check('Consulta de vendas: filtro por tipo de lente', byLensType.totalRows === allSales.totalRows);
+  const byPix = (await a.call('GET', '/reports/detailed/vendas?paymentMethod=PIX')).body;
+  const payCol = byPix.headers.indexOf('Pagamento');
+  check('Consulta de vendas: filtro por pagamento', byPix.totalRows >= 1 && byPix.rows.every(r => r[payCol] === 'Pix'));
+  const byOrigin = (await a.call('GET', '/reports/detailed/vendas?origin=CONSULTA')).body;
+  check('Consulta de vendas: origem paciente de consulta', byOrigin.totalRows === 1, JSON.stringify(byOrigin.rows));
+  check('Consulta de vendas: valor fora da lista recusado', (await a.call('GET', '/reports/detailed/vendas?paymentMethod=BOLETO')).status === 400);
+  const ranking = (await a.call('GET', '/reports/sales-analysis?dimension=seller')).body;
+  check('Análise de vendas: ranking por funcionária', ranking.rows && ranking.rows.length >= 1 && ranking.count >= 3, JSON.stringify(ranking).slice(0, 200));
+  const top = ranking.rows[0];
+  const clicked = (await a.call('GET', '/reports/detailed/vendas?from=' + ranking.from + '&to=' + ranking.to + '&sellerId=' + top.filterValue)).body;
+  check('Análise de vendas: clique abre a consulta com o mesmo total', clicked.summary[0].startsWith('Vendas válidas: ' + top.count + ' '),
+    clicked.summary[0] + ' x ' + top.count);
+  const lensTypes = (await a.call('GET', '/reports/sales-analysis?dimension=lensCategory')).body;
+  check('Análise de vendas: por tipo de lente', lensTypes.rows.some(r => r.label === 'Multifocal'), JSON.stringify(lensTypes.rows));
+  const analysisXlsx = await a.call('GET', '/reports/sales-analysis/export/xlsx?dimension=frameBrand');
+  check('Análise de vendas em Excel', analysisXlsx.status === 200 && analysisXlsx.body.length > 100);
 
   for (const p of ['/retention', '/retention/summary', '/birthdays/status', '/birthdays', '/finance', '/team', '/subscription', '/auth/alerts', '/optic-profile'])
     { const r = await a.call('GET', p); check('GET ' + p, r.status === 200, 'HTTP ' + r.status); }
@@ -232,6 +282,13 @@ async function signupOptic(label) {
     const r = await b.call('GET', '/reports/detailed/' + kind);
     check('Isolamento: relatório de ' + kind + ' de B vazio', r.status === 200 && r.body.totalRows === 0, JSON.stringify(r.body).slice(0, 200));
   }
+  const bOptions = (await b.call('GET', '/reports/detailed/vendas/options')).body;
+  check('Isolamento: B não vê marcas de A nas opções', !bOptions.frameBrands.includes('Ray-Ban'), JSON.stringify(bOptions.frameBrands));
+  const bRanking = (await b.call('GET', '/reports/sales-analysis?dimension=frameBrand')).body;
+  check('Isolamento: análise de vendas de B vazia', bRanking.rows.length === 0 && bRanking.count === 0);
+  const bDetail = (await b.call('GET', '/reports/monthly-sales-summary/detail/vendas?' + ym)).body;
+  check('Isolamento: detalhe do indicador de B vazio', bDetail.rows.length === 0);
+  check('Isolamento: B não edita produto de A', (await b.call('PATCH', '/catalog/' + frame.id, { brand: 'X', category: 'GRAU' })).status === 404);
   const foreignClinic = await b.call('GET', '/reports/detailed/consultas?clinicId=' + clinic.body.id);
   check('Isolamento: filtro com clínica de A não traz nada', foreignClinic.status === 200 && foreignClinic.body.totalRows === 0);
   const files = (await a.call('GET', '/attachments/customers/' + customer.body.id)).body;
@@ -275,9 +332,13 @@ async function signupOptic(label) {
   // Avisos de aniversário e calendário abrem depois do carregamento; fecha qualquer um antes de clicar.
   const dismissModals = async (target = page) => {
     await target.waitForLoadState('networkidle');
+    // Fecha pelo nome: o último botão do aviso de aniversário é "Ver aniversariantes", que sai do painel.
     for (let i = 0; i < 4; i++) {
-      const btn = target.locator('.calendar-modal button').last();
-      if (await btn.count()) { await btn.click(); await target.waitForTimeout(300); } else break;
+      const modal = target.locator('.calendar-modal');
+      if (!(await modal.count())) break;
+      const close = modal.getByRole('button', { name: /Fechar por hoje|Salvar meu planejamento|Revisar depois/ }).first();
+      await (await close.count() ? close : modal.locator('button').last()).click();
+      await target.waitForTimeout(300);
     }
   };
   await dismissModals();
@@ -294,6 +355,28 @@ async function signupOptic(label) {
     await page.locator('.back-link').first().click();
     await page.waitForSelector('.greeting');
   }
+  // Relatórios por perguntas: "Quem vendeu mais?" → ranking → clique abre as vendas filtradas.
+  await dismissModals();
+  await page.locator('.tile.accent-indigo').click();
+  await page.waitForSelector('.question');
+  check('Relatórios: perguntas para o dono', await page.locator('.question').count() >= 8);
+  await page.getByRole('button', { name: /Quem vendeu mais/ }).click();
+  await page.waitForSelector('.ranking-row');
+  await page.locator('.ranking-row').first().click();
+  await page.waitForSelector('#relatorios-detalhados >> text=Limpar filtros');
+  await page.waitForTimeout(800);
+  await page.locator('#relatorios-detalhados').screenshot({ path: OUT + '/e2e-relatorios-vendas-filtradas.png' });
+  check('Relatórios: clique no ranking filtra as vendas', (await page.locator('#relatorios-detalhados').textContent()).includes('Limpar filtros'));
+  await page.getByRole('button', { name: /Quanto tenho a receber/ }).click();
+  await page.waitForSelector('.indicator-detail table, .indicator-detail .empty');
+  await page.waitForTimeout(600);
+  await page.locator('#vendas-atualizadas').screenshot({ path: OUT + '/e2e-relatorios-a-receber.png' });
+  check('Relatórios: pergunta abre o detalhe do indicador', (await page.locator('.indicator-detail h3').textContent()).includes('Vendas a receber'));
+  await page.getByRole('button', { name: /Que lentes mais saem/ }).click();
+  await page.waitForTimeout(900);
+  await page.locator('#analise-de-vendas').screenshot({ path: OUT + '/e2e-relatorios-analise.png' });
+  await page.locator('.back-link').first().click();
+  await page.waitForSelector('.greeting');
   await dismissModals();
   await page.getByRole('button', { name: 'Meus dados' }).click();
   await page.getByRole('button', { name: 'Ativar verificação em duas etapas' }).click();
