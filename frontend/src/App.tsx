@@ -26,6 +26,7 @@ import { Birthdays, BirthdayWelcome } from './screens/Birthdays';
 import { Receipts } from './screens/Receipts';
 import { MyProfile } from './screens/MyProfile';
 import { DeviceSettings } from './screens/DeviceSettings';
+import { MessageSettings } from './screens/MessageSettings';
 import { syncPush } from './pwa';
 import { MfaChallenge, MfaRecommendation, TwoFactorSettings } from './screens/TwoFactor';
 import { getField, perform, PhoneField, useRemote } from './screens/common';
@@ -194,6 +195,7 @@ export function App(){
           {isPlatform&&<Platform notify={notify}/>}
           {view==='notices'&&<Notices notify={notify} onOpen={setView} alerts={alerts}
             homeVisitsEnabled={!!activeShop?.home_visits_enabled}/>}
+          {view==='notices'&&activeShop?.role==='MASTER'&&<MessageSettings notify={notify}/>}
           {view==='subscription'&&activeShop?.billing_mode!=='COMPLIMENTARY'&&
             <SubscriptionView notify={notify} shop={activeShop}/>}
 

@@ -32,7 +32,7 @@ public class VisitNotifier {
     @Value("${optics.public-base-url:https://optics-management-hml.onrender.com}") private String baseUrl;
 
     public VisitNotifier(JdbcTemplate jdbc, OpticContext context, EmailDelivery mail, OpticClock clock,
-                         TaskExecutor executor, br.com.lcmtech.optics.push.PushService push) {
+                         @org.springframework.beans.factory.annotation.Qualifier("applicationTaskExecutor") TaskExecutor executor, br.com.lcmtech.optics.push.PushService push) {
         this.push = push;
         this.jdbc = jdbc;
         this.context = context;

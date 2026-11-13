@@ -26,8 +26,9 @@ public class OptometryController {
         this.jdbc=jdbc;this.context=context;
     }
 
+    /** reminderOptIn: o paciente autorizou receber lembrete de consulta por e-mail. */
     public record Patient(String fullName,String cpf,java.time.LocalDate birthDate,
-            String phone,String email,String address){}
+            String phone,String email,String address,Boolean reminderOptIn){}
 
     @GetMapping("/patients")
     public List<Map<String,Object>> patients(
@@ -35,7 +36,7 @@ public class OptometryController {
         context.require(auth,session,"PATIENTS_READ");
         String like="%"+q.trim()+"%";
         return jdbc.queryForList("""
-            SELECT p.id,p.full_name,p.cpf,p.birth_date,p.phone,p.email,p.address,
+            SELECT p.id,p.full_name,p.cpf,p.birth_date,p.phone,p.email,p.address,p.reminder_opt_in,
                 (c.id IS NOT NULL) AS converted,
                 c.id AS customer_id
             FROM optometry_patients p
@@ -93,13 +94,32 @@ public class OptometryController {
         if(req==null||req.fullName()==null||req.fullName().isBlank())
             throw new IllegalArgumentException("Informe o nome do paciente.");
         String cpf=normalize(req.cpf());
+        String email=br.com.lcmtech.optics.customers.CustomerController.email(req.email());
+        boolean optIn=Boolean.TRUE.equals(req.reminderOptIn())&&email!=null;
         UUID id=UUID.randomUUID();
         jdbc.update("""
             INSERT INTO optometry_patients(optic_id,id,full_name,cpf,birth_date,phone,
-                email,address,created_by) VALUES(?,?,?,?,?,?,?,?,?)
+                email,address,created_by,reminder_opt_in,reminder_opt_in_at) VALUES(?,?,?,?,?,?,?,?,?,?,CASE WHEN ? THEN now() END)
             """,context.optic(auth,session),id,req.fullName().trim(),cpf,
-                req.birthDate(),req.phone(),req.email(),req.address(),context.accountId(auth));
+                req.birthDate(),req.phone(),email,req.address(),context.accountId(auth),optIn,optIn);
         return Map.of("id",id);
+    }
+
+    public record ReminderConsent(String email,Boolean reminderOptIn){}
+
+    /** Atualiza o e-mail e a autorização de lembrete por e-mail do paciente. */
+    @PutMapping("/patients/{id}/reminder")
+    public Map<String,Boolean> reminder(@PathVariable UUID id,@RequestBody ReminderConsent req,
+            Authentication auth,HttpSession session) {
+        context.require(auth,session,"PATIENTS_WRITE");
+        String email=br.com.lcmtech.optics.customers.CustomerController.email(req==null?null:req.email());
+        boolean optIn=req!=null&&Boolean.TRUE.equals(req.reminderOptIn())&&email!=null;
+        int n=jdbc.update("""
+            UPDATE optometry_patients SET email=?,reminder_opt_in=?,
+                reminder_opt_in_at=CASE WHEN ? AND NOT reminder_opt_in THEN now() WHEN ? THEN reminder_opt_in_at END
+            WHERE optic_id=? AND id=?""",email,optIn,optIn,optIn,context.optic(auth,session),id);
+        if(n==0)throw new java.util.NoSuchElementException("Paciente não encontrado.");
+        return Map.of("reminderOptIn",optIn);
     }
 
     private static String normalize(String cpf){

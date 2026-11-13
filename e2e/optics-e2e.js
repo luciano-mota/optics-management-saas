@@ -202,6 +202,24 @@ async function signupOptic(label) {
       passFee: false, settlementDays: null, replacementMonths: 12, expectedDelivery: null, notes: '', idempotencyKey: 'e2e-p-' + Date.now() } });
   check('Consultas: paciente vira cliente na venda', conv.status === 200 && (await a.call('GET', '/customers')).body.length === 3, JSON.stringify(conv.body));
 
+  // ---------- Avisos automáticos e agenda da clínica ----------
+  const msgSettings = await a.call('PUT', '/messages/settings', { appointmentReminderEnabled: true, birthdayEmailEnabled: true,
+    appointmentTemplate: 'Olá, {nome}! Consulta {data} às {hora} na {clinica}.', birthdayTemplate: 'Parabéns, {nome}!' });
+  check('Avisos automáticos: configuração salva com versão', msgSettings.status === 200 && msgSettings.body.version === 1, JSON.stringify(msgSettings.body));
+  check('Avisos automáticos: campo inexistente recusado', (await a.call('PUT', '/messages/settings', { appointmentReminderEnabled: true,
+    birthdayEmailEnabled: false, appointmentTemplate: 'CPF {cpf}', birthdayTemplate: 'Oi' })).status === 400);
+  check('Paciente: autorização de lembrete por e-mail', (await a.call('PUT', '/optometry/patients/' + patient.body.id + '/reminder',
+    { email: 'paula@e2e.test', reminderOptIn: true })).body.reminderOptIn === true);
+  const feed = await a.call('POST', '/optometry/clinics/' + clinic.body.id + '/calendar-feed', {});
+  check('Agenda da clínica: link gerado', feed.status === 200 && /agenda\.ics$/.test(feed.body.url), JSON.stringify(feed.body));
+  const anon = await request.newContext({ baseURL: BASE });
+  const ics = await anon.get(feed.body.url.slice(feed.body.url.indexOf('/api/')));
+  const icsText = await ics.text();
+  check('Agenda da clínica: calendário com nome curto e sem dados pessoais', ics.status() === 200 && icsText.startsWith('BEGIN:VCALENDAR')
+    && icsText.includes('Consulta - Paula P.') && !icsText.includes(patientCpf) && !icsText.includes('98966665555'), icsText.slice(0, 300));
+  await a.call('POST', '/optometry/clinics/' + clinic.body.id + '/calendar-feed/revoke', {});
+  check('Agenda da clínica: link revogado deixa de abrir', (await anon.get(feed.body.url.slice(feed.body.url.indexOf('/api/')))).status() === 404);
+
   // ---------- Relatórios detalhados (vendas, consultas, recibos, pacientes) ----------
   for (const kind of ['vendas', 'consultas', 'recibos', 'pacientes']) {
     const r = await a.call('GET', '/reports/detailed/' + kind);
@@ -298,6 +316,9 @@ async function signupOptic(label) {
   check('Isolamento: análise de vendas de B vazia', bRanking.rows.length === 0 && bRanking.count === 0);
   const bDetail = (await b.call('GET', '/reports/monthly-sales-summary/detail/vendas?' + ym)).body;
   check('Isolamento: detalhe do indicador de B vazio', bDetail.rows.length === 0);
+  check('Isolamento: B não gera agenda de clínica de A', (await b.call('POST', '/optometry/clinics/' + clinic.body.id + '/calendar-feed', {})).status === 404);
+  check('Isolamento: B não altera lembrete de paciente de A', (await b.call('PUT', '/optometry/patients/' + patient.body.id + '/reminder',
+    { email: 'x@x.test', reminderOptIn: true })).status === 404);
   check('Isolamento: B não baixa lançamento de A', (await b.call('POST', '/finance/' + credit.id + '/settlements', { amount: 10 })).status === 404);
   check('Isolamento: B não edita produto de A', (await b.call('PATCH', '/catalog/' + frame.id, { brand: 'X', category: 'GRAU' })).status === 404);
   const foreignClinic = await b.call('GET', '/reports/detailed/consultas?clinicId=' + clinic.body.id);

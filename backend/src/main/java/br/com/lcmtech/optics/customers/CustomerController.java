@@ -30,7 +30,7 @@ public class CustomerController {
         if(months!=null&&!List.of(3,6,9,12).contains(months))
             throw new IllegalArgumentException("Escolha 3, 6, 9 ou 12 meses.");
         UUID optic=context.optic(auth,session);
-        String sql="SELECT c.id,c.full_name,c.cpf,c.birth_date,c.phone,c.address,c.created_at,"
+        String sql="SELECT c.id,c.full_name,c.cpf,c.birth_date,c.phone,c.address,c.email,c.email_opt_in,c.created_at,"
             +"last_sale.sold_on AS last_sale_on,last_sale.replacement_months,"
             +"(extract(year from age(?::date,last_sale.sold_on))*12"
             +" +extract(month from age(?::date,last_sale.sold_on)))::int AS months_since_sale "
@@ -48,7 +48,9 @@ public class CustomerController {
                 :jdbc.queryForList(sql,today,today,optic,filter,filter,filter,today,today,months);
     }
 
-    public record Customer(String fullName,String cpf,LocalDate birthDate,String phone,String address){}
+    /** emailOptIn: o cliente autorizou receber mensagens (ex.: aniversário) por e-mail. */
+    public record Customer(String fullName,String cpf,LocalDate birthDate,String phone,String address,
+                           String email,Boolean emailOptIn){}
     @PostMapping
     @Transactional
     public Map<String,Object> create(@RequestBody Customer req,Authentication auth,HttpSession session) {
@@ -56,9 +58,11 @@ public class CustomerController {
         UUID optic=context.optic(auth,session),id=UUID.randomUUID();
         validate(req);
         String cpf=normalize(req.cpf());
-        jdbc.update("INSERT INTO customers(optic_id,id,full_name,cpf,birth_date,phone,address) "
-                +"VALUES(?,?,?,?,?,?,?)",optic,id,req.fullName().trim(),cpf,
-                req.birthDate(),req.phone(),req.address());
+        String email=email(req.email());
+        boolean optIn=Boolean.TRUE.equals(req.emailOptIn())&&email!=null;
+        jdbc.update("INSERT INTO customers(optic_id,id,full_name,cpf,birth_date,phone,address,email,email_opt_in,email_opt_in_at) "
+                +"VALUES(?,?,?,?,?,?,?,?,?,CASE WHEN ? THEN now() END)",optic,id,req.fullName().trim(),cpf,
+                req.birthDate(),req.phone(),req.address(),email,optIn,optIn);
         return Map.of("id",id);
     }
 
@@ -68,11 +72,19 @@ public class CustomerController {
                                       Authentication auth,HttpSession session) {
         context.require(auth,session,"CUSTOMERS_WRITE");
         validate(req);
+        String email=email(req.email());
+        // Sem informar o campo (telas antigas), a autorização atual é mantida; sem e-mail, não há autorização.
         int count=jdbc.update("UPDATE customers SET full_name=?,cpf=?,birth_date=?,phone=?,address=?,"
+                +"email=coalesce(?,CASE WHEN ? THEN NULL ELSE email END),"
+                +"email_opt_in=CASE WHEN ?::boolean IS NULL THEN email_opt_in AND coalesce(?,email) IS NOT NULL "
+                +"ELSE ?::boolean AND coalesce(?,email) IS NOT NULL END,"
+                +"email_opt_in_at=CASE WHEN ?::boolean AND NOT email_opt_in THEN now() "
+                +"WHEN ?::boolean IS FALSE THEN NULL ELSE email_opt_in_at END,"
                 +"updated_at=now() WHERE optic_id=? AND id=?",
                 req.fullName().trim(),normalize(req.cpf()),req.birthDate(),req.phone(),req.address(),
+                email,req.email()!=null,req.emailOptIn(),email,req.emailOptIn(),email,req.emailOptIn(),req.emailOptIn(),
                 context.optic(auth,session),id);
-        if(count==0)throw new IllegalArgumentException("Cliente não encontrado.");
+        if(count==0)throw new java.util.NoSuchElementException("Cliente não encontrado.");
         return Map.of("updated",true);
     }
 
@@ -81,6 +93,12 @@ public class CustomerController {
             throw new IllegalArgumentException("Informe nome, CPF, nascimento e endereço do cliente.");
         if(req.cpf()!=null&&!req.cpf().isBlank()&&!normalize(req.cpf()).matches("\\d{11}"))
             throw new IllegalArgumentException("CPF inválido.");
+    }
+    public static String email(String value) {
+        if(value==null||value.isBlank())return null;
+        String v=value.trim().toLowerCase();
+        if(v.length()>254||!v.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+"))throw new IllegalArgumentException("E-mail inválido.");
+        return v;
     }
     private static String normalize(String cpf) {
         if(cpf==null||cpf.isBlank())return null;

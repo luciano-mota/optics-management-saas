@@ -51,7 +51,7 @@ public class PushService {
     private final boolean allowLocal;
     private volatile Keys keys;
 
-    public PushService(JdbcTemplate jdbc, OpticContext context, TaskExecutor executor, ObjectMapper json,
+    public PushService(JdbcTemplate jdbc, OpticContext context, @org.springframework.beans.factory.annotation.Qualifier("applicationTaskExecutor") TaskExecutor executor, ObjectMapper json,
                        @Value("${optics.push.subject:mailto:contato@lcmtech.com.br}") String subject,
                        @Value("${optics.push.vapid-public-key:}") String configuredPublic,
                        @Value("${optics.push.vapid-private-key:}") String configuredPrivate,
