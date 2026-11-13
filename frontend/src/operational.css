@@ -207,3 +207,4 @@
 .question strong { display: block; font-size: 14.5px; }
 .question small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
 @media (max-width: 640px) { .question-grid { grid-template-columns: 1fr; } }
+.day-chips + .filter-bar, .day-chips + .helper { margin-top: 12px; }

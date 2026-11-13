@@ -89,8 +89,9 @@ export function SalesAnalysis({ notify, onOpenSales, preset }: {
           <span className="ranking-main">
             <span className="ranking-title"><strong>{r.label}</strong><span>{currency(r.amount)}</span></span>
             <span className="ranking-bar"><span style={{ width: (top ? Math.max(2, r.amount / top * 100) : 0) + '%' }} /></span>
-            <span className="ranking-meta">{r.count} {r.count === 1 ? 'venda' : 'vendas'} · ticket {r.avgTicket === null ? '—' : currency(r.avgTicket)}
-              · {String(r.share).replace('.', ',')}% do total · antes {currency(r.previousAmount)} <Variation value={r.variation} /></span>
+            <span className="ranking-meta">{r.count} {r.count === 1 ? 'venda' : 'vendas'}{' · ticket '}
+              {r.avgTicket === null ? '—' : currency(r.avgTicket)}{' · '}{String(r.share).replace('.', ',')}% do total
+              {' · antes '}{currency(r.previousAmount)} <Variation value={r.variation} /></span>
           </span>
         </button>)}</div>}
       <div className="filter-bar">{(['pdf', 'xlsx', 'csv'] as const).map(format =>
