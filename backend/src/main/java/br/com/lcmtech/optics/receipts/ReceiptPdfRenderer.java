@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.text.Normalizer;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.util.Locale;
@@ -43,9 +42,9 @@ public final class ReceiptPdfRenderer {
                 canvas.addRect(0,711,PDRectangle.A4.getWidth(),131);canvas.fill();
                 canvas.setNonStrokingColor(Color.WHITE);
                 line(canvas,bold,18,43,797,"RECIBO DE PAGAMENTO");
-                line(canvas,regular,11,43,777,"OPTICS MANAGEMENT  |  COMPROVANTE DA OTICA");
+                line(canvas,regular,11,43,777,"OPTICS MANAGEMENT  |  COMPROVANTE DA ÓTICA");
                 line(canvas,bold,12,43,745,d.shopName());
-                line(canvas,regular,9,43,726,"Recibo N. "+d.number()+"  |  Pagamento: "+d.paidOn());
+                line(canvas,regular,9,43,726,"Recibo nº "+d.number()+"  |  Pagamento: "+br(d.paidOn()));
                 if(d.logo()!=null) {
                     try {
                         PDImageXObject image=PDImageXObject.createFromByteArray(doc,d.logo(),"logo");
@@ -57,20 +56,19 @@ public final class ReceiptPdfRenderer {
 
                 canvas.setNonStrokingColor(new Color(36,35,61));
                 float y=681;
-                line(canvas,bold,12,44,y,"IDENTIFICACAO");y-=22;
+                line(canvas,bold,12,44,y,"IDENTIFICAÇÃO");y-=22;
                 line(canvas,regular,10,44,y,"Emitente: "+d.legalName());y-=20;
                 line(canvas,regular,10,44,y,"CNPJ: "+formatCnpj(d.cnpj()));y-=20;
-                line(canvas,regular,10,44,y,"Endereco: "+d.address());y-=20;
+                line(canvas,regular,10,44,y,"Endereço: "+d.address());y-=20;
                 line(canvas,regular,10,44,y,"Contato: "+d.contactPhone());y-=23;
                 line(canvas,bold,11,44,y,"CLIENTE E PEDIDO");y-=21;
                 line(canvas,regular,10,44,y,"Cliente: "+d.customerName());y-=19;
                 line(canvas,regular,10,44,y,"CPF: "+maskCpf(d.customerCpf()));y-=19;
-                line(canvas,regular,10,44,y,"Data da venda: "+d.soldOn());y-=19;
+                line(canvas,regular,10,44,y,"Data da venda: "+br(d.soldOn()));y-=19;
                 line(canvas,regular,10,44,y,"Lentes: "+d.lens());y-=19;
-                line(canvas,regular,10,44,y,"Armacao: "+d.frame());y-=19;
+                line(canvas,regular,10,44,y,"Armação: "+d.frame());y-=19;
                 if(d.warrantyUntil()!=null){
-                    line(canvas,regular,10,44,y,"Garantia ate: "+d.warrantyUntil().format(
-                            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));y-=19;
+                    line(canvas,regular,10,44,y,"Garantia até: "+br(d.warrantyUntil()));y-=19;
                 }
                 y-=6;
 
@@ -78,14 +76,14 @@ public final class ReceiptPdfRenderer {
                 canvas.addRect(39,y-70,517,93);canvas.fill();
                 canvas.setNonStrokingColor(new Color(58,45,184));
                 line(canvas,bold,12,48,y+3,"VALORES DO PAGAMENTO");y-=22;
-                line(canvas,regular,10,48,y,"Forma: "+d.paymentMethod());y-=18;
+                line(canvas,regular,10,48,y,"Forma: "+method(d.paymentMethod()));y-=18;
                 line(canvas,bold,14,48,y,"Valor pago pelo cliente: "+money(d.paymentGross()));y-=18;
-                line(canvas,regular,9,48,y,"Taxas da operacao: "+money(d.fee())
-                        +"  |  Liquido da otica: "+money(d.net()));y-=40;
+                line(canvas,regular,9,48,y,"Taxas da operação: "+money(d.fee())
+                        +"  |  Líquido da ótica: "+money(d.net()));y-=40;
                 if(d.pending().signum()>0) {
                     line(canvas,bold,10,46,y,"SALDO EM ABERTO: "+money(d.pending()));y-=19;
                     line(canvas,regular,9,46,y,
-                        "Este recibo comprova somente o pagamento indicado, sem quitacao do saldo.");y-=30;
+                        "Este recibo comprova somente o pagamento indicado, sem quitação do saldo.");y-=30;
                 } else {
                     line(canvas,bold,10,46,y,"Sem parcelas em aberto para esta venda.");y-=28;
                 }
@@ -100,26 +98,41 @@ public final class ReceiptPdfRenderer {
                 }
                 y-=74;
                 line(canvas,bold,10,47,y,d.signerName()==null?
-                        "Responsavel pela emissao":d.signerName());
+                        "Responsável pela emissão":d.signerName());
                 y-=15;
                 line(canvas,regular,9,47,y,d.signerRole()==null?
-                        "Representante da otica":d.signerRole());
+                        "Representante da ótica":d.signerRole());
                 y-=20;
-                line(canvas,regular,8,47,y,"Assinatura cadastrada e apenas representacao grafica, nao certificado ICP-Brasil.");
+                line(canvas,regular,8,47,y,"Assinatura cadastrada é apenas representação gráfica, não certificado ICP-Brasil.");
 
                 canvas.setNonStrokingColor(new Color(107,106,133));
-                line(canvas,regular,8,44,58,"Documento de pagamento emitido pela otica. Nao substitui nota fiscal.");
-                line(canvas,regular,8,44,42,"Identificacao unica: "+d.id());
+                line(canvas,regular,8,44,58,"Documento de pagamento emitido pela ótica. Não substitui nota fiscal.");
+                line(canvas,regular,8,44,42,"Identificação única: "+d.id());
             }
             doc.save(output);
             return output.toByteArray();
         }
     }
 
+    private static final java.time.format.DateTimeFormatter BR=java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private static String br(LocalDate day) { return day==null?"Não informada":day.format(BR); }
+
+    /** Forma de pagamento como a pessoa fala, não o código interno. */
+    private static String method(String code) {
+        if(code==null)return null;
+        return switch(code) {
+            case "DINHEIRO" -> "Dinheiro";
+            case "PIX" -> "Pix";
+            case "DEBITO" -> "Cartão de débito";
+            case "CREDITO" -> "Cartão de crédito";
+            default -> code;
+        };
+    }
+
     private static String safe(String s) {
-        if(s==null||s.isBlank())return "Nao informado";
-        String plain=Normalizer.normalize(s,Normalizer.Form.NFD).replaceAll("\\p{M}","");
-        plain=plain.replaceAll("[^\\x20-\\x7E]","?");
+        if(s==null||s.isBlank())return "Não informado";
+        String plain=br.com.lcmtech.optics.reporting.PdfText.winAnsi(s);
         return plain.length()>95?plain.substring(0,92)+"...":plain;
     }
 
@@ -130,12 +143,12 @@ public final class ReceiptPdfRenderer {
     }
 
     private static String maskCpf(String cpf) {
-        if(cpf==null||!cpf.matches("[0-9]{11}"))return "Nao informado";
+        if(cpf==null||!cpf.matches("[0-9]{11}"))return "Não informado";
         return "***.***.***-"+cpf.substring(9);
     }
 
     private static String formatCnpj(String cnpj) {
-        if(cnpj==null||!cnpj.matches("[A-Z0-9]{12}[0-9]{2}"))return "Nao informado";
+        if(cnpj==null||!cnpj.matches("[A-Z0-9]{12}[0-9]{2}"))return "Não informado";
         return cnpj.substring(0,2)+"."+cnpj.substring(2,5)+"."+cnpj.substring(5,8)+"/"
                 +cnpj.substring(8,12)+"-"+cnpj.substring(12);
     }

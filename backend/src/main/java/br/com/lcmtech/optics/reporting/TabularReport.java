@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.text.Normalizer;
 import java.util.List;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -127,7 +126,7 @@ public record TabularReport(String title, String sheetName, String fileBase, Lis
                         page++;
                         y = landscape.getHeight() - 40;
                         text(canvas, boldFont, 14, left, y, "OPTICS MANAGEMENT | " + title.toUpperCase());
-                        text(canvas, font, 8, landscape.getWidth() - 90, y, "Pagina " + page);
+                        text(canvas, font, 8, landscape.getWidth() - 90, y, "Página " + page);
                         y -= 18;
                         text(canvas, font, 9, left, y, shop + "  |  " + period);
                         y -= 18;
@@ -178,9 +177,7 @@ public record TabularReport(String title, String sheetName, String fileBase, Lis
     }
 
     static String ascii(String value) {
-        String normalized = Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "");
-        return normalized.replaceAll("[^\\x20-\\x7E]", "?");
+        return PdfText.winAnsi(value);
     }
 
     private static String fit(String value, int length) {

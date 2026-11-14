@@ -7,7 +7,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.text.Normalizer;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.util.List;
@@ -246,14 +245,14 @@ public class MonthlySalesReportController {
                 line(canvas,bold,10,46,y,"CONFERENCIA DOS VALORES");
                 y-=17;
                 canvas.setNonStrokingColor(new Color(36,35,61));
-                line(canvas,regular,9,46,y,"Diferenca cobrado - recebido - pendente - taxas: "
+                line(canvas,regular,9,46,y,"Diferença cobrado - recebido - pendente - taxas: "
                         +ascii(display(s.reconciliationDifference(),true)));
                 y-=16;
                 if(!s.warnings().isEmpty()) {
-                    line(canvas,regular,8,46,y,"ATENCAO: "+fit(ascii(s.warnings().get(0)),85));
+                    line(canvas,regular,8,46,y,"ATENÇÃO: "+fit(ascii(s.warnings().get(0)),85));
                 }
                 canvas.setNonStrokingColor(new Color(107,106,133));
-                line(canvas,regular,8,46,36,"Documento gerencial - nao substitui comprovante de pagamento nem documento fiscal.");
+                line(canvas,regular,8,46,36,"Documento gerencial - não substitui comprovante de pagamento nem documento fiscal.");
             }
             pdf.save(output);
             return attachment(output.toByteArray(),"application/pdf",filename(s,".pdf"));
@@ -262,8 +261,7 @@ public class MonthlySalesReportController {
 
     private static String ascii(String s) {
         if(s==null)return "";
-        return Normalizer.normalize(s,Normalizer.Form.NFD)
-                .replaceAll("\\p{M}","").replaceAll("[^\\x20-\\x7E]","?");
+        return PdfText.winAnsi(s);
     }
 
     private static String fit(String s,int max) {
