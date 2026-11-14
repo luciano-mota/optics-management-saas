@@ -126,7 +126,7 @@ public class RetentionController {
                 WHERE optic_id = ? AND id = ? AND status <> 'CANCELLED'
                 """, Integer.class, optic, saleId);
         if (count == null || count != 1) {
-            throw new IllegalArgumentException("Venda não encontrada nesta ótica.");
+            throw new java.util.NoSuchElementException("Venda não encontrada nesta ótica.");
         }
         jdbc.update("""
                 INSERT INTO reminder_events(optic_id,sale_id,months,channel)

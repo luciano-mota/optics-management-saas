@@ -51,7 +51,7 @@ public class PlatformController {
                                       Authentication auth){
         context.requirePlatform(auth);
         Integer exists=jdbc.queryForObject("SELECT count(*) FROM optics WHERE id=?",Integer.class,id);
-        if(exists==null||exists==0)throw new IllegalArgumentException("Ótica não encontrada.");
+        if(exists==null||exists==0)throw new java.util.NoSuchElementException("Ótica não encontrada.");
         if(request.siteEnabled()!=null)
             jdbc.update("UPDATE optics SET site_enabled=?,updated_at=now() WHERE id=?",request.siteEnabled(),id);
         if(request.active()!=null)
@@ -81,7 +81,7 @@ public class PlatformController {
             throw new IllegalArgumentException("Informe o assunto e a mensagem.");
         if(request.opticId()!=null){
             Integer count=jdbc.queryForObject("SELECT count(*) FROM optics WHERE id=?",Integer.class,request.opticId());
-            if(count==null||count==0)throw new IllegalArgumentException("Ótica não encontrada.");
+            if(count==null||count==0)throw new java.util.NoSuchElementException("Ótica não encontrada.");
         }
         UUID id=UUID.randomUUID();
         jdbc.update("INSERT INTO platform_notices(id,optic_id,subject,message,created_by) VALUES(?,?,?,?,?)",

@@ -173,7 +173,7 @@ public class TeamController {
             }
         }
         if(jdbc.update("UPDATE optic_memberships SET role=?,active=? WHERE optic_id=? AND account_id=?",
-                data.role(),data.active(),optic,userId)==0)throw new IllegalArgumentException("Funcionário não encontrado.");
+                data.role(),data.active(),optic,userId)==0)throw new java.util.NoSuchElementException("Funcionário não encontrado.");
         return Map.of("updated",true);
     }
 
@@ -204,7 +204,7 @@ public class TeamController {
     private Member member(UUID optic,UUID account) {
         return jdbc.query("SELECT role,primary_master FROM optic_memberships WHERE optic_id=? AND account_id=?",
                 (rs,n)->new Member(account,rs.getString(1),rs.getBoolean(2)),optic,account)
-                .stream().findFirst().orElseThrow(()->new IllegalArgumentException("Funcionário não encontrado."));
+                .stream().findFirst().orElseThrow(()->new java.util.NoSuchElementException("Funcionário não encontrado."));
     }
 
     private void applyPermissions(Map<String,Object> invitation,UUID optic,UUID account) {

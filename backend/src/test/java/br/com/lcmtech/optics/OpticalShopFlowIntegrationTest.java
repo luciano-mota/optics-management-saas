@@ -101,8 +101,11 @@ class OpticalShopFlowIntegrationTest {
         jdbc.update("INSERT INTO file_attachments(optic_id,id,customer_id,original_name,content_type,bytes) "
                 +"VALUES(?,?,?,'rx.pdf','application/pdf',?)",
                 a.optic(),file,a.customer(),new byte[]{37,80,68,70});
+        // Arquivo de outra ótica: 404, como qualquer registro que não é desta ótica (não revela que existe).
         mvc.perform(get("/api/v1/attachments/"+file+"/download").with(user(b.email())))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/attachments/customers/"+a.customer()).with(user(b.email())))
+                .andExpect(status().isNotFound());
         mvc.perform(get("/api/v1/attachments/"+file+"/download").with(user(a.email())))
                 .andExpect(status().isOk());
     }

@@ -114,7 +114,7 @@ public class BirthdayController {
             UPDATE customers SET birthday_whatsapp_opt_in=?,updated_at=now()
             WHERE optic_id=? AND id=?
             """,request.allowWhatsapp(),optic,customerId);
-        if(changed!=1)throw new IllegalArgumentException("Cliente não encontrado.");
+        if(changed!=1)throw new java.util.NoSuchElementException("Cliente não encontrado.");
         jdbc.update("""
             INSERT INTO audit_events(id,optic_id,actor_account_id,event_type,entity_type,entity_id)
             VALUES(?,?,?,'BIRTHDAY_WHATSAPP_PREFERENCE_UPDATED','CUSTOMER',?)

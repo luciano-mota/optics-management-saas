@@ -30,7 +30,7 @@ public class AttachmentsController {
         UUID optic=context.optic(auth,session);
         Integer n=jdbc.queryForObject("SELECT count(*) FROM customers WHERE optic_id=? AND id=?",
                 Integer.class,optic,customerId);
-        if(n==null||n==0)throw new IllegalArgumentException("Cliente não encontrado.");
+        if(n==null||n==0)throw new java.util.NoSuchElementException("Cliente não encontrado.");
         AttachmentCodec.store(jdbc,optic,customerId,null,null,payload.filename(),
                 payload.mime(),payload.dataBase64());
         return Map.of("uploaded",true);
@@ -40,6 +40,7 @@ public class AttachmentsController {
     public List<Map<String,Object>> customerFiles(@PathVariable UUID customerId,
                     Authentication auth,HttpSession session){
         context.require(auth,session,"CUSTOMERS_READ");
+        br.com.lcmtech.optics.security.Owned.require(jdbc,"customers",context.optic(auth,session),customerId,"Cliente não encontrado.");
         return jdbc.queryForList("SELECT id,original_name,content_type,created_at FROM file_attachments "
                 +"WHERE optic_id=? AND customer_id=? ORDER BY created_at DESC",
                 context.optic(auth,session),customerId);
@@ -49,6 +50,7 @@ public class AttachmentsController {
     public List<Map<String,Object>> visitFiles(@PathVariable UUID visitId,
                     Authentication auth,HttpSession session){
         context.require(auth,session,"VISITS_READ");
+        br.com.lcmtech.optics.security.Owned.require(jdbc,"home_visits",context.optic(auth,session),visitId,"Visita não encontrada.");
         return jdbc.queryForList("SELECT id,original_name,content_type,created_at FROM file_attachments "
                 +"WHERE optic_id=? AND visit_id=? ORDER BY created_at DESC",
                 context.optic(auth,session),visitId);
@@ -63,7 +65,7 @@ public class AttachmentsController {
             throw new org.springframework.security.access.AccessDeniedException("Sem acesso a receitas.");
         Map<String,Object> file=jdbc.queryForList("SELECT original_name,content_type,bytes,customer_id,visit_id "
                 +"FROM file_attachments WHERE optic_id=? AND id=?",optic,id)
-                .stream().findFirst().orElseThrow(()->new IllegalArgumentException("Arquivo não encontrado."));
+                .stream().findFirst().orElseThrow(()->new java.util.NoSuchElementException("Arquivo não encontrado."));
         if((file.get("customer_id")!=null&&!canReadCustomers) ||
                 (file.get("visit_id")!=null&&!canReadVisits))
             throw new org.springframework.security.access.AccessDeniedException("Sem permissão para esta receita.");

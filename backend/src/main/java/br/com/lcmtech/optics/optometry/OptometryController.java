@@ -84,7 +84,7 @@ public class OptometryController {
             SELECT p.id,p.full_name,p.cpf,p.birth_date,p.phone,p.email,p.address
             FROM optometry_patients p WHERE p.optic_id=? AND p.id=?
             """,optic,id).stream().findFirst()
-            .orElseThrow(()->new IllegalArgumentException("Paciente não encontrado."));
+            .orElseThrow(()->new java.util.NoSuchElementException("Paciente não encontrado."));
     }
 
     @PostMapping("/patients")
@@ -238,7 +238,7 @@ public class OptometryController {
         String previous=jdbc.query("SELECT status FROM optical_appointments "
                 +"WHERE optic_id=? AND id=? FOR UPDATE",
                 (rs,n)->rs.getString(1),optic,id).stream().findFirst()
-                .orElseThrow(()->new IllegalArgumentException("Consulta não encontrada."));
+                .orElseThrow(()->new java.util.NoSuchElementException("Consulta não encontrada."));
         String target=req==null?"":req.status();
         boolean valid=switch(previous) {
             case "SCHEDULED" -> List.of("CONFIRMED","COMPLETED","NO_SHOW","CANCELLED").contains(target);
