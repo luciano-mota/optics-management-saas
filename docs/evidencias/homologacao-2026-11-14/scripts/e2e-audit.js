@@ -14,7 +14,7 @@ function check(cat, name, ok, detail = '') {
 }
 function note(cat, name, detail) { results.push({ cat, name, ok: null, detail }); console.log('NOTA  [' + cat + '] ' + name + ' — ' + detail); }
 function sql(q) {
-  const out = execFileSync('psql', ['-h', 'localhost', '-U', 'optics', '-d', 'optics_audit', '-tA', '-F', '|', '-c', q],
+  const out = execFileSync('psql', ['-h', 'localhost', '-U', 'optics', '-d', process.env.AUDIT_DB || 'optics_audit', '-tA', '-F', '|', '-c', q],
     { env: { ...process.env, PGPASSWORD: 'local-dev-only' } }).toString().trim();
   return out ? out.split('\n').map(l => l.split('|')) : [];
 }
@@ -230,7 +230,10 @@ async function mainPhase() {
   // Cancelamento de venda já recebida: o que acontece com o dinheiro e com o histórico
   const today = localToday();
   const sumBefore = (await A.call('GET', '/finance/summary')).body;
-  const cancel = await A.call('PATCH', '/sales/' + pix.body.id + '/status', { status: 'CANCELLED' });
+  const noReason = await A.call('PATCH', '/sales/' + pix.body.id + '/status', { status: 'CANCELLED' });
+  check('Vendas', 'Cancelar venda paga sem motivo é recusado (vai devolver dinheiro)', noReason.status === 400, 'HTTP ' + noReason.status);
+  const cancel = await A.call('PATCH', '/sales/' + pix.body.id + '/status', { status: 'CANCELLED', reason: 'Cliente desistiu' });
+  check('Financeiro', 'Cancelamento informa o valor devolvido (R$ 1.000,00)', cancel.status === 200 && Number(cancel.body.refunded) === 1000, JSON.stringify(cancel.body));
   check('Vendas', 'Cancelar venda', cancel.status === 200, JSON.stringify(cancel.body));
   const sumAfter = (await A.call('GET', '/finance/summary')).body;
   const afterCancel = sql(`select e.reversed_at is not null, (select count(*) from finance_settlements st where st.entry_id=e.id and st.reversed_at is null),
@@ -246,7 +249,7 @@ async function mainPhase() {
   if (old.status === 200 && Number(past[1].slice(5, 7)) === ym.m) {
     const q = `/reports/monthly-sales-summary?year=${ym.y}&month=${ym.m}&asOf=${past[1]}`;
     const snap1 = (await A.call('GET', q)).body.summary;
-    await A.call('PATCH', '/sales/' + old.body.id + '/status', { status: 'CANCELLED' });
+    await A.call('PATCH', '/sales/' + old.body.id + '/status', { status: 'CANCELLED', reason: 'Teste de fotografia' });
     const snap2 = (await A.call('GET', q)).body.summary;
     check('Relatórios', 'Cancelar hoje não altera a fotografia de "Vendas Atualizadas" de ontem',
       JSON.stringify(snap1) === JSON.stringify(snap2), 'antes=' + JSON.stringify(snap1).slice(0, 300) + ' depois=' + JSON.stringify(snap2).slice(0, 300));
@@ -334,7 +337,7 @@ async function mainPhase() {
   const pastAp = await A.call('POST', '/optometry/appointments', { patientId: patient.id, clinicId: clinic.id, startsAt: '2020-01-01T09:00:00-03:00', endsAt: '2020-01-01T09:30:00-03:00', notes: '' });
   check('Consultas', 'Agendamento no passado recusado', pastAp.status === 400, 'HTTP ' + pastAp.status + ' (aceitou consulta em 2020)');
   const late = await A.call('POST', '/optometry/appointments', { patientId: patient.id, clinicId: clinic.id, startsAt: at('23:30'), endsAt: at('23:59'), notes: '' });
-  check('Consultas', 'Horário fora do expediente (23h30) recusado ou avisado', late.status === 400, 'HTTP ' + late.status + ' (sem validação de horário de funcionamento)');
+  note('Consultas', 'Horário 23h30', 'HTTP ' + late.status + ' — a consulta é na clínica parceira, cujo horário não é o da loja; sem validação de horário (decisão).');
   const list = (await A.call('GET', '/optometry/appointments?day=' + day)).body;
   const got = Array.isArray(list) ? list.find(x => x.id === ap1.body.id) : null;
   check('Consultas', 'Consulta aparece no dia certo (fuso da ótica)', !!got, JSON.stringify(list).slice(0, 200));

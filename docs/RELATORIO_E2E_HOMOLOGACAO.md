@@ -1,5 +1,9 @@
 # Relatório de auditoria e teste ponta a ponta — homologação
 
+> **Atualização 14/11/2026 (tarde):** as correções autorizadas foram feitas e tudo foi testado de novo. Veja a seção
+> [F. Reteste após as correções](#f-reteste-após-as-correções). O texto abaixo dela é a auditoria original, mantida
+> como registro.
+
 > Fase 1 (somente leitura): nenhum código da aplicação foi alterado. Este relatório e a pasta de evidências são os únicos
 > arquivos novos, ainda **sem commit** (aguardando autorização).
 
@@ -294,3 +298,61 @@ Isso conforme a regra deste roteiro (só aprovar sem P0/P1 e com validação ess
 3. Corrigir AUD-04 e AUD-05.
 4. Atualizar a documentação (AUD-15).
 5. Rodar de novo `mvn verify`, o E2E existente e os scripts desta auditoria.
+
+## F. Reteste após as correções
+
+**Execução:** 14/11/2026, cerca de 15h20–15h40 (Brasília).
+
+**Ambiente:**
+- JAR de produção com o painel embutido (telas servidas pelo próprio backend, com CSP ativo);
+- banco PostgreSQL 16 novo (`optics_retest`);
+- mesmo isolamento da auditoria: sem e-mail, sem Asaas, rede externa bloqueada.
+
+**Evidências:** `docs/evidencias/homologacao-2026-11-14/reteste/`.
+
+### Resultado dos testes (números reais)
+
+| Categoria | Total | Passou | Falhou | Observação |
+|---|---:|---:|---:|---|
+| Backend (`mvn -B verify`) | 136 | 136 | 0 | 124 anteriores + 12 novos (isolamento, cancelamento, recibo, cadastros, erros, MFA, CSP) |
+| Frontend (TypeScript + build) | 1 | 1 | 0 | Vite 6.4.6 |
+| Frontend (`npm audit`) | 1 | 1 | 0 | 0 vulnerabilidades |
+| Docker (Dockerfile novo com `npm ci`) | 9 | 9 | 0 | build, health, painel, status, manifest, 401 em `{"error"}`, CSP, 26 migrações, usuário não-root |
+| E2E existente `e2e/optics-e2e.js` | 181 | 181 | 0 | telas servidas pelo JAR, com CSP |
+| E2E adicional — validação de cadastro | 7 | 7 | 0 | |
+| E2E adicional — funcional, segurança e isolamento | 147 | 147 | 0 | 15 notas (decisões e pendências, abaixo) |
+| UI responsiva, console e PWA | 166 | 160 | 0 reais | os mesmos 6 falsos positivos da seção D |
+| Integridade do banco (consultas F/S/C/D/M) | 8 | 7 | 1 | S1: estoque negativo por **venda** (decisão pendente, abaixo) |
+
+Varredura de isolamento: 39 das 51 rotas respondem 404. As outras 12 são recusas de ação (400/403), todas sem dado da outra ótica; o banco da ótica A ficou idêntico.
+
+### Situação de cada achado
+
+| Achado | Situação | Commit |
+|---|---|---|
+| AUD-01 nome de funcionário entre óticas | **Corrigido**, com teste que falha sem a correção | `cdc749a` |
+| AUD-02 cancelar venda paga | **Corrigido**: estorna os recebimentos com data, motivo e responsável; exige motivo e permissão de financeiro; botão "Cancelar venda" na tela; estorno de lançamento manual também desfaz os pagamentos | `ca6d141` |
+| AUD-03 crediário na venda | **Aguarda decisão da dona** (proposta na conversa) | — |
+| AUD-04 recibo/relatórios em PDF | **Corrigido**: acentos, "R$ 1.234,56", datas dd/mm/aaaa, forma de pagamento por extenso | `c12d91e` |
+| AUD-05 estoque negativo | **Corrigido no ajuste manual.** Venda sem estoque continua permitida (venda sob encomenda): decisão da dona | `f0a2e92` |
+| AUD-06 desativar/anonimizar cliente (LGPD) | Pendente: funcionalidade nova, entra como card | — |
+| AUD-07 agenda | **Data passada corrigida.** Horário: decisão de não validar, porque a consulta é na clínica parceira. Remarcar e editar clínica ou paciente: pendente (card) | `db770f1` |
+| AUD-08 Spring Boot fora de suporte | Pendente. A linha 3.5 também saiu de suporte (última versão em 06/2026); a correção é migrar para a 4.x, uma mudança grande que vai em PR próprio | — |
+| AUD-09 CPF e nascimento | **Corrigido** (cliente e paciente) | `db770f1` |
+| AUD-10 CSP | **Corrigido** | `24177c2` |
+| AUD-11 404 para outra ótica | **Corrigido** | `7ed2342` |
+| AUD-12 formato dos erros | **Corrigido** | `5422737` |
+| AUD-13 fornecedor desativado | **Corrigido** | `f0a2e92` |
+| AUD-14 Vite, lockfile e `npm ci` | **Corrigido** | `6d30cf9` |
+| AUD-15 documentação | **Corrigido** | `c1871e1` |
+| AUD-16 testes | **MFA:** bloqueio por conta testado e respondendo 429. Testes unitários do frontend: pendente | `5422737` |
+
+### Avaliação após o reteste
+
+Todos os problemas técnicos P1 e P2 de correção imediata estão resolvidos e comprovados. Resta **um P1, que é decisão de produto (AUD-03)**. Pela regra deste roteiro o resultado formal continua:
+
+**REJEITADO — PROBLEMAS PRECISAM SER CORRIGIDOS** (pendente apenas o AUD-03).
+
+Ele passa a aprovável para homologação manual quando a dona decidir:
+- se o crediário fica só no lançamento manual (regra do produto), ou
+- se entra na venda, depois de implementado e testado.

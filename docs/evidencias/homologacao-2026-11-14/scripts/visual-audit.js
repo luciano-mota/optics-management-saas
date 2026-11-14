@@ -1,9 +1,9 @@
 // Auditoria visual/responsiva + XSS + PWA no build de produção (vite preview :4173 → API :8080).
 const { chromium } = require('playwright');
 const fs = require('fs');
-const UI = 'http://localhost:4173';
+const UI = process.env.UI || 'http://localhost:4173';
 const OUT = process.argv[2];
-const ids = require('/tmp/claude-0/audit/audit-ids.json');
+const ids = require(process.env.IDS || '/tmp/claude-0/audit/audit-ids.json');
 const results = [];
 const check = (cat, name, ok, detail = '') => { results.push({ cat, name, ok: !!ok, detail: ok ? '' : String(detail).slice(0, 700) });
   console.log((ok ? 'OK   ' : 'FALHA') + ' [' + cat + '] ' + name + (ok || !detail ? '' : ' — ' + String(detail).slice(0, 500))); };
