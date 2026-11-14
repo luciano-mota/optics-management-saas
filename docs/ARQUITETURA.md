@@ -22,7 +22,10 @@ Camadas por contexto: domain (regras puras), application (casos de uso), infrast
 Uma conta pode pertencer a mais de uma ótica via memberships. O tenant efetivo vem da sessão autenticada e associação validada, jamais de header arbitrário. Toda query de dados de negócio usa optic_id; FKs compostas protegem referências cross-tenant. Plataforma tem autenticação e permissões separadas e não presume acesso a dados comerciais das óticas.
 
 ## Segurança e status
-Neste primeiro commit o sistema opera em modo *bootstrap fail-closed*: não há login funcional nem endpoints de domínio expostos; apenas health e status público. Antes da API de negócio: sessão JDBC, verificação de e-mail, MFA para contas privilegiadas, CSRF, throttling, senha BCrypt, convites com tokens em hash, auditoria e testes reais de isolamento.
+Sessão no servidor (JDBC, 45 min sem uso), CSRF obrigatório, senha BCrypt, verificação de e-mail, verificação em duas
+etapas (TOTP, com bloqueio por tentativas), limites de tentativa de login e de formulários públicos, convites com
+token em hash, cabeçalhos de segurança (CSP, HSTS, X-Frame-Options) e testes de isolamento entre óticas (inclusive
+varredura de todas as rotas com ID na auditoria de 14/11/2026). Registro de outra ótica responde 404.
 
 ## Convenções
 Valores em BigDecimal / NUMERIC(19,2); datas TIMESTAMPTZ em UTC e conversão no front para local. Alterações de banco por migrations novas. Credenciais somente por ambiente. Convites não concedem acesso antes de aceite. Uploads de receita nunca servidos publicamente. Nenhum cache offline de dados pessoais.

@@ -26,3 +26,14 @@ Para cada item vale o primeiro nome preenchido, na ordem abaixo. Nenhum valor é
 - Se o e-mail já tiver uma conta (por exemplo, uma ótica de teste), essa conta recebe a senha das
   variáveis e o acesso de operador. Depois que o operador existe, novos deploys não alteram senhas.
 - O log de inicialização informa o resultado (`BootstrapAdmin`), sem mostrar e-mail nem senha.
+
+## Notificações push e avisos automáticos
+
+| Configuração | Variável | Padrão |
+|---|---|---|
+| Chaves VAPID do push (opcional) | `OPTICS_PUSH_VAPID_PUBLIC_KEY`, `OPTICS_PUSH_VAPID_PRIVATE_KEY` | geradas na primeira inicialização e guardadas no banco |
+| Contato informado aos serviços de push | `OPTICS_PUSH_SUBJECT` | `mailto:contato@lcmtech.com.br` |
+| Aceitar endereço de push local (só testes) | `OPTICS_PUSH_ALLOW_LOCAL_ENDPOINTS` | `false` |
+| Rotina dos avisos automáticos por e-mail | `OPTICS_MESSAGES_SCHEDULER_ENABLED` | `true` |
+
+Sem chave de e-mail (Brevo ou SMTP), os avisos ficam registrados como "Não enviado" e nada sai do servidor.

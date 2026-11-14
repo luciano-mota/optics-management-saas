@@ -51,8 +51,8 @@ O frontend React é compilado dentro do mesmo contêiner Docker do backend Java,
 ## Pendências críticas para uso real
 
 - Verificação SMTP/Asaas **não validada em Render**, pois faltam credenciais e serviço web.
-- MFA de contas privilegiadas, política formal de retenção e exclusão, varredura de arquivos e proteção anti-spam da página pública exigem trabalho adicional.
-- Web Push em segundo plano não está implementado; atualmente há contadores e avisos do navegador **enquanto a aplicação está aberta**, mediante autorização.
-- Edição detalhada de site, emissão fiscal, estoque, garantia, ordens de serviço e integração automática WhatsApp exigem evolução/validação legal e comercial.
+- Política formal de retenção e exclusão (inclui anonimização de cliente pela LGPD), varredura de arquivos e proteção
+  anti-spam da página pública exigem trabalho adicional. MFA e notificações push (Web Push) já estão implementados.
+- Fora do produto por decisão (13/11): emissão fiscal (NF-e) e WhatsApp oficial pago; o WhatsApp é manual, com mensagem pronta.
 - PDF e XLSX já são gerados, mas a formatação personalizada avançada com logotipo renderizado ainda está em evolução.
 - Não afirmar homologação completa antes de teste E2E no Render.
