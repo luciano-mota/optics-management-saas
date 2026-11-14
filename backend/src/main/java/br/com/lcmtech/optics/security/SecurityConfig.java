@@ -8,13 +8,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
@@ -61,13 +59,20 @@ public class SecurityConfig {
                         })
                         .failureHandler((req, resp, error) -> {
                             throttle.failed(req);
-                            resp.sendError(401);
+                            LoginThrottleFilter.json(resp, 401, "E-mail ou senha incorretos.");
                         }))
                 .logout(logout -> logout.logoutUrl("/api/v1/auth/logout")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID", "SESSION", "XSRF-TOKEN")
                         .logoutSuccessHandler((req, resp, auth) -> resp.setStatus(204)))
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, resp, e) ->
+                                LoginThrottleFilter.json(resp, 401, "Entre na sua conta para continuar."))
+                        // Na prática, 403 aqui é o token CSRF ausente ou vencido (página aberta há muito tempo).
+                        .accessDeniedHandler((req, resp, e) -> LoginThrottleFilter.json(resp, 403,
+                                e instanceof org.springframework.security.web.csrf.CsrfException
+                                        ? "A página ficou desatualizada. Recarregue e tente de novo."
+                                        : "Você não tem permissão para esta operação.")))
                 .build();
     }
 }

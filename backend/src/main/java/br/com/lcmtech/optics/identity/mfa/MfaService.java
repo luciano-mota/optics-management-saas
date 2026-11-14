@@ -160,7 +160,7 @@ public class MfaService {
         long[] state = failures.get(account);
         long now = clock.instant().getEpochSecond();
         if (state != null && now - state[1] < FAILURE_WINDOW_SECONDS && state[0] >= MAX_FAILURES)
-            throw new IllegalStateException("Muitos códigos inválidos. Aguarde 15 minutos e tente de novo.");
+            throw new br.com.lcmtech.optics.api.TooManyAttemptsException("Muitos códigos inválidos. Aguarde 15 minutos e tente de novo.");
     }
 
     private void fail(UUID account) {
