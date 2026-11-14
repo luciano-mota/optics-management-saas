@@ -91,8 +91,10 @@ public class CustomerController {
     private static void validate(Customer req) {
         if(req==null||req.fullName()==null||req.fullName().isBlank()||req.birthDate()==null || req.address()==null || req.address().isBlank() || req.cpf()==null || req.cpf().isBlank())
             throw new IllegalArgumentException("Informe nome, CPF, nascimento e endereço do cliente.");
-        if(req.cpf()!=null&&!req.cpf().isBlank()&&!normalize(req.cpf()).matches("\\d{11}"))
-            throw new IllegalArgumentException("CPF inválido.");
+        if(!br.com.lcmtech.optics.identity.ProfileController.validCpf(normalize(req.cpf())))
+            throw new IllegalArgumentException("CPF inválido: confira os números.");
+        if(req.birthDate().isAfter(LocalDate.now())||req.birthDate().isBefore(LocalDate.of(1900,1,1)))
+            throw new IllegalArgumentException("Data de nascimento inválida.");
     }
     public static String email(String value) {
         if(value==null||value.isBlank())return null;
