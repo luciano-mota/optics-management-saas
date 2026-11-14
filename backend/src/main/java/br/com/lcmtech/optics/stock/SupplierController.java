@@ -93,7 +93,10 @@ public class SupplierController {
 
     static void requireSupplier(JdbcTemplate jdbc, UUID optic, UUID supplier) {
         if (supplier == null) return;
-        Integer n = jdbc.queryForObject("SELECT count(*) FROM suppliers WHERE optic_id=? AND id=?", Integer.class, optic, supplier);
-        if (n == null || n == 0) throw new NoSuchElementException("Fornecedor não encontrado.");
+        java.util.List<Boolean> active = jdbc.queryForList("SELECT active FROM suppliers WHERE optic_id=? AND id=?", Boolean.class,
+                optic, supplier);
+        if (active.isEmpty()) throw new NoSuchElementException("Fornecedor não encontrado.");
+        if (!Boolean.TRUE.equals(active.get(0)))
+            throw new IllegalArgumentException("Este fornecedor está desativado. Reative-o para usar em novas entradas e OS.");
     }
 }

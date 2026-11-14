@@ -70,11 +70,19 @@ public class StockController {
             throw new IllegalArgumentException("Explique o ajuste (ex.: contagem, perda, avaria).");
         if (req.unitCost() != null && req.unitCost().signum() < 0) throw new IllegalArgumentException("Custo inválido.");
         if (req.note() != null && req.note().length() > 200) throw new IllegalArgumentException("Observação muito longa.");
-        List<Boolean> tracked = jdbc.queryForList("SELECT track_stock FROM catalog_items WHERE optic_id=? AND id=?", Boolean.class,
-                optic, req.itemId());
+        // FOR UPDATE: dois ajustes ao mesmo tempo não passam juntos pela conferência do saldo.
+        List<Boolean> tracked = jdbc.queryForList("SELECT track_stock FROM catalog_items WHERE optic_id=? AND id=? FOR UPDATE",
+                Boolean.class, optic, req.itemId());
         if (tracked.isEmpty()) throw new NoSuchElementException("Produto não encontrado.");
         if (!tracked.get(0)) throw new IllegalArgumentException("Ative o controle de estoque deste produto primeiro.");
         SupplierController.requireSupplier(jdbc, optic, req.supplierId());
+        if (req.quantity() < 0) {
+            Integer current = jdbc.queryForObject("SELECT coalesce(sum(quantity),0) FROM stock_movements WHERE optic_id=? AND item_id=?",
+                    Integer.class, optic, req.itemId());
+            if (current + req.quantity() < 0)
+                throw new IllegalArgumentException("O estoque ficaria negativo: há " + Math.max(current, 0)
+                        + " unidade(s) deste produto. Confira a contagem.");
+        }
         UUID id = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO stock_movements(optic_id,id,item_id,kind,quantity,unit_cost,supplier_id,note,created_by)

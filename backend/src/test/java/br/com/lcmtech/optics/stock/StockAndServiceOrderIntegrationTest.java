@@ -115,7 +115,8 @@ class StockAndServiceOrderIntegrationTest {
         JsonNode items = body(call(s.master(), "GET", "/api/v1/stock", null));
         assertThat(items.get(0).path("low").asBoolean()).isTrue(); // 2 <= mínimo 2
         assertThat(jdbc.queryForObject("SELECT count(*) FROM stock_movements WHERE item_id=?", Integer.class, s.lens())).isZero();
-        assertThat(status(call(s.master(), "PATCH", "/api/v1/sales/" + sale + "/status", "{\"status\":\"CANCELLED\"}"))).isEqualTo(200);
+        assertThat(status(call(s.master(), "PATCH", "/api/v1/sales/" + sale + "/status",
+                "{\"status\":\"CANCELLED\",\"reason\":\"Cliente desistiu\"}"))).isEqualTo(200);
         assertThat(stockOf(s, s.frame())).isEqualTo(3);
         JsonNode history = body(call(s.master(), "GET", "/api/v1/stock/items/" + s.frame() + "/movements", null));
         assertThat(history).hasSize(3);
@@ -132,6 +133,18 @@ class StockAndServiceOrderIntegrationTest {
         assertThat(body(call(s.master(), "POST", "/api/v1/stock/movements",
                 "{\"itemId\":\"" + s.frame() + "\",\"kind\":\"AJUSTE\",\"quantity\":-1,\"note\":\"Avaria\"}")).path("quantity").asInt())
                 .isEqualTo(2);
+        // Ajuste que deixaria o estoque negativo é recusado e o saldo não muda.
+        MvcResult negative = call(s.master(), "POST", "/api/v1/stock/movements",
+                "{\"itemId\":\"" + s.frame() + "\",\"kind\":\"AJUSTE\",\"quantity\":-3,\"note\":\"Quebra\"}");
+        assertThat(status(negative)).isEqualTo(400);
+        assertThat(body(negative).path("error").asText()).contains("há 2 unidade(s)");
+        assertThat(stockOf(s, s.frame())).isEqualTo(2);
+        // Fornecedor desativado não entra em nova compra nem em nova OS.
+        call(s.master(), "PATCH", "/api/v1/suppliers/" + supplier + "/active", "{\"active\":false}");
+        assertThat(status(call(s.master(), "POST", "/api/v1/stock/movements", "{\"itemId\":\"" + s.frame()
+                + "\",\"kind\":\"ENTRADA\",\"quantity\":1,\"supplierId\":\"" + supplier + "\"}"))).isEqualTo(400);
+        assertThat(status(call(s.master(), "POST", "/api/v1/service-orders", "{\"kind\":\"LENTES\",\"customerId\":\"" + s.customer()
+                + "\",\"supplierId\":\"" + supplier + "\",\"description\":\"Lentes\"}"))).isEqualTo(400);
     }
 
     @Test
