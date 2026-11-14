@@ -12,6 +12,7 @@ const statusLabel: Record<string,string> = {
 };
 export function Sales({ notify, can }: ScreenProps) {
   const [status, setStatus] = useState('');
+  const [cancelling, setCancelling] = useState<string | null>(null);
   const [lensBrand, setLensBrand] = useState('');
   const [frameBrand, setFrameBrand] = useState('');
   const [method, setMethod] = useState('PIX');
@@ -215,7 +216,12 @@ export function Sales({ notify, can }: ScreenProps) {
           <td>{s.lens_brand} / {s.frame_brand}</td>
           <td>{currency(s.charged_amount)}<small>Líquido: {currency(s.net_amount)}</small></td>
           <td>{date(s.sold_on)}{s.warranty_until&&<small>Garantia até {date(s.warranty_until)}</small>}</td><td>{statusLabel[s.status] || s.status}</td>
-          <td>{s.status==='AWAITING_PRODUCTION' ? <button className="text-action" onClick={() =>
+          <td>{(s.status==='AWAITING_PRODUCTION'||s.status==='READY_FOR_DELIVERY') && (!can || can('SALES_DELIVER')) &&
+            <button className="text-action danger" onClick={() => setCancelling(cancelling === s.id ? null : s.id)}>
+              Cancelar venda</button>}
+            {cancelling === s.id && <CancelSale sale={s} canRefund={!can || can('FINANCE_WRITE')} notify={notify}
+              onDone={() => { setCancelling(null); refresh(); }} />}
+            {s.status==='AWAITING_PRODUCTION' ? <button className="text-action" onClick={() =>
             void perform(()=>api('/sales/'+s.id+'/status',{method:'PATCH',body:{status:'READY_FOR_DELIVERY'}}),
               notify,refresh)}>Marcar como pronto</button> :
             s.status==='READY_FOR_DELIVERY' ? <span className="cell-actions"><button className="text-action" onClick={() =>
@@ -228,4 +234,30 @@ export function Sales({ notify, can }: ScreenProps) {
           </tr>)}</tbody></table></div>}
     </div>
   </div>;
+}
+
+/** Cancelar venda: se já houve recebimento, registra a devolução ao cliente (data e motivo) no financeiro. */
+function CancelSale({ sale, canRefund, notify, onDone }: { sale: any; canRefund: boolean;
+  notify: (m: string, error?: boolean) => void; onDone: () => void }) {
+  const received = Number(sale.received_amount || 0);
+  const [reason, setReason] = useState('');
+  const [refundedOn, setRefundedOn] = useState(new Date().toLocaleDateString('sv-SE'));
+  if (received > 0 && !canRefund)
+    return <p className="helper cancel-box">Esta venda já tem {currency(received)} recebido. Quem cuida do financeiro
+      precisa cancelar, para registrar a devolução ao cliente.</p>;
+  return <form className="cancel-box" onSubmit={e => {
+    e.preventDefault();
+    void perform(() => api('/sales/' + sale.id + '/status', { method: 'PATCH', body: { status: 'CANCELLED',
+      reason, refundedOn: received > 0 ? refundedOn : null } }), notify, onDone);
+  }}>
+    {received > 0
+      ? <p className="calendar-warning">Será registrada a devolução de <strong>{currency(received)}</strong> ao cliente.
+          O recebimento fica no histórico como estornado.</p>
+      : <p className="helper">Nenhum valor foi recebido nesta venda; os valores a receber são cancelados.</p>}
+    <label className="field">Motivo{received > 0 ? '' : ' (opcional)'}<input value={reason} maxLength={150}
+      required={received > 0} onChange={e => setReason(e.target.value)} placeholder="Ex.: cliente desistiu" /></label>
+    {received > 0 && <label className="field">Data da devolução<input type="date" value={refundedOn} required
+      max={new Date().toLocaleDateString('sv-SE')} onChange={e => setRefundedOn(e.target.value)} /></label>}
+    <button className="outline-action danger">Confirmar cancelamento</button>
+  </form>;
 }

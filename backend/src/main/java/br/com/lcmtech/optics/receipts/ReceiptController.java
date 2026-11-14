@@ -124,6 +124,7 @@ public class ReceiptController {
              Authentication auth,HttpSession session) {
         access.require(auth,session,"RECEIPTS_READ");
         UUID optic=access.optic(auth,session);
+        br.com.lcmtech.optics.security.Owned.require(jdbc,"sales",optic,saleId,"Venda não encontrada.");
         // Uma linha por recebimento (baixa); parcela ainda sem recebimento aparece sozinha, sem recibo possível.
         return jdbc.queryForList("""
             SELECT e.id AS payment_id,st.id AS settlement_id,e.gross_amount,e.net_amount,e.fee_amount,
@@ -276,7 +277,7 @@ public class ReceiptController {
         UUID optic=access.optic(auth,session);
         var saved=jdbc.queryForList("SELECT receipt_number,pdf_bytes FROM sale_receipts "
                 +"WHERE optic_id=? AND id=?",optic,receiptId);
-        if(saved.isEmpty())throw new IllegalArgumentException("Recibo não encontrado.");
+        if(saved.isEmpty())throw new java.util.NoSuchElementException("Recibo não encontrado.");
         return document((byte[])saved.get(0).get("pdf_bytes"),
                 "recibo-"+saved.get(0).get("receipt_number")+".pdf");
     }
@@ -289,7 +290,7 @@ public class ReceiptController {
         UUID optic=access.optic(auth,session),actor=access.accountId(auth);
         Integer count=jdbc.queryForObject("SELECT count(*) FROM sale_receipts "
                 +"WHERE optic_id=? AND id=?",Integer.class,optic,receiptId);
-        if(count==null||count==0)throw new IllegalArgumentException("Recibo não encontrado.");
+        if(count==null||count==0)throw new java.util.NoSuchElementException("Recibo não encontrado.");
         byte[] raw=new byte[32];random.nextBytes(raw);
         String token=Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
         UUID shareId=UUID.randomUUID();
@@ -311,6 +312,7 @@ public class ReceiptController {
             Authentication auth,HttpSession session) {
         access.require(auth,session,"RECEIPTS_ISSUE");
         UUID optic=access.optic(auth,session);
+        br.com.lcmtech.optics.security.Owned.require(jdbc,"receipt_share_tokens",optic,shareId,"Link não encontrado.");
         int n=jdbc.update("""
             UPDATE receipt_share_tokens SET revoked_at=now()
             WHERE optic_id=? AND id=? AND revoked_at IS NULL

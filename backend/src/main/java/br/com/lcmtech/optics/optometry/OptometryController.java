@@ -84,7 +84,7 @@ public class OptometryController {
             SELECT p.id,p.full_name,p.cpf,p.birth_date,p.phone,p.email,p.address
             FROM optometry_patients p WHERE p.optic_id=? AND p.id=?
             """,optic,id).stream().findFirst()
-            .orElseThrow(()->new IllegalArgumentException("Paciente não encontrado."));
+            .orElseThrow(()->new java.util.NoSuchElementException("Paciente não encontrado."));
     }
 
     @PostMapping("/patients")
@@ -95,6 +95,11 @@ public class OptometryController {
         if(req==null||req.fullName()==null||req.fullName().isBlank())
             throw new IllegalArgumentException("Informe o nome do paciente.");
         String cpf=normalize(req.cpf());
+        if(cpf!=null&&!br.com.lcmtech.optics.identity.ProfileController.validCpf(cpf))
+            throw new IllegalArgumentException("CPF inválido: confira os números ou deixe em branco.");
+        if(req.birthDate()!=null&&(req.birthDate().isAfter(java.time.LocalDate.now())
+                ||req.birthDate().isBefore(java.time.LocalDate.of(1900,1,1))))
+            throw new IllegalArgumentException("Data de nascimento inválida.");
         String email=br.com.lcmtech.optics.customers.CustomerController.email(req.email());
         boolean optIn=Boolean.TRUE.equals(req.reminderOptIn())&&email!=null;
         UUID id=UUID.randomUUID();
@@ -186,6 +191,9 @@ public class OptometryController {
                 !req.endsAt().isAfter(req.startsAt()))
             throw new IllegalArgumentException("Informe paciente, clínica e horário válido.");
         UUID optic=context.optic(auth,session);
+        // Agenda é para a frente: consulta que começa antes de hoje (no fuso da ótica) é erro de digitação.
+        if(req.startsAt().atZoneSameInstant(clock.zone(optic)).toLocalDate().isBefore(clock.today(optic)))
+            throw new IllegalArgumentException("A consulta não pode ser marcada em data passada.");
         Integer person=jdbc.queryForObject(
                 "SELECT count(*) FROM optometry_patients WHERE optic_id=? AND id=?",
                 Integer.class,optic,req.patientId());
@@ -230,7 +238,7 @@ public class OptometryController {
         String previous=jdbc.query("SELECT status FROM optical_appointments "
                 +"WHERE optic_id=? AND id=? FOR UPDATE",
                 (rs,n)->rs.getString(1),optic,id).stream().findFirst()
-                .orElseThrow(()->new IllegalArgumentException("Consulta não encontrada."));
+                .orElseThrow(()->new java.util.NoSuchElementException("Consulta não encontrada."));
         String target=req==null?"":req.status();
         boolean valid=switch(previous) {
             case "SCHEDULED" -> List.of("CONFIRMED","COMPLETED","NO_SHOW","CANCELLED").contains(target);

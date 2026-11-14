@@ -45,6 +45,7 @@ public class VisitController {
     public List<Map<String,Object>> history(@PathVariable UUID id,Authentication auth,HttpSession session) {
         context.require(auth,session,"VISITS_READ");
         UUID optic=context.optic(auth,session);
+        br.com.lcmtech.optics.security.Owned.require(jdbc,"home_visits",optic,id,"Visita não encontrada.");
         return jdbc.queryForList("SELECT e.event,e.occurred_at,a.full_name AS responsible "
                 +"FROM visit_events e LEFT JOIN accounts a ON a.id=e.actor_id "
                 +"WHERE e.optic_id=? AND e.visit_id=? ORDER BY e.occurred_at",optic,id);
@@ -153,7 +154,7 @@ public class VisitController {
     private Map<String,Object> readForUpdate(UUID optic,UUID id){
         return jdbc.queryForList("SELECT * FROM home_visits WHERE optic_id=? AND id=? FOR UPDATE",
                 optic,id).stream().findFirst()
-                .orElseThrow(()->new IllegalArgumentException("Visita não encontrada."));
+                .orElseThrow(()->new java.util.NoSuchElementException("Visita não encontrada."));
     }
     private void event(UUID optic,UUID visit,UUID actor,String status) {
         jdbc.update("INSERT INTO visit_events(id,optic_id,visit_id,actor_id,event) VALUES(?,?,?,?,?)",

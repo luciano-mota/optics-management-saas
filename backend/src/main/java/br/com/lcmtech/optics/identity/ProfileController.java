@@ -111,7 +111,7 @@ public class ProfileController {
         return value==null?"":value.replaceAll("[^0-9]","");
     }
     /** Dois dígitos verificadores (mod 11) do CPF. */
-    static boolean validCpf(String cpf) {
+    public static boolean validCpf(String cpf) {
         if(!cpf.matches("[0-9]{11}")||cpf.chars().distinct().count()==1)return false;
         for(int length=9;length<=10;length++) {
             int sum=0;

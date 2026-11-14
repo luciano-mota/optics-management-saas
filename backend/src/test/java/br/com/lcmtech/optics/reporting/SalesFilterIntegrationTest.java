@@ -146,7 +146,14 @@ class SalesFilterIntegrationTest {
         assertThat(options.path("sellers").toString()).contains("B Ana").doesNotContain("A Ana");
         assertThat(options.path("lensCategories").path("MULTIFOCAL").asText()).isEqualTo("Multifocal (progressiva)");
         // Vendedora ou marca de outra ótica no filtro não trazem nada.
-        assertThat(query(b.master(), "sellerId=" + a.ana()).path("totalRows").asInt()).isZero();
+        JsonNode other = query(b.master(), "sellerId=" + a.ana());
+        assertThat(other.path("totalRows").asInt()).isZero();
+        // Nem o nome da vendedora de outra ótica aparece (rodapé de filtros da tela e das exportações).
+        assertThat(other.toString()).doesNotContain("A Ana").contains("não encontrado(a) nesta ótica");
+        String csv = mvc.perform(get("/api/v1/reports/detailed/vendas/export/csv?sellerId=" + a.ana()).with(user(b.master())))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(csv).doesNotContain("A Ana");
+        assertThat(query(b.master(), "sellerId=" + b.ana()).toString()).contains("vendedor(a) B Ana");
         assertThat(query(b.master(), "frameBrand=ARay-Ban").path("totalRows").asInt()).isZero();
     }
 }

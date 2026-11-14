@@ -1,5 +1,8 @@
 # Optics Management — estado de implementação em 09/11/2026
 
+> Documento histórico (09/11). Desde então entraram MFA, notificações push, estoque, fornecedores, OS, garantia,
+> recebimentos parciais e avisos por e-mail. Situação atual: [relatório de 14/11/2026](RELATORIO_E2E_HOMOLOGACAO.md).
+
 Repositório: https://github.com/luciano-mota/optics-management-saas/tree/hml
 
 ## Implementado em código (necessita QA Render)

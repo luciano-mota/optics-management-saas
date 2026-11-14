@@ -209,6 +209,80 @@ class FinanceSettlementIntegrationTest {
                 .isEqualTo(1);
     }
 
+    private int cancel(String who, UUID sale, String body) throws Exception {
+        return mvc.perform(patch("/api/v1/sales/" + sale + "/status").with(user(who)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andReturn().getResponse().getStatus();
+    }
+
+    private String saleStatus(UUID sale) {
+        return jdbc.queryForObject("SELECT status FROM sales WHERE id=?", String.class, sale);
+    }
+
+    @Test
+    void cancelarVendaJaPagaEstornaORecebidoComDataEMotivo() throws Exception {
+        Shop s = seed();
+        send(s.email(), "/api/v1/finance/" + s.entry() + "/settlements", "{\"amount\":300,\"paidOn\":\"2026-11-05\"}");
+        // Sem motivo, ou com devolução antes do pagamento: recusa e nada muda.
+        assertThat(cancel(s.email(), s.sale(), "{\"status\":\"CANCELLED\"}")).isEqualTo(400);
+        assertThat(cancel(s.email(), s.sale(), "{\"status\":\"CANCELLED\",\"reason\":\"Desistiu\",\"refundedOn\":\"2026-11-04\"}"))
+                .isEqualTo(400);
+        assertThat(saleStatus(s.sale())).isEqualTo("AWAITING_PRODUCTION");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM finance_settlements WHERE entry_id=? AND reversed_at IS NULL",
+                Integer.class, s.entry())).isEqualTo(1);
+
+        MvcResult ok = mvc.perform(patch("/api/v1/sales/" + s.sale() + "/status").with(user(s.email())).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"CANCELLED\",\"reason\":\"Desistiu\",\"refundedOn\":\"2026-11-08\"}")).andReturn();
+        assertThat(ok.getResponse().getStatus()).isEqualTo(200);
+        assertThat(body(ok).path("refunded").decimalValue()).isEqualByComparingTo("300");
+        var st = jdbc.queryForMap("SELECT reversed_on, reversal_reason, reversed_by FROM finance_settlements WHERE entry_id=?", s.entry());
+        assertThat(st.get("reversed_on").toString()).isEqualTo("2026-11-08");
+        assertThat(st.get("reversal_reason")).isEqualTo("Venda cancelada: Desistiu");
+        assertThat(st.get("reversed_by")).isEqualTo(s.account());
+        // Nenhuma baixa ativa em lançamento estornado; o caixa do mês não conta o valor devolvido.
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM finance_settlements st JOIN finance_entries e ON e.id=st.entry_id
+                WHERE e.sale_id=? AND (st.reversed_at IS NULL OR e.reversed_at IS NULL)""", Integer.class, s.sale())).isZero();
+        JsonNode summary = json.readTree(mvc.perform(get("/api/v1/finance/summary").with(user(s.email()))).andReturn()
+                .getResponse().getContentAsString());
+        assertThat(summary.path("received_month").decimalValue()).isEqualByComparingTo("0");
+        // A fotografia de um corte entre o pagamento e a devolução continua mostrando os 300 recebidos.
+        assertThat(summary(s.email(), "2026-11-06").path("netReceived").decimalValue()).isEqualByComparingTo("300");
+    }
+
+    @Test
+    void quemNaoMexeNoFinanceiroNaoCancelaVendaPagaEOutraOticaNaoCancela() throws Exception {
+        Shop s = seed(), other = seed();
+        send(s.email(), "/api/v1/finance/" + s.entry() + "/settlements", "{\"amount\":100}");
+        UUID seller = UUID.randomUUID();
+        jdbc.update("INSERT INTO accounts(id,email,password_hash,full_name,email_verified_at) VALUES(?,?,'hash','Vera',now())",
+                seller, seller + "@example.test");
+        jdbc.update("INSERT INTO optic_memberships(optic_id,account_id,role) VALUES(?,?,'SECRETARY')", s.optic(), seller);
+        assertThat(cancel(seller + "@example.test", s.sale(), "{\"status\":\"CANCELLED\",\"reason\":\"Teste\"}")).isEqualTo(403);
+        assertThat(cancel(other.email(), s.sale(), "{\"status\":\"CANCELLED\",\"reason\":\"Teste\"}")).isEqualTo(404);
+        assertThat(saleStatus(s.sale())).isEqualTo("AWAITING_PRODUCTION");
+        // Venda sem nenhum recebimento: a secretária pode cancelar, sem motivo obrigatório.
+        assertThat(cancel(seller + "@example.test", other.sale(), "{\"status\":\"CANCELLED\"}")).isEqualTo(404);
+        assertThat(cancel(other.email(), other.sale(), "{\"status\":\"CANCELLED\"}")).isEqualTo(200);
+    }
+
+    @Test
+    void estornarLancamentoManualEstornaTambemOQueJaFoiPago() throws Exception {
+        Shop s = seed();
+        UUID manual = UUID.fromString(body(send(s.email(), "/api/v1/finance",
+                "{\"direction\":\"EXPENSE\",\"category\":\"Aluguel\",\"description\":\"Aluguel\",\"amount\":500}")).path("id").asText());
+        send(s.email(), "/api/v1/finance/" + manual + "/settlements", "{\"amount\":200}");
+        MvcResult r = mvc.perform(patch("/api/v1/finance/" + manual + "/reverse").with(user(s.email())).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Lançado em duplicidade\"}")).andReturn();
+        assertThat(r.getResponse().getStatus()).isEqualTo(200);
+        assertThat(body(r).path("settlementsReversed").decimalValue()).isEqualByComparingTo("200");
+        assertThat(jdbc.queryForObject("SELECT reversal_reason FROM finance_settlements WHERE entry_id=?", String.class, manual))
+                .isEqualTo("Lançado em duplicidade");
+        // Lançamento de venda não se estorna por aqui.
+        assertThat(mvc.perform(patch("/api/v1/finance/" + s.entry() + "/reverse").with(user(s.email())).with(csrf()))
+                .andReturn().getResponse().getStatus()).isEqualTo(400);
+    }
+
     @Test
     void lancamentoJaPagoGanhaBaixaIntegralAutomatica() {
         Shop s = seed();

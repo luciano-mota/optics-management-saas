@@ -78,8 +78,12 @@ export function Finance({ notify }: ScreenProps) {
                 +'Se já pagou, desconsidere. Qualquer dúvida, estamos à disposição!',notify)}>
                 <MessageCircle size={14}/> Lembrar pelo WhatsApp</button>}
             {entry.origin==='MANUAL'&&!entry.reversed_at && <button className="text-action danger"
-              onClick={()=>void perform(()=>api('/finance/'+entry.id+'/reverse',{method:'PATCH'}),
-              notify,reload)}>Estornar lançamento</button>}</td></tr>
+              onClick={()=>{
+                const paidNow=Number(entry.paid_amount||0);
+                if(!window.confirm(paidNow>0?'Estornar este lançamento? O que já foi '+(entry.direction==='INCOME'?'recebido':'pago')
+                  +' ('+currency(paidNow)+') também será estornado, com a data de hoje.':'Estornar este lançamento?'))return;
+                void perform(()=>api('/finance/'+entry.id+'/reverse',{method:'PATCH'}),notify,reload);
+              }}>Estornar lançamento</button>}</td></tr>
           {expanded&&<tr className="detail-row"><td colSpan={6}>{opened?.mode==='settle'
             ?<SettleForm entry={entry} open={open} notify={notify} onDone={()=>{setOpened(null);reload();}}/>
             :<SettlementHistory entryId={entry.id} income={income} notify={notify} onChanged={reload}/>}</td></tr>}

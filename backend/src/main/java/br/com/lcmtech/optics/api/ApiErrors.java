@@ -11,6 +11,27 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ApiErrors {
+    /**
+     * Corpo em formato errado (JSON quebrado, tipo errado, ID que não é UUID). Nunca devolve a mensagem do Jackson, que
+     * traz nomes internos de classes; só a mensagem de validação em português, quando a causa for uma.
+     */
+    @ExceptionHandler({org.springframework.http.converter.HttpMessageNotReadableException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<Map<String,String>> unreadable(Exception e) {
+        Throwable cause = e;
+        while (cause.getCause() != null && cause.getCause() != cause) cause = cause.getCause();
+        // Só repassa mensagem de validação escrita por nós (lançada no pacote do sistema), nunca a do Java/Jackson.
+        boolean ours = cause instanceof IllegalArgumentException && cause.getMessage() != null
+                && cause.getStackTrace().length > 0 && cause.getStackTrace()[0].getClassName().startsWith("br.com.lcmtech.");
+        String msg = ours ? cause.getMessage() : "Dados em formato inválido. Confira os campos e tente de novo.";
+        return ResponseEntity.badRequest().body(Map.of("error", msg));
+    }
+
+    @ExceptionHandler(TooManyAttemptsException.class)
+    public ResponseEntity<Map<String,String>> tooMany(TooManyAttemptsException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).header("Retry-After", "900").body(Map.of("error", e.getMessage()));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String,String>> forbidden(AccessDeniedException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));

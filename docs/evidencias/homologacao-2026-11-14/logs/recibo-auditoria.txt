@@ -1,0 +1,50 @@
+RECIBO DE PAGAMENTO
+OPTICS MANAGEMENT | COMPROVANTE DA OTICA
+
+Otica AuditA
+Recibo N. 1 | Pagamento: 2026-11-14
+
+
+
+
+IDENTIFICACAO
+Emitente: Otica AuditA LTDA
+
+CNPJ: 11.222.333/0001-81
+
+Endereco: Rua Grande, 100 - Centro, Sao Luis/MA
+
+Contato: (98) 3222-0000
+
+CLIENTE E PEDIDO
+Cliente: Marta Auditoria Silva
+CPF: ***.***.***-10
+Data da venda: 2026-11-14
+Lentes: Zeiss
+Armacao: Oakley
+
+ VALORES DO PAGAMENTO
+
+ Forma: PIX
+ Valor pago pelo cliente: R$?1.234,56
+ Taxas da operacao: R$?0,00 | Liquido da otica: R$?1.234,56
+
+
+
+Sem parcelas em aberto para esta venda.
+
+
+
+
+Dona AuditA
+Socia
+
+Assinatura cadastrada e apenas representacao grafica, nao certificado ICP-Brasil.
+
+
+
+
+Documento de pagamento emitido pela otica. Nao substitui nota fiscal.
+
+Identificacao unica: 759638cb-1c7f-4ed2-9936-13c4ac1a0e70
+

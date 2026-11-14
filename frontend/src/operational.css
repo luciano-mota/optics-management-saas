@@ -257,3 +257,8 @@ td.row-actions > * + * { margin-left: 12px; }
 .whatsapp-action:hover { color: #0b6b37; }
 .cell-actions { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
 .mini-row .whatsapp-action { margin-top: 4px; padding-left: 0; }
+
+/* Cancelar venda: formulário curto dentro da linha da tabela */
+.cancel-box { display: grid; gap: 8px; margin: 8px 0; padding: 10px; border: 1px solid #f2c6c8; border-radius: 10px;
+  background: #fff8f8; max-width: 320px; white-space: normal; }
+.cancel-box .field { margin: 0; }

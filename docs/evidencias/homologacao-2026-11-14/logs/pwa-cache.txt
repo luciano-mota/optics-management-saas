@@ -1,0 +1,6 @@
+optics-shell-v3 /offline.html
+optics-shell-v3 /icon.svg
+optics-shell-v3 /icon-192.png
+optics-shell-v3 /manifest.webmanifest
+optics-shell-v3 /assets/index-AM32Xvkg.css
+optics-shell-v3 /assets/index-TlkRg48J.js

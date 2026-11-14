@@ -1,0 +1,44 @@
+[
+  {
+    "cat": "Cadastro",
+    "name": "E-mail já cadastrado é recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "E-mail inválido recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "Senha fraca recusada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "Campo obrigatório (nome da ótica) recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "Sem aceite dos termos recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "Nenhuma conta criada pelos pedidos inválidos",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Limite de cadastros por IP (6º pedido na hora = 429)",
+    "ok": true,
+    "detail": ""
+  }
+]

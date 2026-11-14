@@ -14,6 +14,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 @Component
 public class PersonalDataCacheProtectionFilter extends OncePerRequestFilter {
+    static final String CSP = "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; "
+            + "frame-ancestors 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            + "font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; "
+            + "frame-src https://www.google.com; worker-src 'self'; manifest-src 'self'";
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
@@ -23,6 +28,9 @@ public class PersonalDataCacheProtectionFilter extends OncePerRequestFilter {
             response.setHeader("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate");
             response.setHeader("Pragma", "no-cache");
             response.setDateHeader("Expires", 0);
+        } else {
+            // Telas: só scripts do próprio sistema. Estilos inline (React), fontes do Google e o mapa do site da ótica.
+            response.setHeader("Content-Security-Policy", CSP);
         }
         chain.doFilter(request, response);
     }

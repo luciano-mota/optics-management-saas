@@ -215,7 +215,7 @@ public class CardMachineController {
                     rs.getBigDecimal("fixed_fee"),rs.getInt("debit_days"),
                     rs.getInt("credit_days"),rs.getBoolean("anticipated"),
                     rs.getBoolean("active"),installmentFees,terms),optic,id)
-                .stream().findFirst().orElseThrow(()->new IllegalArgumentException("Maquininha não encontrada."));
+                .stream().findFirst().orElseThrow(()->new java.util.NoSuchElementException("Maquininha não encontrada."));
     }
 
     /**

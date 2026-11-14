@@ -139,6 +139,30 @@ class MfaIntegrationTest {
     }
 
     @Test
+    void dezCodigosErradosNaContaBloqueiamAteOCodigoCertoPor15Minutos() throws Exception {
+        String email = account("MASTER");
+        Browser b = new Browser();
+        login(b, email);
+        call(b, "POST", "/api/v1/auth/mfa/setup", null);
+        call(b, "POST", "/api/v1/auth/mfa/enable",
+                "{\"code\":\"" + Totp.code(secret(email), Totp.step(Instant.now())) + "\"}");
+        // Duas sessões com 5 erros cada: a conta soma 10 (trocar de sessão não zera a contagem).
+        for (int s = 0; s < 2; s++) {
+            Browser attacker = new Browser();
+            login(attacker, email);
+            for (int i = 0; i < MfaController.MAX_SESSION_FAILURES; i++)
+                call(attacker, "POST", "/api/v1/auth/mfa/verify", "{\"code\":\"22222" + i + "\"}");
+        }
+        Browser owner = new Browser();
+        login(owner, email);
+        MvcResult locked = call(owner, "POST", "/api/v1/auth/mfa/verify",
+                "{\"code\":\"" + Totp.code(secret(email), Totp.step(Instant.now()) + 1) + "\"}");
+        assertThat(locked.getResponse().getStatus()).isEqualTo(429);
+        assertThat(locked.getResponse().getHeader("Retry-After")).isEqualTo("900");
+        assertThat(body(locked).path("error").asText()).contains("Aguarde 15 minutos");
+    }
+
+    @Test
     void desativarExigeSenhaECodigoESoAfetaAPropriaConta() throws Exception {
         String email = account("MASTER"), other = account("SELLER");
         Browser b = new Browser();

@@ -1,0 +1,8 @@
+F6 venda cancelada com baixa ativa|0
+F6b baixa ativa em lançamento estornado|0
+S1 itens com estoque negativo|1
+F1 baixa acima do valor|0
+F4 venda x lançamentos divergentes|0
+D1 recibos duplicados|0
+C1 clientes com CPF repetido/nascimento futuro|0
+M1 migrações ok|26
