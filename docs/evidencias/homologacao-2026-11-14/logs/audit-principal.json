@@ -1,0 +1,1148 @@
+[
+  {
+    "cat": "Autenticação",
+    "name": "Senha errada = 401",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Autenticação",
+    "name": "E-mail inexistente = 401 (mesma resposta, sem revelar conta)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Autenticação",
+    "name": "Login com corpo JSON recusado com mensagem (400)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Login sem token CSRF = 403",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Autenticação",
+    "name": "Login do operador (conta das variáveis PLATFORM_ADMIN_*)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Cookie de sessão HttpOnly e SameSite=Lax",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "ID da sessão muda no login (anti fixação de sessão)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Cookie Secure",
+    "ok": null,
+    "detail": "Local roda em HTTP com COOKIE_SECURE=false; no Render o atributo Secure depende da variável COOKIE_SECURE (não verificável sem login no hml)."
+  },
+  {
+    "cat": "Autenticação",
+    "name": "Operador é operador da plataforma",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "/auth/me não expõe hash de senha nem segredo MFA",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Autenticação",
+    "name": "Painel do operador (lista de óticas)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Autenticação",
+    "name": "Logout = 204",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Autenticação",
+    "name": "Depois do logout a API recusa (401)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Autenticação",
+    "name": "Sessão nova válida antes de expirar",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Autenticação",
+    "name": "Sessão inativa por mais de 45 min expira (401)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Limite de tentativas de login (13ª = 429 com Retry-After)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "AuditA: cadastro público",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "AuditA: login",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "AuditA: conclui primeiro acesso",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "AuditB: cadastro público",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "AuditB: login",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "AuditB: conclui primeiro acesso",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "Nova ótica: teste de 7 dias, site fechado, visita em domicílio desligada, dona = MASTER principal",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Cadastro",
+    "name": "Ótica A e B são tenants diferentes",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Senha guardada com BCrypt custo 12",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Clientes",
+    "name": "Cadastro de cliente",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Clientes",
+    "name": "Edição de cliente",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Clientes",
+    "name": "Busca por nome (sem diferenciar maiúsculas) e por CPF",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Clientes",
+    "name": "Telefone guardado como digitado",
+    "ok": null,
+    "detail": "valor no banco: \"(98) 98111-2222\" (não normalizado para só dígitos)"
+  },
+  {
+    "cat": "Clientes",
+    "name": "CPF inválido (dígitos verificadores) recusado",
+    "ok": false,
+    "detail": "HTTP 200 {\"id\":\"49440f22-e9cc-4452-96d5-42e77ce22e2c\"}"
+  },
+  {
+    "cat": "Clientes",
+    "name": "CPF duplicado na mesma ótica recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Clientes",
+    "name": "Data de nascimento futura recusada",
+    "ok": false,
+    "detail": "HTTP 200 {\"id\":\"1a1faeae-fc7e-4392-b4ee-8b94c1d1ca0d\"}"
+  },
+  {
+    "cat": "Clientes",
+    "name": "Nome obrigatório",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Clientes",
+    "name": "Desativar/excluir cliente",
+    "ok": null,
+    "detail": "DELETE /customers/{id} → HTTP 405; não há endpoint de desativação nem de anonimização (LGPD) de cliente."
+  },
+  {
+    "cat": "Segurança",
+    "name": "SQL injection na busca de clientes não traz dados nem erro 500",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Texto com HTML é guardado como texto (escapado na tela; ver teste visual)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Clientes",
+    "name": "Anexo com conteúdo que não é PDF recusado (assinatura do arquivo)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Clientes",
+    "name": "Anexo HTML recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Clientes",
+    "name": "Anexo acima de 4 MB recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Clientes",
+    "name": "Anexo PDF válido aceito",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Catálogo",
+    "name": "Cadastro de lente e armação",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Catálogo",
+    "name": "Edição de produto",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Catálogo",
+    "name": "Lista por tipo (sem busca por texto no endpoint)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Catálogo",
+    "name": "Preço no catálogo",
+    "ok": null,
+    "detail": "O cadastro de produto não tem preço (só marca, modelo e categoria); o valor é informado em cada venda."
+  },
+  {
+    "cat": "Estoque",
+    "name": "Cadastro de fornecedor",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Estoque",
+    "name": "Edição de fornecedor",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Estoque",
+    "name": "Controlar estoque da armação",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Estoque",
+    "name": "Entrada de 3 unidades",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Estoque",
+    "name": "Ajuste que deixaria o estoque negativo é recusado",
+    "ok": false,
+    "detail": "HTTP 200 {\"quantity\":-7,\"id\":\"6ea44821-b4c6-484a-85f9-3a758484ccbf\"}"
+  },
+  {
+    "cat": "Estoque",
+    "name": "Entrada com quantidade zero recusada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Estoque",
+    "name": "Ajuste de -1 (quebra)",
+    "ok": false,
+    "detail": "{\"quantity\":-8,\"id\":\"b7af37c4-9794-4134-b037-df8aeb7b19c6\"}"
+  },
+  {
+    "cat": "Vendas",
+    "name": "Venda de valor zero recusada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Vendas",
+    "name": "Venda de valor negativo recusada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Vendas",
+    "name": "Valor com 3 casas decimais (100,005)",
+    "ok": null,
+    "detail": "HTTP 200; guardado como 100.01"
+  },
+  {
+    "cat": "Vendas",
+    "name": "Clique duplo não duplica a venda (idempotência)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Vendas",
+    "name": "Vários produtos, quantidade e desconto",
+    "ok": null,
+    "detail": "A venda tem exatamente 1 lente + 1 armação e um valor total; não há itens múltiplos, quantidade nem campo de desconto (regra atual do produto)."
+  },
+  {
+    "cat": "Vendas",
+    "name": "Venda Pix de R$ 1.000,00",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Venda Pix gera lançamento já recebido de R$ 1.000,00",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Venda Pix tem exatamente 1 baixa de R$ 1.000,00 (sem duplicidade)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Venda Pix não aceita baixa parcial (já quitada)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Recebível de cartão recusa baixa parcial (regra: só a parcela inteira)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Cenário \"venda de R$ 1.000 com pagamento parcial de R$ 300\"",
+    "ok": null,
+    "detail": "Não é representável numa VENDA: venda aceita só Dinheiro/Pix (quitada na hora) ou Débito/Crédito (recebível de cartão, baixa integral). Não existe forma de pagamento crediário/fiado na venda. O pagamento parcial existe só em lançamento manual do Financeiro, sem vínculo com venda ou cliente."
+  },
+  {
+    "cat": "Estoque",
+    "name": "Cada venda baixa 1 armação do estoque",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Vendas",
+    "name": "Cancelar venda",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Vendas",
+    "name": "Cancelamento devolve a armação ao estoque",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Cancelar venda Pix já recebida",
+    "ok": null,
+    "detail": "lançamento marcado como estornado=t; baixas ainda ativas=1; lançamento de devolução ao cliente=0; \"recebido no mês\" 1350.01 -> 350.01"
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Cancelar venda paga registra a devolução (estorno da baixa com data) em vez de sumir com o recebido",
+    "ok": false,
+    "detail": "baixa continua ativa e não há registro de devolução; o caixa do mês caiu 1000.00"
+  },
+  {
+    "cat": "Relatórios",
+    "name": "Cancelar hoje não altera a fotografia de \"Vendas Atualizadas\" de ontem",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "1. Conta a receber de R$ 1.000,00 (aberto 1.000,00)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "2-3. Recebe R$ 300,00 → saldo R$ 700,00 (API e banco)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Resumo \"a receber\" sobe 700,00",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "4-5. Estorno do R$ 300,00 → recebido ativo R$ 0,00",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "6. Saldo volta a R$ 1.000,00",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "7. Histórico mantém a baixa estornada com motivo",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "8. Banco: 1 baixa, 1 estornada, nenhuma negativa ou duplicada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Lançamento volta a \"não quitado\" (settled_on nulo)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Estornar duas vezes a mesma baixa é recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Três pagamentos (333,33 + 333,33 + 333,34) quitam exatamente",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Pagamento extra de R$ 0,01 depois de quitado é recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Pagamento com 3 casas (3,333)",
+    "ok": null,
+    "detail": "HTTP 200; guardado 3.33"
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Conta a pagar de 500 com pagamento parcial de 200 deixa 300 a pagar",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Valor negativo em lançamento recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro",
+    "name": "Baixa com data futura recusada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Recibos",
+    "name": "Emissão de recibo por recebimento",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Recibos",
+    "name": "Download do PDF do recibo",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Recibos",
+    "name": "PDF mantém a razão social como cadastrada (Ótica AuditA LTDA)",
+    "ok": false,
+    "detail": "no PDF: Emitente: Otica AuditA LTDA"
+  },
+  {
+    "cat": "Recibos",
+    "name": "PDF tem o CNPJ formatado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Recibos",
+    "name": "PDF tem o nome do cliente",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Recibos",
+    "name": "PDF mostra \"R$ 1.234,56\" sem caractere estranho",
+    "ok": false,
+    "detail": "no PDF: Valor pago pelo cliente: R$?1.234,56"
+  },
+  {
+    "cat": "Recibos",
+    "name": "PDF mostra a data no formato brasileiro (dd/mm/aaaa)",
+    "ok": false,
+    "detail": "no PDF: Pagamento: 2026-11-14"
+  },
+  {
+    "cat": "Recibos",
+    "name": "Logo e valor por extenso",
+    "ok": null,
+    "detail": "Sem logo enviado nesta ótica (o código desenha o logo quando existe); o recibo não traz o valor por extenso."
+  },
+  {
+    "cat": "Recibos",
+    "name": "PDF não tem o CPF completo do cliente",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Recibos",
+    "name": "Segunda emissão do mesmo recebimento não cria outro número",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Recibos",
+    "name": "Link público do recibo",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Consultas",
+    "name": "Agendamento 09:00-09:30 (horário de Brasília)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Consultas",
+    "name": "Conflito de horário na mesma clínica recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Consultas",
+    "name": "Fim antes do início recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Consultas",
+    "name": "Agendamento no passado recusado",
+    "ok": false,
+    "detail": "HTTP 200 (aceitou consulta em 2020)"
+  },
+  {
+    "cat": "Consultas",
+    "name": "Horário fora do expediente (23h30) recusado ou avisado",
+    "ok": false,
+    "detail": "HTTP 200 (sem validação de horário de funcionamento)"
+  },
+  {
+    "cat": "Consultas",
+    "name": "Consulta aparece no dia certo (fuso da ótica)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Consultas",
+    "name": "Status CONFIRMED",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Consultas",
+    "name": "Status COMPLETED",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Consultas",
+    "name": "Status não volta de COMPLETED",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Consultas",
+    "name": "Editar/remarcar consulta e editar clínica",
+    "ok": null,
+    "detail": "Não há endpoint para remarcar consulta, editar clínica parceira ou editar paciente (só criar e mudar status/autorização)."
+  },
+  {
+    "cat": "Visitas",
+    "name": "Site fechado: página pública não abre",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Visitas",
+    "name": "Código do site fechado",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Esta página não está disponível.\"}"
+  },
+  {
+    "cat": "Visitas",
+    "name": "Operador libera o site da ótica A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Visitas",
+    "name": "Site aberto com visita em domicílio desligada por padrão",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Visitas",
+    "name": "Pedido de visita recusado quando o recurso está desligado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Visitas",
+    "name": "Sem visita ativada, a ótica vende, recebe e emite recibo normalmente",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "OS",
+    "name": "Abrir OS ligada a venda e fornecedor",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "OS",
+    "name": "Pular etapa ABERTA → ENTREGUE recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "OS",
+    "name": "Data futura na mudança de status recusada",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "OS",
+    "name": "Fornecedor desativado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "OS",
+    "name": "OS com fornecedor desativado recusada",
+    "ok": false,
+    "detail": "HTTP 200"
+  },
+  {
+    "cat": "Isolamento",
+    "name": "B não abre OS usando venda de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Convite aceito pela vendedora",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Login da vendedora",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Convite não pode ser usado de novo",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não acessa GET /finance",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não acessa GET /finance/summary",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não acessa POST /finance",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não acessa GET /team",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não acessa POST /team/invites",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não acessa PUT /receipts/settings",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não acessa GET /messages/settings",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não acessa POST /machines",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não acessa PATCH /catalog/2b640fe4-731d-4bb1-9e0a-13c6ac7518d3",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não acessa GET /platform/optics",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora vê clientes",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora registra venda",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Permissões",
+    "name": "Vendedora não troca para a ótica B",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "POST sem token CSRF recusado (403)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Esqueci a senha: mesma resposta para conta existente e inexistente",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Esqueci a senha: 6º pedido em 15 min = 429",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Redefinir senha com link inválido recusado",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "JSON malformado: 400 sem stack trace",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "ID inválido na URL: erro 4xx sem stack trace",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Actuator /env bloqueado mesmo com login",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "SQL injection no filtro de relatório: 0 linhas, sem erro",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "Site com texto contendo HTML salvo",
+    "ok": null,
+    "detail": "HTTP 200 (verificação de execução no teste visual)"
+  },
+  {
+    "cat": "Segurança",
+    "name": "Cor do site fora do formato recusada (evita CSS injection)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Visitas",
+    "name": "Ótica liga a visita em domicílio no próprio site",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Visitas",
+    "name": "Com a visita ligada, o pedido pelo site é aceito",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "PUT /birthdays/c65f782e-1b40-4efe-95c9-55fe7f0f1b5d/consent",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Cliente não encontrado.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /birthdays/c65f782e-1b40-4efe-95c9-55fe7f0f1b5d/whatsapp-opened",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Não há consentimento e telefone para este contato.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /retention/80a13fa9-51fd-44c3-b741-08782d25c8ca/contact-opened",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Marco de relacionamento inválido.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "PUT /machines/72b8f471-d077-4bba-8216-af7c90c0b59b",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Maquininha não encontrada.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "DELETE /machines/72b8f471-d077-4bba-8216-af7c90c0b59b",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Maquininha inexistente ou já desativada.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "PATCH /finance/c2473409-4fb5-46f6-88cf-b52f38e251e8/reverse",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Só lançamentos manuais ativos podem ser estornados aqui.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "PATCH /team/765692c3-9ab1-40ba-ac6e-8fdab3b8cdbe",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Funcionário não encontrado.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "PUT /team/765692c3-9ab1-40ba-ac6e-8fdab3b8cdbe/permission",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Funcionário não encontrado.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "GET /optometry/patients/b4fff661-5438-459e-9989-c41e049d3c11/sales-prefill",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Paciente não encontrado.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "PATCH /optometry/appointments/6750d9cc-7d51-490b-81e0-facf1a34d3e5/status",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Consulta não encontrada.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /attachments/customers/c65f782e-1b40-4efe-95c9-55fe7f0f1b5d",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Cliente não encontrado.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "GET /attachments/customers/c65f782e-1b40-4efe-95c9-55fe7f0f1b5d",
+    "ok": null,
+    "detail": "HTTP 200 []"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "GET /attachments/visits/15b5a071-cb74-4009-9161-cc28e6354033",
+    "ok": null,
+    "detail": "HTTP 200 []"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "GET /attachments/40238d57-a407-438c-8aa3-86302729773a/download",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Arquivo não encontrado.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "GET /receipts/sales/80a13fa9-51fd-44c3-b741-08782d25c8ca/payments",
+    "ok": null,
+    "detail": "HTTP 200 []"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /receipts/payments/5c6a242c-3696-4105-890a-907085e5b40e/issue",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Recibo disponível apenas para um pagamento liquidado e não estornado.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /receipts/settlements/c54e1f66-2fa2-4d05-9084-2e5135eda6ab/issue",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Recibo disponível apenas para um pagamento liquidado e não estornado.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "GET /receipts/759638cb-1c7f-4ed2-9936-13c4ac1a0e70/download",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Recibo não encontrado.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /receipts/759638cb-1c7f-4ed2-9936-13c4ac1a0e70/share",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Recibo não encontrado.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "DELETE /receipts/shares/a239a868-1e48-49ab-ae87-bf2774360124",
+    "ok": null,
+    "detail": "HTTP 200 {\"revoked\":false}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "PATCH /sales/80a13fa9-51fd-44c3-b741-08782d25c8ca/status",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Venda não encontrada.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "GET /visits/15b5a071-cb74-4009-9161-cc28e6354033/events",
+    "ok": null,
+    "detail": "HTTP 200 []"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /visits/15b5a071-cb74-4009-9161-cc28e6354033/claim",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Essa visita já foi assumida ou não está disponível.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "PATCH /visits/15b5a071-cb74-4009-9161-cc28e6354033/status",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Visita não encontrada.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /visits/15b5a071-cb74-4009-9161-cc28e6354033/convert",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Visita não encontrada.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "DELETE /visits/15b5a071-cb74-4009-9161-cc28e6354033",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Visita não encontrada.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "PATCH /platform/optics/41cd9d4a-1d2b-44ff-837d-4030d45a3ca7",
+    "ok": null,
+    "detail": "HTTP 403 {\"error\":\"Área exclusiva do operador da plataforma.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /auth/select-optic",
+    "ok": null,
+    "detail": "HTTP 403 {\"error\":\"Você não pertence a esta ótica.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /sales",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Cliente ou produto não encontrado nesta ótica.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "POST /optometry/appointments",
+    "ok": null,
+    "detail": "HTTP 400 {\"error\":\"Paciente ou clínica não encontrados.\"}"
+  },
+  {
+    "cat": "Isolamento-detalhe",
+    "name": "GET /reports/detailed/consultas?clinicId=a35207f4-6196-4d8b-a486-3300f5a7f349",
+    "ok": null,
+    "detail": "HTTP 200 {\"title\":\"Relatório de consultas\",\"headers\":[\"Data\",\"Horário\",\"Paciente\",\"Clínica\",\"Situação\",\"Convertida em venda\"],\"mo"
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Varredura: 51 rotas chamadas pela ótica B com IDs da ótica A — nenhuma resposta contém dados de A",
+    "ok": false,
+    "detail": "GET /reports/detailed/vendas?sellerId=765692c3-9ab1-40ba-ac6e-8fdab3b8cdbe → HTTP 200    (canceladas fora dos totais)\",\"Filtros: vendedor(a) Dona AuditA\"],\"groups\":[]}"
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Banco: dados da ótica A idênticos antes e depois da varredura (21 tabelas)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Códigos de resposta na varredura",
+    "ok": null,
+    "detail": "19 rotas responderam 404; 31 responderam outro código, sem dados de A: PUT /birthdays/{id}/consent=400, POST /birthdays/{id}/whatsapp-opened=400, POST /retention/{id}/contact-opened=400, PUT /machines/{id}=400, DELETE /machines/{id}=400, PATCH /finance/{id}/reverse=400, PATCH /team/{id}=400, PUT /team/{id}/permission=400, GET /optometry/patients/{id}/sales-prefill=400, PATCH /optometry/appointments/{id}/status=400, POST /attachments/customers/{id}=400, GET /attachments/customers/{id}=200, GET /attachments/visits/{id}=200, GET /attachments/{id}/download=400, GET /receipts/sales/{id}/payments=200, POST /receipts/payments/{id}/issue=400, POST /receipts/settlements/{id}/issue=400, GET /receipts/{id}/download=400, POST /receipts/{id}/share=400, DELETE /receipts/shares/{id}=200, PATCH /sales/{id}/status=400, GET /visits/{id}/events=200, POST /visits/{id}/claim=400, PATCH /visits/{id}/status=400, POST /visits/{id}/convert=400, DELETE /visits/{id}=400, PATCH /platform/optics/{id}=403, POST /auth/select-optic=403, POST /sales=400, POST /optometry/appointments=400, GET /reports/detailed/consultas?clinicId={id}=200"
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /customers de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /sales de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /finance de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /catalog de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /suppliers de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /stock de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /service-orders de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /optometry/patients de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /optometry/clinics de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /visits de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /receipts de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Lista /team de B sem dados de A",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Isolamento",
+    "name": "Recibo de A pelo link público funciona só com o token, não pelo ID",
+    "ok": true,
+    "detail": ""
+  }
+]

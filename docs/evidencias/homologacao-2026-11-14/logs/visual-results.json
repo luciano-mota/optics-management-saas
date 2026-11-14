@@ -1,0 +1,998 @@
+[
+  {
+    "cat": "Responsivo",
+    "name": "desktop: login sem rolagem lateral e com controles visíveis",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: janela de aviso cabe na tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: painel inicial",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Vendas e entregasRegistre vend — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Vendas e entregasRegistre vend — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: Vendas e entregasRegistre vend — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: ClientesCadastros, receitas e  — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: ClientesCadastros, receitas e  — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: ClientesCadastros, receitas e  — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: AniversariantesParabéns pelo W — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: AniversariantesParabéns pelo W — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: AniversariantesParabéns pelo W — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Clientes para lembrarRetornos  — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Clientes para lembrarRetornos  — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: Clientes para lembrarRetornos  — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Consultas de vistaPacientes, c — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Consultas de vistaPacientes, c — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: Consultas de vistaPacientes, c — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Visitas em domicílioPedidos de — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Visitas em domicílioPedidos de — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: Visitas em domicílioPedidos de — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: RecibosComprovantes com a sua  — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: RecibosComprovantes com a sua  — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: RecibosComprovantes com a sua  — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: FinanceiroEntradas, despesas e — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: FinanceiroEntradas, despesas e — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: FinanceiroEntradas, despesas e — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Lentes e armaçõesMarcas e mode — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Lentes e armaçõesMarcas e mode — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: Lentes e armaçõesMarcas e mode — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Estoque e serviçosLaboratório, — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Estoque e serviçosLaboratório, — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: Estoque e serviçosLaboratório, — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: MaquininhasTaxas de débito e c — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: MaquininhasTaxas de débito e c — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: MaquininhasTaxas de débito e c — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: RelatóriosVendas, metas e equi — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: RelatóriosVendas, metas e equi — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: RelatóriosVendas, metas e equi — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: CalendárioDias de abertura e f — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: CalendárioDias de abertura e f — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: CalendárioDias de abertura e f — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: EquipeConvites e permissões. — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: EquipeConvites e permissões. — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: EquipeConvites e permissões. — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Site e campanhasSua vitrine na — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "desktop: Site e campanhasSua vitrine na — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "desktop: Site e campanhasSua vitrine na — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "desktop: nome de cliente com HTML aparece como texto e não executa (XSS)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Financeiro (tela)",
+    "name": "Lançamento do cenário aparece na tela do Financeiro",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Site público",
+    "name": "desktop: site da ótica sem rolagem lateral",
+    "ok": false,
+    "detail": "{\"pageOverflow\":0,\"offscreen\":[\"Pular para os serviços [-999..-842]\"],\"overlap\":0}"
+  },
+  {
+    "cat": "Segurança",
+    "name": "desktop: HTML no título do site não executa (XSS)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Site público",
+    "name": "desktop: página de termos",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Site público",
+    "name": "desktop: página de privacidade",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: login sem rolagem lateral e com controles visíveis",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: janela de aviso cabe na tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: painel inicial",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Vendas e entregasRegistre vend — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Vendas e entregasRegistre vend — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: Vendas e entregasRegistre vend — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: ClientesCadastros, receitas e  — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: ClientesCadastros, receitas e  — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: ClientesCadastros, receitas e  — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: AniversariantesParabéns pelo W — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: AniversariantesParabéns pelo W — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: AniversariantesParabéns pelo W — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Clientes para lembrarRetornos  — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Clientes para lembrarRetornos  — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: Clientes para lembrarRetornos  — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Consultas de vistaPacientes, c — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Consultas de vistaPacientes, c — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: Consultas de vistaPacientes, c — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Visitas em domicílioPedidos de — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Visitas em domicílioPedidos de — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: Visitas em domicílioPedidos de — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: RecibosComprovantes com a sua  — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: RecibosComprovantes com a sua  — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: RecibosComprovantes com a sua  — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: FinanceiroEntradas, despesas e — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: FinanceiroEntradas, despesas e — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: FinanceiroEntradas, despesas e — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Lentes e armaçõesMarcas e mode — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Lentes e armaçõesMarcas e mode — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: Lentes e armaçõesMarcas e mode — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Estoque e serviçosLaboratório, — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Estoque e serviçosLaboratório, — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: Estoque e serviçosLaboratório, — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: MaquininhasTaxas de débito e c — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: MaquininhasTaxas de débito e c — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: MaquininhasTaxas de débito e c — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: RelatóriosVendas, metas e equi — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: RelatóriosVendas, metas e equi — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: RelatóriosVendas, metas e equi — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: CalendárioDias de abertura e f — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: CalendárioDias de abertura e f — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: CalendárioDias de abertura e f — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: EquipeConvites e permissões. — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: EquipeConvites e permissões. — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: EquipeConvites e permissões. — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Site e campanhasSua vitrine na — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "tablet: Site e campanhasSua vitrine na — botões e campos dentro da tela",
+    "ok": false,
+    "detail": "Pular para os serviços [-594..-497]"
+  },
+  {
+    "cat": "Console",
+    "name": "tablet: Site e campanhasSua vitrine na — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "tablet: nome de cliente com HTML aparece como texto e não executa (XSS)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Site público",
+    "name": "tablet: site da ótica sem rolagem lateral",
+    "ok": false,
+    "detail": "{\"pageOverflow\":0,\"offscreen\":[\"Pular para os serviços [-999..-842]\"],\"overlap\":0}"
+  },
+  {
+    "cat": "Segurança",
+    "name": "tablet: HTML no título do site não executa (XSS)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Site público",
+    "name": "tablet: página de termos",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Site público",
+    "name": "tablet: página de privacidade",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: login sem rolagem lateral e com controles visíveis",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: janela de aviso cabe na tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: painel inicial",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Vendas e entregasRegistre vend — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Vendas e entregasRegistre vend — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: Vendas e entregasRegistre vend — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: ClientesCadastros, receitas e  — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: ClientesCadastros, receitas e  — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: ClientesCadastros, receitas e  — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: AniversariantesParabéns pelo W — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: AniversariantesParabéns pelo W — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: AniversariantesParabéns pelo W — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Clientes para lembrarRetornos  — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Clientes para lembrarRetornos  — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: Clientes para lembrarRetornos  — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Consultas de vistaPacientes, c — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Consultas de vistaPacientes, c — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: Consultas de vistaPacientes, c — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Visitas em domicílioPedidos de — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Visitas em domicílioPedidos de — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: Visitas em domicílioPedidos de — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: RecibosComprovantes com a sua  — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: RecibosComprovantes com a sua  — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: RecibosComprovantes com a sua  — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: FinanceiroEntradas, despesas e — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: FinanceiroEntradas, despesas e — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: FinanceiroEntradas, despesas e — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Lentes e armaçõesMarcas e mode — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Lentes e armaçõesMarcas e mode — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: Lentes e armaçõesMarcas e mode — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Estoque e serviçosLaboratório, — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Estoque e serviçosLaboratório, — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: Estoque e serviçosLaboratório, — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: MaquininhasTaxas de débito e c — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: MaquininhasTaxas de débito e c — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: MaquininhasTaxas de débito e c — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: RelatóriosVendas, metas e equi — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: RelatóriosVendas, metas e equi — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: RelatóriosVendas, metas e equi — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: CalendárioDias de abertura e f — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: CalendárioDias de abertura e f — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: CalendárioDias de abertura e f — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: EquipeConvites e permissões. — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: EquipeConvites e permissões. — botões e campos dentro da tela",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Console",
+    "name": "celular: EquipeConvites e permissões. — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Site e campanhasSua vitrine na — sem rolagem lateral da página",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Responsivo",
+    "name": "celular: Site e campanhasSua vitrine na — botões e campos dentro da tela",
+    "ok": false,
+    "detail": "Pular para os serviços [-602..-505]"
+  },
+  {
+    "cat": "Console",
+    "name": "celular: Site e campanhasSua vitrine na — sem erro de JavaScript nem requisição com erro 5xx",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Segurança",
+    "name": "celular: nome de cliente com HTML aparece como texto e não executa (XSS)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Site público",
+    "name": "celular: site da ótica sem rolagem lateral",
+    "ok": false,
+    "detail": "{\"pageOverflow\":0,\"offscreen\":[\"Pular para os serviços [-999..-842]\"],\"overlap\":0}"
+  },
+  {
+    "cat": "Segurança",
+    "name": "celular: HTML no título do site não executa (XSS)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Site público",
+    "name": "celular: página de termos",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "Site público",
+    "name": "celular: página de privacidade",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "PWA",
+    "name": "Manifest com nome, ícones, start_url e display standalone",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "PWA",
+    "name": "Service worker registrado e ativo",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "PWA",
+    "name": "Cache do navegador só guarda o esqueleto do app (nenhuma resposta /api/)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "PWA",
+    "name": "Sem internet abre a tela offline, sem dados da ótica",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "PWA",
+    "name": "Com internet de volta, a API responde direto da rede (sem cópia em cache)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "cat": "PWA",
+    "name": "Permissão de notificação só é pedida por ação da pessoa (estado inicial \"default\")",
+    "ok": false,
+    "detail": "denied"
+  }
+]

@@ -1,0 +1,27 @@
+FROM node:20-alpine AS frontend-build
+WORKDIR /frontend
+COPY --from=ccr ca-bundle.crt /ccr-ca.crt
+ENV NODE_EXTRA_CA_CERTS=/ccr-ca.crt HTTPS_PROXY=http://127.0.0.1:38739 HTTP_PROXY=http://127.0.0.1:38739 NO_PROXY=registry.npmjs.org
+COPY frontend/package.json ./
+RUN npm install --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+FROM maven:3.9.9-eclipse-temurin-21 AS backend-build
+WORKDIR /app
+COPY --from=ccr ca-bundle.crt /ccr-ca.crt
+COPY --from=ccr host-cacerts /ccr-cacerts
+ENV MAVEN_OPTS="-Djavax.net.ssl.trustStore=/ccr-cacerts -Djavax.net.ssl.trustStoreType=JKS -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=38739 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=38739"
+COPY backend/pom.xml ./
+RUN mvn -q -B dependency:go-offline
+COPY backend/src ./src
+COPY --from=frontend-build /frontend/dist ./src/main/resources/static
+RUN mvn -q -B -DskipTests package
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+RUN useradd -r -u 10001 -m optics
+COPY --from=backend-build /app/target/optics-backend-0.1.0-SNAPSHOT.jar /app/app.jar
+USER optics
+EXPOSE 8080
+ENTRYPOINT ["java","-jar","/app/app.jar"]

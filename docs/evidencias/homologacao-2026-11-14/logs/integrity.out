@@ -1,0 +1,113 @@
+== Volume de dados de teste
+ optics | sales | entries | settlements | receipts | stock_mov 
+--------+-------+---------+-------------+----------+-----------
+     14 |    34 |      52 |          52 |        6 |        56
+
+== F1 Baixas ativas acima do valor do lançamento (deve ser 0)
+ count 
+-------
+     0
+
+== F2 Lançamento marcado quitado com saldo aberto, ou aberto com saldo zero (deve ser 0)
+ quitado_com_saldo | aberto_sem_saldo 
+-------------------+------------------
+                 0 |                0
+
+== F3 Valores negativos ou zero em baixas (deve ser 0)
+ count 
+-------
+     0
+
+== F4 Venda x lançamentos: cobrado, taxa e líquido batem (vendas não canceladas; deve ser 0)
+ count 
+-------
+     0
+
+== F5 Venda cancelada com lançamento ainda ativo (deve ser 0)
+ count 
+-------
+     0
+
+== F6 Venda cancelada cujo lançamento estornado ainda tem baixa ATIVA (dinheiro recebido sem devolução registrada)
+               optic_id               |               sale_id                | payment_method | amount  |  paid_on   
+--------------------------------------+--------------------------------------+----------------+---------+------------
+ 4838eabb-f7a3-4704-a650-9cec5f5a11de | 1dec71c3-6054-4b11-be15-87aa0289c35a | PIX            | 1000.00 | 2026-11-14
+ 4838eabb-f7a3-4704-a650-9cec5f5a11de | 5b319099-af72-48af-bb5e-cdb6bdae6b36 | PIX            |  777.00 | 2026-11-12
+ d05c0092-514a-448b-8867-b6465c1f5d42 | 8b9f3732-1926-45e1-aa08-31c73896d13e | PIX            | 1000.00 | 2026-11-14
+ d05c0092-514a-448b-8867-b6465c1f5d42 | 8b5ee0b1-2c25-4610-9aea-50ef645f8d4b | PIX            |  777.00 | 2026-11-12
+ 8f131506-fa9e-4239-bdf2-5e7178c9a0e0 | 2ea96a88-aba2-46c7-9ab6-7693dfacc276 | PIX            | 1000.00 | 2026-11-14
+ 8f131506-fa9e-4239-bdf2-5e7178c9a0e0 | 8a0a5efb-0199-4072-bd37-4023891bb623 | PIX            |  777.00 | 2026-11-12
+ 41cd9d4a-1d2b-44ff-837d-4030d45a3ca7 | 8ee8c642-eae2-4b81-bc8a-4d10d22c26e2 | PIX            | 1000.00 | 2026-11-14
+ 41cd9d4a-1d2b-44ff-837d-4030d45a3ca7 | 3f8dc0ad-bbcd-410b-bba3-a4c0fea54693 | PIX            |  777.00 | 2026-11-12
+
+== F7 Recibo emitido para baixa estornada ou de venda cancelada
+ id | receipt_number | baixa_estornada | status 
+----+----------------+-----------------+--------
+
+== F8 Dinheiro/Pix: venda não cancelada sem baixa integral (deve ser 0)
+ count 
+-------
+     0
+
+== T1 Dono do registro coerente entre tabelas ligadas (deve ser 0 em tudo)
+psql:/tmp/claude-0/audit/integrity.sql:33: ERROR:  column v.service_order_id does not exist
+LINE 4: ...vice_order_events v join service_orders o on o.id=v.service_...
+                                                             ^
+== T2 Contas com vínculo em mais de uma ótica (informativo)
+ count 
+-------
+     0
+
+== S1 Estoque: itens com saldo negativo
+               optic_id               | brand  |    model     | saldo 
+--------------------------------------+--------+--------------+-------
+ 41cd9d4a-1d2b-44ff-837d-4030d45a3ca7 | Oakley | OX8156 Preto |   -13
+ 4838eabb-f7a3-4704-a650-9cec5f5a11de | Oakley | OX8156 Preto |   -12
+ d05c0092-514a-448b-8867-b6465c1f5d42 | Oakley | OX8156 Preto |   -12
+ 8f131506-fa9e-4239-bdf2-5e7178c9a0e0 | Oakley | OX8156 Preto |   -13
+
+== S2 Venda/cancelamento: cada venda de item controlado tem saída, e cada cancelamento a devolução
+ saidas | devolucoes 
+--------+------------
+     34 |          8
+
+== D1 Duplicidades: chave de idempotência, número de recibo, número de OS, recibo por baixa (deve ser 0)
+ idem | recibo_num | os_num | recibo_baixa 
+------+------------+--------+--------------
+    0 |          0 |      0 |            0
+
+== A1 Consultas sobrepostas ativas na mesma clínica (deve ser 0)
+ count 
+-------
+     0
+
+== A2 Consultas no passado criadas como agendadas (informativo)
+ count 
+-------
+     4
+
+== C1 Clientes com CPF de dígito verificador inválido ou nascimento futuro (informativo)
+ cpf_repetido | nascimento_futuro 
+--------------+-------------------
+            5 |                 5
+
+== M1 Migrações Flyway
+ total | ok | versao 
+-------+----+--------
+    26 | 26 |     26
+
+== M2 Sessões e tokens
+ sessoes | tokens_vencidos_nao_usados 
+---------+----------------------------
+      34 |                          0
+
+ settl_x_entry | receipt_x_settl | mov_x_item | os_events | sale_events | sale_x_customer 
+---------------+-----------------+------------+-----------+-------------+-----------------
+             0 |               0 |          0 |         0 |           0 |               0
+(1 row)
+
+ total_vendas | qtd | liquido_recebido | a_receber | taxas | media_dia_11_dias | dias_abertos_mes | dias_trabalhados 
+--------------+-----+------------------+-----------+-------+-------------------+------------------+------------------
+      2634.57 |   5 |          1634.57 |    970.00 | 30.00 |            239.51 |               23 |               11
+(1 row)
+
