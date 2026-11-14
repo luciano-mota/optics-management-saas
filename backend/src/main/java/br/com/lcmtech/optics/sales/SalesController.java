@@ -33,11 +33,13 @@ public class SalesController {
     private final CardMachineController machineRegistry;
     private final OpticClock clock;
     private final br.com.lcmtech.optics.stock.StockService stock;
+    private final br.com.lcmtech.optics.finance.FinanceLedger ledger;
     public SalesController(JdbcTemplate jdbc,OpticContext context,CustomerController customers,
                            CardMachineController machineRegistry,OpticClock clock,
-                           br.com.lcmtech.optics.stock.StockService stock) {
+                           br.com.lcmtech.optics.stock.StockService stock,
+                           br.com.lcmtech.optics.finance.FinanceLedger ledger) {
         this.jdbc=jdbc;this.context=context;this.customers=customers;
-        this.machineRegistry=machineRegistry;this.clock=clock;this.stock=stock;
+        this.machineRegistry=machineRegistry;this.clock=clock;this.stock=stock;this.ledger=ledger;
     }
 
     @GetMapping
@@ -51,7 +53,10 @@ public class SalesController {
                 +"s.fee_amount,s.net_amount,s.payment_method,s.installments,"
                 +"l.brand AS lens_brand, f.brand AS frame_brand,a.full_name AS seller_name,"
                 +"s.created_at,s.delivered_at,s.warranty_months,"
-                +"CASE WHEN s.warranty_months>0 THEN (s.sold_on+make_interval(months=>s.warranty_months))::date END AS warranty_until "
+                +"CASE WHEN s.warranty_months>0 THEN (s.sold_on+make_interval(months=>s.warranty_months))::date END AS warranty_until,"
+                +"(SELECT coalesce(sum(st.amount),0) FROM finance_settlements st JOIN finance_entries e "
+                +"ON e.optic_id=st.optic_id AND e.id=st.entry_id WHERE e.optic_id=s.optic_id AND e.sale_id=s.id "
+                +"AND st.reversed_at IS NULL) AS received_amount "
                 +"FROM sales s JOIN customers c ON c.optic_id=s.optic_id AND c.id=s.customer_id "
                 +"JOIN catalog_items l ON l.optic_id=s.optic_id AND l.id=s.lens_id "
                 +"JOIN catalog_items f ON f.optic_id=s.optic_id AND f.id=s.frame_id "
@@ -83,6 +88,9 @@ public class SalesController {
         answer.put("pendingVisits",pendingVisits);
         return answer;
     }
+
+    private static final Map<String,String> LABEL=Map.of("AWAITING_PRODUCTION","Aguardando produção",
+            "READY_FOR_DELIVERY","Pronto para entrega","DELIVERED","Entregue","CANCELLED","Cancelada");
 
     public record NewSale(UUID customerId,UUID lensId,UUID frameId,
            BigDecimal amount,String paymentMethod,UUID cardMachineId,
@@ -270,7 +278,11 @@ public class SalesController {
         if(count==null||count!=1)throw new IllegalArgumentException("Cliente ou produto não encontrado nesta ótica.");
     }
 
-    public record ChangeStatus(String status){}
+    /**
+     * refundedOn/reason: no cancelamento de venda que já teve dinheiro recebido, a data em que o valor foi devolvido ao
+     * cliente (padrão: hoje) e o motivo (obrigatório). Os recebimentos são estornados nessa data, na mesma transação.
+     */
+    public record ChangeStatus(String status,LocalDate refundedOn,String reason){}
     @PatchMapping("/{id}/status")
     @Transactional
     public Map<String,Object> status(@PathVariable UUID id,@RequestBody ChangeStatus request,
@@ -279,11 +291,29 @@ public class SalesController {
         UUID optic=context.optic(auth,session),actor=context.accountId(auth);
         String existing=jdbc.query("SELECT status FROM sales WHERE optic_id=? AND id=? FOR UPDATE",
                 (rs,n)->rs.getString(1),optic,id).stream().findFirst()
-                .orElseThrow(()->new IllegalArgumentException("Venda não encontrada."));
+                .orElseThrow(()->new java.util.NoSuchElementException("Venda não encontrada."));
         SaleStatus target;
         try {target=SaleStatus.valueOf(request.status());}
         catch(Exception e){throw new IllegalArgumentException("Situação inválida.");}
-        SaleStatus.valueOf(existing).transitionTo(target);
+        if(!SaleStatus.valueOf(existing).mayTransitionTo(target))
+            throw new IllegalArgumentException("Não é possível passar de \""+LABEL.get(existing)+"\" para \""
+                    +LABEL.get(target.name())+"\".");
+        BigDecimal refunded=BigDecimal.ZERO;
+        if(target==SaleStatus.CANCELLED) {
+            String reason=request.reason()==null?"":request.reason().trim();
+            if(reason.length()>150)throw new IllegalArgumentException("Motivo muito longo (até 150 caracteres).");
+            BigDecimal received=ledger.receivedForSale(optic,id);
+            if(received.signum()>0) {
+                // Devolver dinheiro é operação financeira: quem só entrega óculos não cancela venda já paga.
+                context.require(auth,session,"FINANCE_WRITE");
+                if(reason.isEmpty())
+                    throw new IllegalArgumentException("Informe o motivo do cancelamento: o valor recebido será devolvido ao cliente.");
+            }
+            for(UUID entry:jdbc.query("SELECT id FROM finance_entries WHERE optic_id=? AND sale_id=? AND reversed_at IS NULL",
+                    (rs,n)->(UUID)rs.getObject(1),optic,id))
+                refunded=refunded.add(ledger.reverseAllActive(optic,actor,entry,request.refundedOn(),
+                        "Venda cancelada"+(reason.isEmpty()?"":": "+reason)));
+        }
         jdbc.update("UPDATE sales SET status=?,delivered_at=CASE WHEN ?='DELIVERED' THEN now() "
                 +"ELSE delivered_at END, delivered_by=CASE WHEN ?='DELIVERED' THEN ? "
                 +"ELSE delivered_by END WHERE optic_id=? AND id=?",
@@ -294,6 +324,7 @@ public class SalesController {
             jdbc.update("UPDATE finance_entries SET reversed_at=now() WHERE optic_id=? "
                     +"AND sale_id=? AND reversed_at IS NULL",optic,id);
             stock.saleReturn(optic,id,actor);
+            return Map.of("updated",true,"status",target.name(),"refunded",refunded);
         }
         return Map.of("updated",true,"status",target.name());
     }

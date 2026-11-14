@@ -84,6 +84,31 @@ public class FinanceLedger {
         return new Result(settlementId, paid, net.subtract(paid), false);
     }
 
+    /**
+     * Estorna todas as baixas ainda ativas de um lançamento (venda cancelada ou lançamento manual estornado): o dinheiro
+     * recebido volta para o cliente na data informada e fica no histórico com o motivo. Devolve o total estornado.
+     * Sem isso a baixa continuaria "recebida" num lançamento estornado e o valor sumiria do caixa sem registro.
+     */
+    @Transactional
+    public BigDecimal reverseAllActive(UUID optic, UUID actor, UUID entryId, LocalDate reversedOn, String reason) {
+        List<Map<String, Object>> active = jdbc.queryForList(
+                "SELECT id,amount FROM finance_settlements WHERE optic_id=? AND entry_id=? AND reversed_at IS NULL "
+                        + "ORDER BY paid_on,created_at", optic, entryId);
+        BigDecimal total = BigDecimal.ZERO;
+        for (Map<String, Object> st : active) {
+            reverse(optic, actor, (UUID) st.get("id"), reversedOn, reason);
+            total = total.add((BigDecimal) st.get("amount"));
+        }
+        return total;
+    }
+
+    /** Soma das baixas ativas de uma venda (todas as parcelas). */
+    public BigDecimal receivedForSale(UUID optic, UUID saleId) {
+        return jdbc.queryForObject("SELECT coalesce(sum(st.amount),0) FROM finance_settlements st "
+                + "JOIN finance_entries e ON e.optic_id=st.optic_id AND e.id=st.entry_id "
+                + "WHERE st.optic_id=? AND e.sale_id=? AND st.reversed_at IS NULL", BigDecimal.class, optic, saleId);
+    }
+
     public List<Map<String, Object>> history(UUID optic, UUID entryId) {
         lockless(optic, entryId);
         return jdbc.queryForList("""

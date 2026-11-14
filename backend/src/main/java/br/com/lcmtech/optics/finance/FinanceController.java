@@ -140,13 +140,21 @@ public class FinanceController {
         catch(Exception e){throw new IllegalArgumentException(message);}
     }
 
+    /** Estorna um lançamento manual inteiro; o que já tinha sido recebido/pago é estornado junto, com a mesma data. */
     @PatchMapping("/{id}/reverse")
     @Transactional
-    public Map<String,Boolean> reverse(@PathVariable UUID id,Authentication auth,HttpSession session) {
+    public Map<String,Object> reverse(@PathVariable UUID id,@RequestBody(required=false) ReversalInput body,
+                                      Authentication auth,HttpSession session) {
         context.require(auth,session,"FINANCE_WRITE");
-        int n=jdbc.update("UPDATE finance_entries SET reversed_at=now() WHERE optic_id=? AND id=? "
-                +"AND origin='MANUAL' AND reversed_at IS NULL",context.optic(auth,session),id);
-        if(n!=1)throw new IllegalArgumentException("Só lançamentos manuais ativos podem ser estornados aqui.");
-        return Map.of("reversed",true);
+        UUID optic=context.optic(auth,session);
+        List<String> origin=jdbc.query("SELECT origin FROM finance_entries WHERE optic_id=? AND id=? AND reversed_at IS NULL "
+                +"FOR UPDATE",(rs,n)->rs.getString(1),optic,id);
+        if(origin.isEmpty())throw new java.util.NoSuchElementException("Lançamento não encontrado.");
+        if(!"MANUAL".equals(origin.get(0)))
+            throw new IllegalArgumentException("Lançamento de venda é estornado cancelando a venda.");
+        String reason=body==null||body.reason()==null||body.reason().isBlank()?"Lançamento estornado":body.reason().trim();
+        BigDecimal undone=ledger.reverseAllActive(optic,context.accountId(auth),id,body==null?null:body.reversedOn(),reason);
+        jdbc.update("UPDATE finance_entries SET reversed_at=now() WHERE optic_id=? AND id=?",optic,id);
+        return Map.of("reversed",true,"settlementsReversed",undone);
     }
 }
