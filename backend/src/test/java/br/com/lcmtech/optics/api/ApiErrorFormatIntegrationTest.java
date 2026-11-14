@@ -62,6 +62,16 @@ class ApiErrorFormatIntegrationTest {
     }
 
     @Test
+    void telasTemPoliticaDeConteudoEApiNaoFicaEmCache() throws Exception {
+        MvcResult page = mvc.perform(get("/")).andReturn();
+        assertThat(page.getResponse().getHeader("Content-Security-Policy"))
+                .contains("script-src 'self'", "frame-ancestors 'none'", "object-src 'none'");
+        MvcResult api = mvc.perform(get("/api/v1/public/status")).andReturn();
+        assertThat(api.getResponse().getHeader("Cache-Control")).contains("no-store");
+        assertThat(api.getResponse().getHeader("X-Content-Type-Options")).isEqualTo("nosniff");
+    }
+
+    @Test
     void corpoMalformadoOuIdInvalidoNaoMostramNomesInternos() throws Exception {
         String who = master();
         MvcResult broken = mvc.perform(post("/api/v1/customers").with(user(who)).with(csrf())
