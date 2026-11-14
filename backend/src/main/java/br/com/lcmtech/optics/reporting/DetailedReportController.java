@@ -226,7 +226,7 @@ public class DetailedReportController {
                     java.math.RoundingMode.HALF_UP))) + "   |   Taxas: " + TabularReport.Money.brl(fees)
                     + "   |   Líquido: " + TabularReport.Money.brl(net) + "   (canceladas fora dos totais)");
         }
-        String filtersText = describe(filter);
+        String filtersText = describe(optic, filter);
         if (!filtersText.isEmpty()) summary.add("Filtros: " + filtersText);
         return new Result(new TabularReport("Relatório de vendas", "Vendas", "optics-vendas", headers, rows, summary,
                 moneyColumns(headers, "Valor cobrado", "Taxas", "Líquido"),
@@ -235,10 +235,13 @@ public class DetailedReportController {
     }
 
     /** Filtros aplicados, por extenso, para o rodapé do PDF e da planilha (auditoria). */
-    private String describe(SalesQuery.SalesFilter f) {
+    private String describe(UUID optic, SalesQuery.SalesFilter f) {
         List<String> parts = new ArrayList<>();
+        // O nome só vem de quem é (ou foi) da equipe desta ótica: um ID de outra ótica não revela nada.
         if (f.sellerId() != null) parts.add("vendedor(a) " + jdbc.queryForList(
-                "SELECT full_name FROM accounts WHERE id=?", String.class, f.sellerId()).stream().findFirst().orElse("?"));
+                "SELECT a.full_name FROM accounts a JOIN optic_memberships m ON m.account_id=a.id "
+                        + "WHERE a.id=? AND m.optic_id=?", String.class, f.sellerId(), optic)
+                .stream().findFirst().orElse("não encontrado(a) nesta ótica"));
         if (f.frameBrand() != null) parts.add("armação " + f.frameBrand());
         if (f.frameCategory() != null) parts.add("categoria " + ("NONE".equals(f.frameCategory()) ? "não informada"
                 : SalesQuery.shortLabel(br.com.lcmtech.optics.catalog.domain.CatalogCategory.label("FRAME", f.frameCategory()))));
